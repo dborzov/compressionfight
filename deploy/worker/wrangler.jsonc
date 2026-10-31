@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "compressionfight-proxy",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "account_id": "d666b77c4126b3b31c76ecb8a8fa098c",
+  // The worker is deployed without a route until this is uncommented (see ../README.md).
+  // "routes": [
+  //   { "pattern": "borzov.ca/compressionfight*", "zone_id": "e95e36b1ce9a27495c67b7613be83b1a" }
+  // ],
+  "workers_dev": false,
+  "observability": { "enabled": true }
+}
