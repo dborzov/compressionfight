@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Choose Your Codec</title>
+<meta name="description" content="Choose the right squad for the heist: an arcade game about compression codecs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="crt" aria-hidden="true"></div>
+
+<header id="topbar">
+  <button id="btn-home" class="logo" type="button" aria-label="Choose Your Codec: title screen">
+    <span class="logo-a">CHOOSE</span><span class="logo-b">YOUR</span><span class="logo-c">CODEC</span>
+  </button>
+  <nav id="mode-toggle" class="mode-toggle" aria-label="Game mode">
+    <button id="mode-heist" type="button" class="mode-btn is-on" aria-pressed="true">HEIST</button>
+    <button id="mode-explore" type="button" class="mode-btn" aria-pressed="false">EXPLORE</button>
+  </nav>
+  <button id="btn-fixer" type="button" class="fixer-toggle is-on" aria-pressed="true">FIXER: ON</button>
+  <div id="topbar-status" class="topbar-status" aria-live="polite"></div>
+</header>
+
+<main id="app">
+  <!-- TITLE -->
+  <section id="screen-title" class="screen screen-title">
+    <div class="title-burst" aria-hidden="true"></div>
+    <h1 class="title-logo">
+      <span class="t1">CHOOSE</span>
+      <span class="t2">YOUR</span>
+      <span class="t3">CODEC</span>
+    </h1>
+    <p class="title-tag">CHOOSE THE RIGHT SQUAD FOR THE HEIST</p>
+    <p class="title-sub">A heist is an application that needs compression. Its stat sheet is the job's requirements.
+      Your squad is the codec pipeline: one chair per role, a fighter (algorithm) in each chair.
+      Fill the chairs, watch the sample data change stage by stage, then run the heist.</p>
+    <button id="btn-start" type="button" class="btn btn-huge blink">PRESS START</button>
+    <button id="btn-title-explore" type="button" class="btn btn-ghost">EXPLORE THE ROSTER</button>
+    <p id="title-engine-note" class="engine-note" hidden></p>
+  </section>
+
+  <!-- LEVEL SELECT -->
+  <section id="screen-levels" class="screen" hidden>
+    <div class="screen-head">
+      <h2 class="h-pixel">SELECT LEVEL</h2>
+      <div class="head-actions">
+        <button id="btn-unlock-all" type="button" class="btn btn-small">UNLOCK EVERYTHING</button>
+        <button id="btn-reset-progress" type="button" class="btn btn-small btn-ghost">RESET PROGRESS</button>
+      </div>
+    </div>
+    <div id="level-grid" class="level-grid"></div>
+  </section>
+
+  <!-- HEIST SELECT: heists / side quests / notebook -->
+  <section id="screen-heists" class="screen" hidden>
+    <div class="screen-head">
+      <button id="btn-back-levels" type="button" class="btn btn-small btn-ghost">&larr; LEVELS</button>
+      <h2 id="heists-title" class="h-pixel">SELECT HEIST</h2>
+    </div>
+    <p id="heists-tagline" class="tagline"></p>
+    <div id="heists-subtabs" class="tabs tabs-sub" role="tablist" aria-label="Level sections">
+      <button id="htab-heists" type="button" class="tab is-on" role="tab" aria-selected="true" data-tab="heists">HEISTS</button>
+      <button id="htab-quests" type="button" class="tab" role="tab" aria-selected="false" data-tab="quests">SIDE QUESTS</button>
+      <button id="htab-notebook" type="button" class="tab" role="tab" aria-selected="false" data-tab="notebook">THE FIXER'S NOTEBOOK</button>
+    </div>
+    <div id="heists-body" class="heists-body" role="tabpanel"></div>
+  </section>
+
+  <!-- SQUAD ROOM -->
+  <section id="screen-squad" class="screen" hidden>
+    <div class="screen-head">
+      <button id="btn-back-heists" type="button" class="btn btn-small btn-ghost">&larr; BACK</button>
+      <h2 id="squad-title" class="h-pixel">SQUAD ROOM</h2>
+    </div>
+    <div id="squad-job" class="job-sheet"></div>
+    <div id="chair-row" class="chair-row"></div>
+    <div id="combo-bar" class="combo-bar" aria-live="polite"></div>
+    <div class="run-bar">
+      <button id="btn-run" type="button" class="btn btn-huge btn-run">RUN THE HEIST</button>
+    </div>
+    <section id="pipeline" class="pipeline" aria-label="Live pipeline"></section>
+    <div class="run-bar run-bar-bottom">
+      <button id="btn-run-2" type="button" class="btn btn-big btn-run">RUN THE HEIST</button>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen" hidden>
+    <div id="results" class="results"></div>
+  </section>
+
+  <!-- CHECKPOINT QUIZ -->
+  <section id="screen-quiz" class="screen" hidden>
+    <div id="quiz" class="quiz"></div>
+  </section>
+
+  <!-- SIDE QUEST -->
+  <section id="screen-quest" class="screen" hidden>
+    <div id="quest" class="quest"></div>
+  </section>
+
+  <!-- EXPLORE -->
+  <section id="screen-explore" class="screen" hidden>
+    <div class="screen-head">
+      <h2 class="h-pixel">EXPLORE</h2>
+      <div id="explore-tabs" class="tabs" role="tablist" aria-label="Explore sections">
+        <button id="tab-codecs" type="button" class="tab is-on" role="tab" aria-selected="true" data-tab="codecs">CODECS</button>
+        <button id="tab-roster" type="button" class="tab" role="tab" aria-selected="false" data-tab="roster">ROSTER</button>
+        <button id="tab-jobs" type="button" class="tab" role="tab" aria-selected="false" data-tab="jobs">JOB BOARD</button>
+        <button id="tab-matrix" type="button" class="tab" role="tab" aria-selected="false" data-tab="matrix">MATRIX</button>
+        <button id="tab-duel" type="button" class="tab" role="tab" aria-selected="false" data-tab="duel">DUEL</button>
+        <button id="tab-tradeoffs" type="button" class="tab" role="tab" aria-selected="false" data-tab="tradeoffs">TRADE-OFFS</button>
+      </div>
+    </div>
+    <div id="explore-body" class="explore-body" role="tabpanel"></div>
+  </section>
+</main>
+
+<!-- THE FIXER: tutor speech box -->
+<aside id="fixer" class="fixer" hidden aria-live="polite" aria-label="The Fixer">
+  <div class="fixer-portrait portrait" style="--rc:#777" aria-hidden="true">
+    <span class="initials">F</span>
+    <img alt="" src="img/fighters/none.png" onerror="this.remove()">
+  </div>
+  <div class="fixer-body">
+    <div class="fixer-name"><span>THE FIXER</span><span id="fixer-count" class="fixer-count"></span></div>
+    <p id="fixer-text" class="fixer-text"></p>
+    <div class="fixer-actions">
+      <button id="btn-fixer-next" type="button" class="btn btn-small">NEXT &#9654;</button>
+      <button id="btn-fixer-close" type="button" class="btn btn-small btn-ghost" aria-label="Dismiss the Fixer">&times;</button>
+    </div>
+  </div>
+</aside>
+
+<!-- CHOOSE YOUR FIGHTER -->
+<div id="overlay-fighter" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="fighter-overlay-title">
+  <div class="overlay-box">
+    <div class="overlay-head">
+      <h2 id="fighter-overlay-title" class="h-pixel h-choose">CHOOSE YOUR FIGHTER</h2>
+      <div id="fighter-overlay-role" class="overlay-role"></div>
+      <button id="btn-close-fighter" type="button" class="btn btn-small" aria-label="Close">DONE &check;</button>
+    </div>
+    <div class="chooser">
+      <aside id="family-col" class="family-col" aria-label="Families"></aside>
+      <div id="fighter-grid" class="fighter-grid" aria-label="Fighters"></div>
+      <aside id="fighter-detail" class="detail-col" aria-live="polite"></aside>
+    </div>
+  </div>
+</div>
+
+<!-- FIGHTER DETAIL (roster) -->
+<div id="overlay-detail" class="overlay" hidden role="dialog" aria-modal="true" aria-label="Fighter details">
+  <div class="overlay-box overlay-box-narrow">
+    <div class="overlay-head">
+      <h2 class="h-pixel h-choose">FIGHTER FILE</h2>
+      <button id="btn-close-detail" type="button" class="btn btn-small" aria-label="Close">CLOSE &times;</button>
+    </div>
+    <div id="detail-body" class="detail-body"></div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/curriculum.js"></script>
+<script src="js/quests_data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/demos.js"></script>
+<script src="js/quests.js"></script>
+<script src="js/viz.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
