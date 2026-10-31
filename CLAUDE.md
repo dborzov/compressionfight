@@ -86,7 +86,7 @@ with initials).
 
 ## Deployment
 
-GitHub Pages serves the repo root of `main` (there is a `.nojekyll`): https://dborzov.github.io/compressionfight/
-Nothing to build; a push to `main` is a deploy. The planned custom path `https://borzov.ca/compressionfight`
-goes through a Cloudflare Worker proxy in `deploy/worker/` (see `deploy/README.md`); it is not live until the
-route is uncommented and deployed.
+GitHub Pages serves the repo root of `main` (there is a `.nojekyll`). Nothing to build; a push to `main` is a
+deploy. Live URL: https://www.borzov.ca/compressionfight/ (the account's user site has that custom domain, so
+`dborzov.github.io/compressionfight/` and `borzov.ca/compressionfight/` both 301 there). `deploy/README.md`
+has the details and an optional Cloudflare Worker fallback in `deploy/worker/` (not deployed).

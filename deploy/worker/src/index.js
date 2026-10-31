@@ -39,7 +39,9 @@ export default {
     const upstreamResponse = await fetch(upstream.toString(), {
       method: request.method,
       headers,
-      redirect: 'manual',
+      // GitHub redirects dborzov.github.io/* to the user site's custom domain (www.borzov.ca);
+      // follow it so the proxy returns content, not a 301.
+      redirect: 'follow',
       cf: { cacheEverything: true, cacheTtl: 300 },
     });
 

@@ -2,10 +2,16 @@
 
 ## Where the game lives
 
-- **GitHub Pages (live):** https://dborzov.github.io/compressionfight/ — serves the repo root of `main`
+- **GitHub Pages (live):** https://www.borzov.ca/compressionfight/ — serves the repo root of `main`
   (legacy Pages build, `.nojekyll` present). Every push to `main` is a deploy; there is nothing to build.
-- **Custom path (planned):** https://borzov.ca/compressionfight — GitHub Pages cannot serve a sub-path of a
-  custom domain, so a small Cloudflare Worker (`deploy/worker/`) proxies that path to the Pages origin.
+- **Why that URL:** the user site repo `dborzov/dborzov.github.io` has the custom domain `www.borzov.ca`, and
+  GitHub serves every project page of the account under the user site's domain. So
+  `https://dborzov.github.io/compressionfight/` 301s to `https://www.borzov.ca/compressionfight/`, and the apex
+  `https://borzov.ca/compressionfight/` 301s there too via the existing apex-to-www redirect on Cloudflare.
+  **The goal "reachable at borzov.ca/compressionfight" is therefore already met without any Worker.**
+- **Worker (fallback, not deployed):** `deploy/worker/` is a Cloudflare Worker that would serve
+  `borzov.ca/compressionfight*` directly on the apex (no redirect hop) by proxying the Pages origin. Keep it
+  only if the apex redirect ever goes away or a redirect-free apex URL is wanted.
 
 ## The worker
 
@@ -26,9 +32,9 @@ borzov.ca changes until someone decides to go live.
 1. In `deploy/worker/wrangler.jsonc`, uncomment the `routes` block.
 2. From `deploy/worker/`, run `npx wrangler deploy`.
 
-The route requires that `borzov.ca` has a proxied (orange-cloud) DNS record for the apex; a Worker route only
-fires on traffic that passes through Cloudflare. If the apex currently has no record, add a proxied
-`AAAA borzov.ca 100::` placeholder (or point it at whatever already serves the site) before step 2.
+A Worker route only fires on traffic that passes through Cloudflare; the apex already is proxied (it answers
+with `server: cloudflare` and the apex-to-www 301), so no DNS change is needed. The Worker route takes
+precedence over the redirect rule for that path only.
 
 Check: `curl -sI https://borzov.ca/compressionfight/` should return `200` with `x-proxied-from: dborzov.github.io`,
 and `curl -sI https://borzov.ca/compressionfight` should return `301` with `location: .../compressionfight/`.
