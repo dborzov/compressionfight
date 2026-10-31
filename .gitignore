@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+*.log
+scratch/
+# raw 1024px image-generation outputs and their sidecars
+img/raw/
+img/**/*_1024.png
+img/**/*.json
+*.1024.png
+.claude/settings.local.json
+deploy/worker/.wrangler/
+deploy/worker/node_modules/
