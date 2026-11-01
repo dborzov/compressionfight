@@ -17,7 +17,7 @@ function eqArr(a, b, eps) { return a.length === b.length && a.every((v, i) => ne
 const ids = CYC.FIGHTERS.map(f => f.id);
 check('every fighter has a lab', ids.every(id => CYC.Demos.has(id)), ids.filter(id => !CYC.Demos.has(id)).join(',') || 'all 34');
 check('every lab id is a fighter', CYC.Demos.ids.every(id => ids.includes(id)), CYC.Demos.ids.filter(id => !ids.includes(id)).join(',') || 'none stray');
-check('34 labs', CYC.Demos.ids.length === 34, CYC.Demos.ids.length);
+check('one lab per fighter', CYC.Demos.ids.length === CYC.FIGHTERS.length, CYC.Demos.ids.length);
 check('has() is false for unknown id', !CYC.Demos.has('nope'));
 
 // --- Huffman (CLRS) ---------------------------------------------------------
@@ -183,6 +183,70 @@ check('tables break-even for 80 B table at 0.3 bits/B ≈ 2133 B', near(calc.tab
 check('codebook K=256, d=8 → 4096 B side info, 8 bits/vector', calc.codebookCost(256, 8).sideBytes === 4096 && calc.codebookCost(256, 8).bitsPerVector === 8);
 const dn = calc.decoderNumbers();
 check('decoder_net: 384 kbps → 6 kbps (64:1), 750 B/s, ~27000:1', dn.pcmBps === 384000 && dn.tokenBps === 6000 && dn.ratio === 64 && dn.bytesPerSec === 750 && near(dn.priorRatio, 26667, 1), dn.priorRatio.toFixed(0));
+
+// --- Level 5: KV cache -------------------------------------------------------
+const L5 = ['unrope', 'svd_lowrank', 'mla', 'anchor_delta', 'coupled', 'waterline', 'fp4', 'escape', 'evict', 'sinkguard', 'spotlight', 'basis', 'tiered'];
+check('level 5: all 13 labs present', L5.every(id => CYC.Demos.has(id)), L5.filter(id => !CYC.Demos.has(id)).join(',') || '13');
+check('level 5: lab count is 47', CYC.Demos.ids.length === 47 && CYC.FIGHTERS.length === 47, CYC.Demos.ids.length + ' labs, ' + CYC.FIGHTERS.length + ' fighters');
+
+const ur = calc.unropeLab([8.0, 0.3], 8, 0.5, 3);
+check('unrope: rewound pairs all equal (8.0, 0.3) within 1e-9', ur.rewound.every(p => near(p[0], 8.0) && near(p[1], 0.3)), ur.rewound.map(p => p.map(v => v.toFixed(6)).join(',')).join(' '));
+check('unrope: y-channel int3 error drops ≥ 5×', ur.before.y.rms / Math.max(ur.after.y.rms, 1e-15) >= 5, ur.before.y.rms.toFixed(3) + ' → ' + ur.after.y.rms.toExponential(2));
+check('unrope: rotated y range is wide, rewound is 0', ur.rangeBefore[1] > 5 && near(ur.rangeAfter[1], 0), ur.rangeBefore[1].toFixed(2));
+
+const mats = calc.svdLabMatrices(), lrK = calc.lowRank(mats.K, 2), lrV = calc.lowRank(mats.V, 2);
+check('svd_lowrank: K has two large and two tiny singular values', lrK.sigma[1] > 5 * lrK.sigma[2], lrK.sigma.map(v => v.toFixed(2)).join(','));
+check('svd_lowrank: rank-2 error small for K, large for V', lrK.relErr < 0.1 && lrV.relErr > 0.3, (lrK.relErr * 100).toFixed(1) + '% vs ' + (lrV.relErr * 100).toFixed(1) + '%');
+check('svd_lowrank: rank 4 is exact, storage 8r+4r', near(calc.lowRank(mats.K, 4).relErr, 0, 1e-6) && lrK.stored === 24 && lrK.full === 32);
+const eigA = [[4, 1, 0.5], [1, 3, 0.2], [0.5, 0.2, 1]], eg = calc.symEig(eigA);
+check('symEig reconstructs A = V diag(λ) Vᵀ', eigA.every((row, i) => row.every((v, j) => near(v, eg.values.reduce((s, l, k) => s + l * eg.vectors[k][i] * eg.vectors[k][j], 0), 1e-9))));
+
+const mla = calc.mla();
+check('mla: 32768 / 576 = 56.9', mla.per.mha === 32768 && mla.per.mla === 576 && near(mla.ratio, 56.9, 0.05), mla.ratio.toFixed(2));
+check('mla: Llama-3-70B 320 KiB/token, 40 GiB at 131072 tokens', mla.presets[0].bytesPerToken === 320 * 1024 && near(mla.presets[0].at128k / 2 ** 30, 40), (mla.presets[0].at128k / 2 ** 30).toFixed(2));
+check('mla: DeepSeek-V3 68.6 KiB/token (spec: 8.4 GiB at 128k; computed at 131072 tokens)', near(mla.presets[1].bytesPerToken / 1024, 68.6, 0.05), (mla.presets[1].at128k / 2 ** 30).toFixed(2) + ' GiB');
+
+const ad1 = calc.anchorDelta([100, 103, 105, 104, 108, 110, 109, 113, 115, 114], 1), ad4 = calc.anchorDelta([100, 103, 105, 104, 108, 110, 109, 113, 115, 114], 4);
+check('anchor_delta: chain deltas', eqArr(ad1.chain, [100, 3, 2, -1, 4, 2, -1, 4, 2, -1]), ad1.chain.join(','));
+check('anchor_delta: anchor deltas', eqArr(ad1.anchor, [100, 3, 5, 4, 8, 10, 9, 13, 15, 14]), ad1.anchor.join(','));
+check('anchor_delta at Δ=4: chain max error > anchor max error, anchor ≤ Δ/2', ad4.maxChain > ad4.maxAnchor && ad4.maxAnchor <= 2, 'chain ' + ad4.maxChain + ' anchor ' + ad4.maxAnchor);
+
+const cp = calc.COUPLED_PAIRS, sq2 = calc.signQuant2(cp), kmc = calc.kmeansInit(cp, [[1.2, 1.1], [-1.2, -1.1], [0.4, 0.35], [-0.4, -0.35]], 10), be = calc.binEntropy(cp, 4);
+check('coupled: joint K=4 beats scalar sign quantizer at 2 bits/pair', kmc.mse < sq2.mse, sq2.mse.toFixed(3) + ' → ' + kmc.mse.toFixed(3));
+check('coupled: H(a,b) < H(a) + H(b)', be.Hab < be.Ha + be.Hb, be.Ha.toFixed(2) + '+' + be.Hb.toFixed(2) + ' vs ' + be.Hab.toFixed(2));
+
+const wf = calc.waterfill([64, 32, 16, 8, 4, 2, 1, 0.5], 2);
+check('waterline θ=2: bits [2.5,2,1.5,1,0.5,0,0,0]', eqArr(wf.bits, [2.5, 2, 1.5, 1, 0.5, 0, 0, 0]), wf.bits.join(','));
+check('waterline θ=2: ΣD = 13.5', near(wf.totalDist, 13.5), wf.totalDist);
+check('waterline: equal allocation is worse', wf.equalDist > wf.totalDist, wf.equalDist.toFixed(2));
+
+const grid = calc.FP4_GRID;
+check('fp4: grid has 15 distinct values incl. 0 and ±6', new Set(grid).size === 15 && grid.length === 15 && grid.includes(0) && grid.includes(6) && grid.includes(-6), grid.join(','));
+const f4 = calc.fp4Quant(calc.FP4_BLOCK), i4 = calc.int4Block(calc.FP4_BLOCK);
+check('fp4: NVFP4 lower error than int4 on the block, both 4.5 bits', f4.sse < i4.sse && f4.bits === 4.5 && i4.bits === 4.5, f4.sse.toExponential(2) + ' vs ' + i4.sse.toExponential(2));
+
+const es = calc.escape([0.012, -0.031, 0.004, 0.550, 0.020, -0.008, 0.015, -0.027], 3);
+check('escape: without escape 7 values collapse to 0', es.plain.q.filter(q => q === 0).length === 7 && near(es.plain.s, 0.55 / 3));
+check('escape: outlier is x[3], rest step 0.031/3, error drops', es.outlierIndex === 3 && near(es.restScale, 0.031 / 3) && es.sse < es.plain.sse / 10, es.plain.sse.toExponential(2) + ' → ' + es.sse.toExponential(2));
+check('escape: bits 3 vs 3 + 19/8 = 5.375', es.bitsPlain === 3 && near(es.bitsEscape, 5.375), es.bitsEscape);
+
+check('evict: weights sum to 1', near(calc.EVICT_W.reduce((a, b) => a + b, 0), 1, 1e-9));
+const ev5 = calc.evict(calc.EVICT_W, 5, 8);
+check('evict at k=5 keeps ≥ 0.60 mass', ev5.mass >= 0.6 - 1e-9, ev5.mass.toFixed(3));
+check('evict: pages free only when all 8 tokens are gone', calc.evict(calc.EVICT_W, 1, 8).pagesFreed === 1 && ev5.pagesFreed === 0);
+
+const sw = calc.sinkWeights();
+check('sinkguard: weights sum to 1, w0 = 0.35, tail 0.075 each', near(sw.reduce((a, b) => a + b, 0), 1, 1e-9) && sw[0] === 0.35 && sw[31] === 0.075);
+check('sinkguard: weighted error 0.25 → 0.0875', near(calc.sinkguard(sw, [], 0.25).weighted, 0.25, 1e-9) && near(calc.sinkguard(sw, [0, 28, 29, 30, 31], 0.25).weighted, 0.0875, 1e-9), calc.sinkguard(sw, [0, 28, 29, 30, 31], 0.25).weighted.toFixed(4));
+
+const sp = calc.spotlight(calc.spotKeys(), [1, 0.4], 4);
+check('spotlight: exact top-4 carries ~0.9 of the mass', sp.massExact > 0.8, sp.massExact.toFixed(3));
+check('spotlight: proxy top-4 overlaps exact top-4 on ≥ 3 keys', sp.overlap >= 3, sp.overlap + ' of 4; proxy mass ' + sp.massProxy.toFixed(3));
+
+check('basis: 1024² bf16 = 2 MiB, 8192² = 128 MiB', calc.basisBytes(1024, 80).shared === 2 * 2 ** 20 && calc.basisBytes(8192, 80).shared === 128 * 2 ** 20);
+const td = calc.tiered(4096, 1);
+check('tiered: B=4096 → 13.4% miss, ≈14.0 MB/token, ≈0.47 GB/s per request', near(td.miss, 0.134) && near(td.perToken / 1e6, 14.04, 0.01) && near(td.bandwidth / 1e9, 0.468, 0.001), (td.perToken / 1e6).toFixed(2) + ' MB, ' + (td.bandwidth / 1e9).toFixed(3) + ' GB/s');
+check('tiered: bandwidth scales with concurrency; 16 × B=2048 ≈ 16.8 GB/s (26% of PCIe 5 nominal)', near(calc.tiered(2048, 16).bandwidth, 16 * calc.tiered(2048, 1).bandwidth) && near(calc.tiered(2048, 16).bandwidth / 1e9, 16.77, 0.01), (calc.tiered(2048, 16).bandwidth / 1e9).toFixed(2) + ' GB/s');
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
 process.exit(failures ? 1 : 0);

@@ -761,7 +761,7 @@ body.fixer-open #app { padding-bottom: 200px; }
 .quiz-why.right { border-color: var(--green); } .quiz-why.right .pix { color: var(--green); }
 .quiz-why.wrong { border-color: var(--red); } .quiz-why.wrong .pix { color: var(--red); }
 .quiz-why p { margin: 6px 0 0; font-size: var(--fs-body-lg); }
-@media (max-width: 600px) { .quiz-final { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .quiz-final { grid-template-columns: 1fr; } .req-ends { display: none; } }
 
 /* ---------- selects / controls ---------- */
 .duel-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }

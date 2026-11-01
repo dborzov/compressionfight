@@ -468,6 +468,179 @@ window.CYC = window.CYC || {};
     return { pcmBps: pcm, tokenBps: tok, ratio: pcm / tok, bytesPerSec: bytesPerSec, weights: weights, priorRatio: weights / bytesPerSec };
   };
 
+  // ---- level 5: KV cache ---------------------------------------------------
+  // Generic absmax integer quantizer: levels [-(L+1), L] with L = 2^(bits-1)-1, s = max|x|/L.
+  calc.absmaxQuant = function (xs, bits) {
+    var L = Math.pow(2, bits - 1) - 1, amax = Math.max.apply(null, xs.map(Math.abs)), s = amax / L || 1e-12;
+    var q = xs.map(function (v) { return Math.max(-L - 1, Math.min(L, roundSym(v / s))); }), rec = q.map(function (v) { return v * s; });
+    var err = xs.map(function (v, i) { return rec[i] - v; }), sse = sum(err.map(sq));
+    return { s: s, q: q, rec: rec, err: err, sse: sse, rms: Math.sqrt(sse / xs.length), levels: 2 * L + 2 };
+  };
+  calc.rope = function (pair, m, theta) { var c = Math.cos(m * theta), s = Math.sin(m * theta); return [c * pair[0] - s * pair[1], s * pair[0] + c * pair[1]]; };
+  calc.unropeLab = function (key, n, theta, bits) {
+    var rotated = [], rewound = [];
+    for (var m = 0; m < n; m++) { var r = calc.rope(key, m, theta); rotated.push(r); rewound.push(calc.rope(r, m, -theta)); }
+    function chan(pts, d) { return pts.map(function (p) { return p[d]; }); }
+    var qb = { x: calc.absmaxQuant(chan(rotated, 0), bits), y: calc.absmaxQuant(chan(rotated, 1), bits) };
+    var qa = { x: calc.absmaxQuant(chan(rewound, 0), bits), y: calc.absmaxQuant(chan(rewound, 1), bits) };
+    function range(a) { return Math.max.apply(null, a) - Math.min.apply(null, a); }
+    return { rotated: rotated, rewound: rewound, before: qb, after: qa, rangeBefore: [range(chan(rotated, 0)), range(chan(rotated, 1))], rangeAfter: [range(chan(rewound, 0)), range(chan(rewound, 1))] };
+  };
+
+  calc.symEig = function (A) { // Jacobi; returns eigenvalues desc and eigenvectors (vectors[k] is the k-th eigenvector)
+    var n = A.length, a = A.map(function (r) { return r.slice(); }), V = [], i, j, k;
+    for (i = 0; i < n; i++) { V.push([]); for (j = 0; j < n; j++) V[i].push(i === j ? 1 : 0); }
+    for (var sweep = 0; sweep < 60; sweep++) {
+      var off = 0; for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) off += a[i][j] * a[i][j];
+      if (off < 1e-24) break;
+      for (var p = 0; p < n; p++) for (var q = p + 1; q < n; q++) {
+        if (Math.abs(a[p][q]) < 1e-300) continue;
+        var th = (a[q][q] - a[p][p]) / (2 * a[p][q]), t = (th >= 0 ? 1 : -1) / (Math.abs(th) + Math.sqrt(th * th + 1)), c = 1 / Math.sqrt(t * t + 1), s = t * c;
+        for (k = 0; k < n; k++) { var akp = a[k][p], akq = a[k][q]; a[k][p] = c * akp - s * akq; a[k][q] = s * akp + c * akq; }
+        for (k = 0; k < n; k++) { var apk = a[p][k], aqk = a[q][k]; a[p][k] = c * apk - s * aqk; a[q][k] = s * apk + c * aqk; }
+        for (k = 0; k < n; k++) { var vkp = V[k][p], vkq = V[k][q]; V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq; }
+      }
+    }
+    var idx = []; for (i = 0; i < n; i++) idx.push(i);
+    idx.sort(function (x, y) { return a[y][y] - a[x][x]; });
+    return { values: idx.map(function (i) { return a[i][i]; }), vectors: idx.map(function (i) { return V.map(function (row) { return row[i]; }); }) };
+  };
+  calc.singularValues = function (M) { // M: m×n with m ≥ n
+    var n = M[0].length, G = [];
+    for (var i = 0; i < n; i++) { G.push([]); for (var j = 0; j < n; j++) { var s = 0; M.forEach(function (row) { s += row[i] * row[j]; }); G[i].push(s); } }
+    var e = calc.symEig(G);
+    return { sigma: e.values.map(function (v) { return Math.sqrt(Math.max(0, v)); }), V: e.vectors, total: sum(e.values.map(function (v) { return Math.max(0, v); })) };
+  };
+  calc.lowRank = function (M, r) {
+    var sv = calc.singularValues(M), tail = 0;
+    for (var i = r; i < sv.sigma.length; i++) tail += sv.sigma[i] * sv.sigma[i];
+    var stored = M.length * r + M[0].length * r;
+    return { sigma: sv.sigma, relErr: Math.sqrt(tail / sv.total), stored: stored, full: M.length * M[0].length };
+  };
+  calc.svdLabMatrices = function () {
+    var u1 = [1, 0.5, -0.3, 0.8], u2 = [-0.2, 0.9, 0.4, -0.1], coef = [[1.0, 0.2], [0.8, -0.5], [-0.6, 0.9], [1.2, 0.4], [-0.9, -0.3], [0.3, 1.1], [0.7, -0.8], [-1.1, 0.6]];
+    var r1 = rng(21), K = coef.map(function (c) { return u1.map(function (v, j) { return Math.round((c[0] * v + c[1] * u2[j] + 0.05 * gauss(r1)) * 100) / 100; }); });
+    var r2 = rng(22), Vm = coef.map(function () { return [0, 0, 0, 0].map(function () { return Math.round(gauss(r2) * 100) / 100; }); });
+    return { K: K, V: Vm };
+  };
+
+  calc.mla = function () {
+    var per = { mha: 128 * 128 * 2, gqa8: 8 * 128 * 2, mla: 512 + 64 }, tokens = 131072;
+    var presets = [
+      { name: 'Llama-3-70B (GQA-8)', layers: 80, perLayer: per.gqa8 },
+      { name: 'DeepSeek-V3 (MLA)', layers: 61, perLayer: per.mla }];
+    presets.forEach(function (p) { p.bytesPerToken = p.layers * p.perLayer * 2; p.at128k = p.bytesPerToken * tokens; });
+    return { per: per, ratio: per.mha / per.mla, presets: presets, tokens: tokens };
+  };
+
+  calc.anchorDelta = function (x, delta) {
+    var chain = x.map(function (v, i) { return i === 0 ? v : v - x[i - 1]; }), anchor = x.map(function (v, i) { return i === 0 ? v : v - x[0]; });
+    var qc = chain.map(function (d, i) { return i === 0 ? d : roundSym(d / delta) * delta; }), qa = anchor.map(function (d, i) { return i === 0 ? d : roundSym(d / delta) * delta; });
+    var recC = [], recA = [];
+    for (var i = 0; i < x.length; i++) { recC.push(i === 0 ? x[0] : recC[i - 1] + qc[i]); recA.push(i === 0 ? x[0] : x[0] + qa[i]); }
+    var errC = recC.map(function (v, i) { return v - x[i]; }), errA = recA.map(function (v, i) { return v - x[i]; });
+    return { chain: chain, anchor: anchor, qChain: qc, qAnchor: qa, recChain: recC, recAnchor: recA, errChain: errC, errAnchor: errA, maxChain: Math.max.apply(null, errC.map(Math.abs)), maxAnchor: Math.max.apply(null, errA.map(Math.abs)) };
+  };
+
+  calc.COUPLED_PAIRS = [[0.82, 0.71], [-0.45, -0.38], [1.21, 1.12], [-1.05, -0.99], [0.33, 0.35], [-0.78, -0.66], [1.52, 1.34], [-0.21, -0.24], [0.64, 0.55], [-1.33, -1.17], [0.97, 0.91], [-0.58, -0.49], [0.15, 0.09], [-0.92, -0.86], [1.08, 0.99], [-0.37, -0.30]];
+  calc.kmeansInit = function (pts, init, iters) {
+    var cents = init.map(function (c) { return c.slice(); }), assign = pts.map(function () { return 0; }), dist = 0;
+    function assignAll() { dist = 0; pts.forEach(function (p, i) { var b = 0, bd = Infinity; cents.forEach(function (c, k) { var d = dist2(p, c); if (d < bd) { bd = d; b = k; } }); assign[i] = b; dist += bd; }); }
+    for (var it = 0; it < iters; it++) {
+      assignAll();
+      var acc = cents.map(function () { return [0, 0, 0]; });
+      pts.forEach(function (p, i) { var a = acc[assign[i]]; a[0] += p[0]; a[1] += p[1]; a[2]++; });
+      acc.forEach(function (a, k) { if (a[2] > 0) cents[k] = [a[0] / a[2], a[1] / a[2]]; });
+    }
+    assignAll();
+    return { centroids: cents, assign: assign, distortion: dist, mse: dist / pts.length };
+  };
+  calc.signQuant2 = function (pts) {
+    var ma = sum(pts.map(function (p) { return Math.abs(p[0]); })) / pts.length, mb = sum(pts.map(function (p) { return Math.abs(p[1]); })) / pts.length;
+    var rec = pts.map(function (p) { return [Math.sign(p[0]) * ma, Math.sign(p[1]) * mb]; }), d = sum(pts.map(function (p, i) { return dist2(p, rec[i]); }));
+    return { levels: [ma, mb], rec: rec, distortion: d, mse: d / pts.length, points: [[ma, mb], [ma, -mb], [-ma, mb], [-ma, -mb]] };
+  };
+  calc.binEntropy = function (pts, bins) { // marginal and joint entropies over equal-width bins per axis
+    function edges(d) { var lo = Infinity, hi = -Infinity; pts.forEach(function (p) { lo = Math.min(lo, p[d]); hi = Math.max(hi, p[d]); }); return { lo: lo, w: (hi - lo) / bins || 1 }; }
+    var ex = edges(0), ey = edges(1), ha = {}, hb = {}, hab = {};
+    pts.forEach(function (p) {
+      var i = Math.min(bins - 1, Math.floor((p[0] - ex.lo) / ex.w)), j = Math.min(bins - 1, Math.floor((p[1] - ey.lo) / ey.w));
+      ha[i] = (ha[i] || 0) + 1; hb[j] = (hb[j] || 0) + 1; hab[i + ',' + j] = (hab[i + ',' + j] || 0) + 1;
+    });
+    function H(h) { return calc.entropy(Object.keys(h).map(function (k) { return h[k] / pts.length; })); }
+    return { Ha: H(ha), Hb: H(hb), Hab: H(hab) };
+  };
+
+  calc.waterfill = function (vars, theta) {
+    var bits = vars.map(function (v) { return Math.max(0, 0.5 * log2(v / theta)); }), dist = vars.map(function (v) { return Math.min(v, theta); });
+    var R = sum(bits), eq = R / vars.length, eqDist = sum(vars.map(function (v) { return v * Math.pow(2, -2 * eq); }));
+    return { bits: bits, dist: dist, totalBits: R, totalDist: sum(dist), equalBits: eq, equalDist: eqDist };
+  };
+
+  calc.FP4_GRID = (function () { var g = [0]; [0.5, 1, 1.5, 2, 3, 4, 6].forEach(function (v) { g.push(v); g.push(-v); }); return g.sort(function (a, b) { return a - b; }); })();
+  calc.FP4_BLOCK = [0.031, -0.012, 0.045, 0.008, -0.027, 0.019, -0.041, 0.004, 0.42, -0.015, 0.036, -0.033, 0.022, -0.006, 0.048, -0.029];
+  calc.fp4Quant = function (xs) {
+    var s = Math.max.apply(null, xs.map(Math.abs)) / 6, q = xs.map(function (v) { var best = 0, bd = Infinity; calc.FP4_GRID.forEach(function (g) { var d = Math.abs(v / s - g); if (d < bd) { bd = d; best = g; } }); return best; });
+    var rec = q.map(function (v) { return v * s; }), err = xs.map(function (v, i) { return rec[i] - v; });
+    return { s: s, q: q, rec: rec, err: err, sse: sum(err.map(sq)), bits: (16 * 4 + 8) / 16 };
+  };
+  calc.int4Block = function (xs) { var r = calc.absmaxQuant(xs, 4); r.bits = (32 * 4 + 16) / 32; return r; };
+
+  calc.escape = function (xs, bits) {
+    var plain = calc.absmaxQuant(xs, bits), oi = 0;
+    xs.forEach(function (v, i) { if (Math.abs(v) > Math.abs(xs[oi])) oi = i; });
+    var rest = xs.filter(function (_, i) { return i !== oi; }), qr = calc.absmaxQuant(rest, bits), rec = [], k = 0;
+    xs.forEach(function (v, i) { rec.push(i === oi ? v : qr.rec[k++]); });
+    var err = xs.map(function (v, i) { return rec[i] - v; });
+    var idxBits = Math.ceil(log2(xs.length));
+    return { plain: plain, outlierIndex: oi, restScale: qr.s, rec: rec, err: err, sse: sum(err.map(sq)), bitsPlain: bits, bitsEscape: bits + (16 + idxBits) / xs.length, idxBits: idxBits, bitsOnePercent: bits + 0.01 * (16 + idxBits) };
+  };
+
+  calc.EVICT_W = [0.30, 0.02, 0.05, 0.03, 0.01, 0.06, 0.02, 0.04, 0.03, 0.05, 0.04, 0.05, 0.075, 0.075, 0.075, 0.075];
+  calc.evict = function (w, k, pageSize) {
+    var order = w.map(function (v, i) { return i; }).sort(function (a, b) { return w[b] - w[a] || a - b; }), kept = order.slice(0, k), keep = w.map(function () { return false; });
+    kept.forEach(function (i) { keep[i] = true; });
+    var pages = [];
+    for (var p = 0; p < w.length / pageSize; p++) { var n = 0; for (var i = 0; i < pageSize; i++) if (keep[p * pageSize + i]) n++; pages.push({ kept: n, freed: n === 0 }); }
+    return { keep: keep, mass: sum(w.filter(function (_, i) { return keep[i]; })), memory: k / w.length, pages: pages, pagesFreed: pages.filter(function (p) { return p.freed; }).length };
+  };
+
+  calc.sinkWeights = function () {
+    var r = rng(9), mid = [], w = [];
+    for (var i = 0; i < 27; i++) mid.push(0.3 + r());
+    var ms = sum(mid);
+    for (i = 0; i < 32; i++) w.push(i === 0 ? 0.35 : i >= 28 ? 0.075 : 0.35 * mid[i - 1] / ms);
+    return w;
+  };
+  calc.sinkguard = function (w, exempt, e) {
+    var exemptSet = {}; (exempt || []).forEach(function (i) { exemptSet[i] = true; });
+    var err = w.map(function (v, i) { return exemptSet[i] ? 0 : e; });
+    return { weighted: sum(w.map(function (v, i) { return v * err[i]; })), exemptMass: sum(w.filter(function (_, i) { return exemptSet[i]; })), exempt: exemptSet };
+  };
+
+  calc.spotKeys = function () {
+    var r = rng(77), keys = [];
+    for (var i = 0; i < 32; i++) { var x = 8 * r() - 4, y = 8 * r() - 4; if (x + 0.4 * y > 1.5) x = -x; keys.push([Math.round(x * 100) / 100, Math.round(y * 100) / 100]); }
+    keys[5] = [3.8, 1.6]; keys[13] = [4.1, 1.9]; keys[20] = [3.6, 2.1]; keys[27] = [4.0, 1.3];
+    return keys;
+  };
+  calc.softmax = function (s) { var m = Math.max.apply(null, s), e = s.map(function (v) { return Math.exp(v - m); }), z = sum(e); return e.map(function (v) { return v / z; }); };
+  calc.spotlight = function (keys, q, k) {
+    var exact = calc.softmax(keys.map(function (kk) { return q[0] * kk[0] + q[1] * kk[1]; }));
+    var proxyKeys = keys.map(function (kk) { var m = (Math.abs(kk[0]) + Math.abs(kk[1])) / 2; return [Math.sign(kk[0]) * m, Math.sign(kk[1]) * m]; });
+    var proxy = calc.softmax(proxyKeys.map(function (kk) { return q[0] * kk[0] + q[1] * kk[1]; }));
+    function topk(p) { return p.map(function (v, i) { return i; }).sort(function (a, b) { return p[b] - p[a] || a - b; }).slice(0, k); }
+    var te = topk(exact), tp = topk(proxy), overlap = te.filter(function (i) { return tp.indexOf(i) >= 0; }).length;
+    return { exact: exact, proxy: proxy, proxyKeys: proxyKeys, topExact: te, topProxy: tp, overlap: overlap, massExact: sum(te.map(function (i) { return exact[i]; })), massProxy: sum(tp.map(function (i) { return exact[i]; })) };
+  };
+
+  calc.basisBytes = function (d, layers) { var one = d * d * 2; return { shared: one, perLayer: one * layers, kvtcParams: 0.024 * 70e9, kvtcBytes: 0.024 * 70e9 * 2 }; };
+  calc.tiered = function (B, concurrency) {
+    var miss = { 2048: 0.30, 4096: 0.134, 8192: 0.067 }[B], layers = 78, k = 2048, entry = 656, step = 0.030;
+    var perToken = layers * k * entry * miss, bw = perToken / step * concurrency;
+    return { miss: miss, perToken: perToken, bandwidth: bw, pcie: 64e9, gather: 37e9, gpuBytes: B * layers * entry, dense128k: 13e9, layers: layers, k: k, entry: entry, step: step };
+  };
+
   // ===========================================================================
   // DOM helpers (only called from render)
   // ===========================================================================
@@ -554,6 +727,7 @@ window.CYC = window.CYC || {};
   function matrix(values, opts) {
     opts = opts || {};
     var g = el('div', 'cyc-matrix'); g.style.gridTemplateColumns = 'repeat(' + values[0].length + ', auto)';
+    if (opts.small) { g.style.fontSize = '.8em'; }
     var max = 0; if (opts.heat) values.forEach(function (r) { r.forEach(function (v) { max = Math.max(max, Math.abs(v)); }); });
     values.forEach(function (r, ri) { r.forEach(function (v, ci) {
       var c = el('div', 'cyc-cell', fmt(v, opts.d));
@@ -1218,6 +1392,190 @@ window.CYC = window.CYC || {};
     box.appendChild(cv.canvas);
     box.appendChild(kv([['PCM in', '24 kHz × 16 bit = ' + fmt(n.pcmBps / 1000, 0) + ' kbps'], ['tokens out', '75/s × 8 codebooks × 10 bits = ' + fmt(n.tokenBps / 1000, 0) + ' kbps'], ['ratio', fmt(n.ratio, 0) + ':1'], ['bitstream per second', n.bytesPerSec + ' B'], ['decoder weights', fmt(n.weights / 1e6, 0) + ' MB'], ['decoder : one second of stream', fmt(n.priorRatio, 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ':1']]));
     box.appendChild(note('The prior is enormous and the message is tiny; that is the whole trick. Those weights know what speech sounds like, so 750 bytes per second only have to say which plausible waveform. The receiver must already hold the exact matching decoder.'));
+  };
+
+  // ---- level 5: KV cache ---------------------------------------------------
+  LABS.unrope = function (box, T) {
+    var key = [8.0, 0.3], view = el('div');
+    function draw(theta) {
+      var r = calc.unropeLab(key, 8, theta, 3), cv = makeCanvas(150, 150, T); view.textContent = '';
+      map(cv, { points: r.rotated.map(function (p) { return [p[0] / 9, p[1] / 9]; }), pointColor: hexA(T.fg, 0.7), r: 3, centroids: [[key[0] / 9, key[1] / 9]], centroidColor: T.color }, T);
+      var ms = [0, 1, 2, 3, 4, 5, 6, 7];
+      view.appendChild(row(col(cv.canvas, el('div', 'cyc-h', 'dots: RoPE\'d pairs m = 0..7 (÷9) · square: all 8 rewound')), col(numStrip([
+        { label: 'm', values: ms }, { label: 'x_m', values: r.rotated.map(function (p) { return p[0]; }), d: 2 }, { label: 'y_m', values: r.rotated.map(function (p) { return p[1]; }), d: 2 },
+        { label: 'rewound x', values: r.rewound.map(function (p) { return p[0]; }), d: 2, hi: ms.map(function () { return true; }) }, { label: 'rewound y', values: r.rewound.map(function (p) { return p[1]; }), d: 2, hi: ms.map(function () { return true; }) }]))));
+      view.appendChild(kv([['range of x, y (RoPE\'d)', fmt(r.rangeBefore[0], 2) + ', ' + fmt(r.rangeBefore[1], 2)], ['range of x, y (rewound)', fmt(r.rangeAfter[0], 2) + ', ' + fmt(r.rangeAfter[1], 2)],
+        ['int3 absmax error of y, RMS', fmt(r.before.y.rms, 3) + ' (step ' + fmt(r.before.y.s, 2) + ') → ' + fmt(r.after.y.rms, 3) + ' (step ' + fmt(r.after.y.s, 3) + ')'], ['int3 absmax error of x, RMS', fmt(r.before.x.rms, 3) + ' → ' + fmt(r.after.x.rms, 3)]]));
+    }
+    box.appendChild(slider('demo-unrope-theta', 'RoPE angle θ', 0.1, 1.5, 0.05, 0.5, draw, function (v) { return fmt(v, 2) + ' rad'; }));
+    box.appendChild(view); draw(0.5);
+    box.appendChild(note('One channel pair of a key, k = (8.0, 0.3), rotated by m·θ at positions m = 0..7. RoPE smears the stable outlier across both channels, so the small channel y inherits an 8-wide range and a coarse step. Rotating back by −m·θ costs 0 bits: the decoder knows m.'));
+  };
+
+  LABS.svd_lowrank = function (box, T) {
+    var M = calc.svdLabMatrices(), view = el('div');
+    function draw(r) {
+      var a = calc.lowRank(M.K, r), b = calc.lowRank(M.V, r); view.textContent = '';
+      view.appendChild(row(col(h('K: 8 tokens × 4 dims'), matrix(M.K, { d: 2, small: true })), col(h('V: flat spectrum'), matrix(M.V, { d: 2, small: true }))));
+      view.appendChild(kv([['σ of K', a.sigma.map(function (v) { return fmt(v, 2); }).join('  ')], ['σ of V', b.sigma.map(function (v) { return fmt(v, 2); }).join('  ')], ['stored at rank ' + r, (8 * r) + ' + ' + (4 * r) + ' = ' + a.stored + ' numbers vs ' + a.full],
+        ['relative error ‖K−K_r‖/‖K‖', fmt(a.relErr * 100, 1) + '%'], ['same rank on V', fmt(b.relErr * 100, 1) + '%']]));
+    }
+    box.appendChild(slider('demo-svd_lowrank-r', 'rank r', 1, 4, 1, 2, draw));
+    box.appendChild(view); draw(2);
+    box.appendChild(note('K is built from two fixed basis rows plus N(0, 0.05²) noise, so two singular values carry almost everything and rank 2 reproduces it with 24 numbers instead of 32. V (Gaussian entries) has no such structure: the same rank throws away a large share. Pre-RoPE keys are low-rank, values are not.'));
+  };
+
+  LABS.mla = function (box, T) {
+    var m = calc.mla(), cv = makeCanvas(T.w, 120, T), view = el('div');
+    bars(cv, [m.per.mha, m.per.gqa8, m.per.mla], ['MHA 128 heads', 'GQA-8', 'MLA'], { values: [m.per.mha, m.per.gqa8, m.per.mla].map(function (v) { return v.toLocaleString('en-US'); }), colors: [hexA(T.fg, 0.4), hexA(T.fg, 0.6), T.color] }, T);
+    box.appendChild(col(h('elements cached per token per layer'), cv.canvas));
+    function draw(i) {
+      var p = m.presets[i]; view.textContent = '';
+      view.appendChild(kv([['model', p.name], ['per token', p.layers + ' layers × ' + p.perLayer.toLocaleString('en-US') + ' × 2 B = ' + fmt(p.bytesPerToken / 1024, 1) + ' KiB'], ['at 128k tokens (131,072)', fmt(p.at128k / Math.pow(2, 30), 1) + ' GiB'], ['MHA : MLA elements', fmt(m.ratio, 1) + ' : 1 (32,768 / 576)']]));
+    }
+    box.appendChild(toggle('demo-mla-preset', 'preset', ['Llama-3-70B', 'DeepSeek-V3'], draw));
+    box.appendChild(view); draw(0);
+    box.appendChild(note('MHA: 128 heads × 128 dims × (K and V). GQA shares 8 KV heads. MLA caches one 512-dim latent plus a 64-dim positional key: 576 elements, decided before pretraining, zero cost at inference. RoPE cannot pass through the low-rank map, hence the small separate key.'));
+  };
+
+  LABS.anchor_delta = function (box, T) {
+    var x = [100, 103, 105, 104, 108, 110, 109, 113, 115, 114], view = el('div');
+    function draw(delta) {
+      var r = calc.anchorDelta(x, delta), all = x.map(function () { return true; }); view.textContent = '';
+      view.appendChild(numStrip([
+        { label: 'x[t]', values: x }, { label: 'CHAIN x[t]−x[t−1]', values: r.chain.map(function (v, i) { return i ? signed(v) : v; }) }, { label: 'ANCHOR x[t]−x[0]', values: r.anchor.map(function (v, i) { return i ? signed(v) : v; }) },
+        { label: 'chain x̂ (Δ=' + delta + ')', values: r.recChain }, { label: 'chain error', values: r.errChain.map(function (v) { return signed(v); }), hi: r.errChain.map(function (v) { return Math.abs(v) > delta / 2; }) },
+        { label: 'anchor x̂', values: r.recAnchor }, { label: 'anchor error', values: r.errAnchor.map(function (v) { return signed(v); }), hi: r.errAnchor.map(function (v) { return Math.abs(v) > delta / 2; }) }]));
+      view.appendChild(kv([['max |error| chain / anchor', r.maxChain + ' / ' + r.maxAnchor + '  (Δ/2 = ' + delta / 2 + ')'], ['dependency depth', 'chain 9 (each token needs the previous)  ·  anchor 1 (all 9 decode in parallel)']]));
+    }
+    box.appendChild(toggle('demo-anchor_delta-step', 'quantization step Δ', ['1', '2', '4'], function (i) { draw([1, 2, 4][i]); }, 2));
+    box.appendChild(view); draw(4);
+    box.appendChild(note('Deltas are quantized with round-half-away-from-zero. The chain adds quantized deltas one onto another, so rounding errors pile up along the row; the anchor adds each delta to the exact x[0], so every token\'s error stays within Δ/2. CacheGen puts an anchor every 10 tokens.'));
+  };
+
+  LABS.coupled = function (box, T) {
+    var pts = calc.COUPLED_PAIRS, sc = calc.signQuant2(pts), km = calc.kmeansInit(pts, [[1.2, 1.1], [-1.2, -1.1], [0.4, 0.35], [-0.4, -0.35]], 10), ent = calc.binEntropy(pts, 4);
+    var cv = makeCanvas(170, 170, T), S = 1.6;
+    map(cv, { points: pts.map(function (p) { return [p[0] / S, p[1] / S]; }), pointColor: hexA(T.fg, 0.8), r: 3,
+      lines: sc.points.map(function (p) { return { x1: p[0] / S - 0.04, y1: p[1] / S, x2: p[0] / S + 0.04, y2: p[1] / S, color: PALETTE[2], width: 3 }; }),
+      centroids: km.centroids.map(function (c) { return [c[0] / S, c[1] / S]; }), centroidColor: T.color }, T);
+    box.appendChild(row(col(cv.canvas, el('div', 'cyc-h', 'dashes: scalar ±mean levels · squares: joint K=4')), col(numStrip([{ label: 'a', values: pts.map(function (p) { return p[0]; }), d: 2 }, { label: 'b', values: pts.map(function (p) { return p[1]; }), d: 2 }]),
+      kv([['SCALAR: sign × mean|·| per channel', '2 × 1 bit, levels ±' + fmt(sc.levels[0], 2) + ', ±' + fmt(sc.levels[1], 2) + ' → MSE ' + fmt(sc.mse, 3)], ['JOINT: k-means K=4 on pairs', '2 bits per pair → MSE ' + fmt(km.mse, 3)],
+        ['H(a) + H(b)', fmt(ent.Ha, 2) + ' + ' + fmt(ent.Hb, 2) + ' = ' + fmt(ent.Ha + ent.Hb, 2) + ' bits'], ['H(a, b)', fmt(ent.Hab, 2) + ' bits (4 bins per axis, 16-sample estimate)']]))));
+    box.appendChild(note('16 pairs with b ≈ 0.9a. Both quantizers spend 2 bits per pair, but the scalar one pays for a and b as if independent (half its four levels sit where no data is); the joint codebook puts all four centroids on the line the data lives on. The gap H(a)+H(b) − H(a,b) is the mutual information paid twice.'));
+  };
+
+  LABS.waterline = function (box, T) {
+    var vars = [64, 32, 16, 8, 4, 2, 1, 0.5], view = el('div');
+    function draw(e) {
+      var theta = Math.pow(2, e), w = calc.waterfill(vars, theta), cv = makeCanvas(T.w, 120, T); view.textContent = '';
+      bars(cv, vars.map(function (v) { return log2(v) + 1; }), vars.map(function (v) { return v; }), { max: 8, min: 0, colors: vars.map(function (v) { return v > theta ? T.color : hexA(T.fg, 0.3); }), values: w.bits.map(function (b) { return fmt(b, 1) + 'b'; }), overlay: function (ctx, sx, sy) { var y = sy(log2(theta) + 1); ctx.strokeStyle = PALETTE[0]; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(sx(0) - 20, y); ctx.lineTo(sx(7) + 20, y); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = PALETTE[0]; ctx.fillText('θ = ' + fmt(theta, 2), sx(7) - 30, y - 8); } }, T);
+      view.appendChild(cv.canvas);
+      view.appendChild(numStrip([{ label: 'σ²', values: vars }, { label: 'R_i bits', values: w.bits, d: 2, hi: w.bits.map(function (b) { return b > 0; }) }, { label: 'D_i', values: w.dist, d: 2 }]));
+      view.appendChild(kv([['water-filling: ΣR, ΣD', fmt(w.totalBits, 2) + ' bits, ' + fmt(w.totalDist, 2)], ['equal allocation, same ΣR', fmt(w.equalBits, 3) + ' bits each → ΣD = ' + fmt(w.equalDist, 2)], ['distortion ratio equal / water-filling', fmt(w.equalDist / w.totalDist, 1) + '×']]));
+    }
+    box.appendChild(slider('demo-waterline-theta', 'water level θ', -2, 6, 0.25, 1, draw, function (e) { return fmt(Math.pow(2, e), 2); }));
+    box.appendChild(view); draw(1);
+    box.appendChild(note('Bars show log₂σ² (+1) per coordinate. R_i = max(0, ½·log₂(σ²_i/θ)), D_i = min(σ²_i, θ): coordinates under water get 0 bits and keep their whole variance as error. Equal allocation spends the same bits on the 0.5-variance tail as on the 64. KVTC solves this by dynamic programming per PCA coordinate.'));
+  };
+
+  LABS.fp4 = function (box, T) {
+    var xs = calc.FP4_BLOCK, f = calc.fp4Quant(xs), i4 = calc.int4Block(xs), cv = makeCanvas(T.w, 44, T), ctx = cv.ctx, pad = 14, W = cv.w - 2 * pad;
+    var X = function (v) { return pad + (v + 6) / 12 * W; };
+    ctx.strokeStyle = T.dim; ctx.beginPath(); ctx.moveTo(pad, 22); ctx.lineTo(pad + W, 22); ctx.stroke();
+    calc.FP4_GRID.forEach(function (g, i) { ctx.fillStyle = T.color; ctx.fillRect(X(g) - 1.5, 15, 3, 14); ctx.fillStyle = T.fg; ctx.textAlign = 'center'; ctx.fillText(String(g), X(g), i % 2 ? 7 : 38); });
+    ctx.textAlign = 'left';
+    box.appendChild(col(h('E2M1 grid: ' + calc.FP4_GRID.length + ' values, non-uniform spacing'), cv.canvas));
+    box.appendChild(numStrip([{ label: 'x', values: xs, d: 3 }, { label: 'x/s → E2M1', values: f.q, d: 1 }, { label: 'NVFP4 x̂', values: f.rec, d: 3, hi: xs.map(function () { return true; }) }, { label: 'error', values: f.err, d: 3 }, { label: 'int4 x̂', values: i4.rec, d: 3 }, { label: 'error', values: i4.err, d: 3 }]));
+    box.appendChild(kv([['NVFP4 scale s = max|x|/6', fmt(f.s, 4) + ' (real format: FP8 E4M3)'], ['int4 scale s = max|x|/7', fmt(i4.s, 4)], ['Σ error² NVFP4 / int4', f.sse.toExponential(2) + ' / ' + i4.sse.toExponential(2)], ['smallest nonzero step near 0', 'NVFP4 0.5·s = ' + fmt(0.5 * f.s, 4) + '  ·  int4 1·s = ' + fmt(i4.s, 4)], ['bits per element', 'NVFP4 (16×4+8)/16 = ' + fmt(f.bits, 1) + '  ·  int4 (32×4+16)/32 = ' + fmt(i4.bits, 1)]]));
+    box.appendChild(note('16 values, mostly within ±0.05 and one at 0.42. The floating grid has steps of 0.5 near zero and 2 near the top, so the small values land closer than on int4\'s uniform grid: a tiny μ-law, decoded by the tensor core itself.'));
+  };
+
+  LABS.escape = function (box, T) {
+    var xs = [0.012, -0.031, 0.004, 0.550, 0.020, -0.008, 0.015, -0.027], r = calc.escape(xs, 3), view = el('div');
+    function draw(esc) {
+      view.textContent = '';
+      var rec = esc ? r.rec : r.plain.rec, err = esc ? r.err : r.plain.err;
+      view.appendChild(numStrip([{ label: 'x', values: xs, d: 3 }, { label: esc ? 'x̂ (escape)' : 'x̂ (3-bit absmax)', values: rec, d: 3, hi: xs.map(function (_, i) { return esc && i === r.outlierIndex; }) }, { label: 'error', values: err, d: 3 }]));
+      view.appendChild(kv(esc
+        ? [['outlier', 'x[' + r.outlierIndex + '] = ' + xs[r.outlierIndex] + ' → fp16 side list + ' + r.idxBits + '-bit index'], ['step for the other 7', 's = ' + fmt(Math.max.apply(null, xs.filter(function (_, i) { return i !== r.outlierIndex; }).map(Math.abs)), 3) + '/3 = ' + fmt(r.restScale, 4)], ['Σ error²', r.sse.toExponential(2)], ['bits per element', '3 + (16 + ' + r.idxBits + ')/8 = ' + fmt(r.bitsEscape, 2) + ' here; with 1% outliers ≈ ' + fmt(r.bitsOnePercent, 2)]]
+        : [['step', 's = 0.55/3 = ' + fmt(r.plain.s, 4)], ['values that collapsed to 0', r.plain.q.filter(function (q) { return q === 0; }).length + ' of 8'], ['Σ error²', r.plain.sse.toExponential(2)], ['bits per element', '3']]));
+    }
+    box.appendChild(toggle('demo-escape-mode', '', ['no escape', 'escape the outlier'], function (i) { draw(i === 1); }));
+    box.appendChild(view); draw(false);
+    box.appendChild(note('A 3-bit grid is sized by its extreme: one 0.55 forces a step of 0.18 on values of 0.01. Pull it into a sparse full-precision list and the rest get a step 18× finer. In a real tensor the list holds 1% of the values, so the per-element cost is about 3.3 bits.'));
+  };
+
+  LABS.evict = function (box, T) {
+    var w = calc.EVICT_W, view = el('div');
+    function draw(k) {
+      var r = calc.evict(w, k, 8); view.textContent = '';
+      var pages = el('div'); pages.style.display = 'grid'; pages.style.gridTemplateColumns = 'repeat(8, 1fr)'; pages.style.gap = '3px'; pages.style.fontVariantNumeric = 'tabular-nums';
+      w.forEach(function (v, i) { var c = el('div', 'cyc-cell', fmt(v, 3).replace(/^0/, '')); c.style.textAlign = 'center'; c.style.fontSize = '.7em'; c.style.minWidth = '0'; c.style.padding = '2px 0'; if (r.keep[i]) { c.style.background = hexA(T.color, 0.45); } else { c.style.opacity = '.3'; } pages.appendChild(c); });
+      view.appendChild(pages);
+      view.appendChild(kv([['kept', k + ' of 16 tokens, top-k by w'], ['attention mass kept Σw', fmt(r.mass, 3)], ['memory kept', fmt(r.memory * 100, 0) + '%'],
+        ['pages freed (8 tokens each)', r.pagesFreed + ' of 2: ' + r.pages.map(function (p, i) { return 'page ' + i + ' ' + (p.freed ? 'FREED' : p.kept + ' kept'); }).join(', ')], ['memory actually reclaimed', fmt(r.pagesFreed * 8 / 16 * 100, 0) + '%']]));
+    }
+    box.appendChild(slider('demo-evict-k', 'tokens kept k', 1, 16, 1, 5, draw));
+    box.appendChild(view); draw(5);
+    box.appendChild(note('Rows are pages: 8 tokens each. Token 0 carries 0.30 of the attention, tokens 12–15 another 0.30, the rest is spread thin. Keeping the top 5 keeps 60% of the mass at 31% of the tokens, but a paged allocator only frees a page when all 8 of its tokens are gone. The score is the Con Artist\'s job; the pages are the system\'s.'));
+  };
+
+  LABS.sinkguard = function (box, T) {
+    var w = calc.sinkWeights(), exemptIdx = [0, 28, 29, 30, 31], view = el('div');
+    function draw(exempt) {
+      var r = calc.sinkguard(w, exempt ? exemptIdx : [], 0.25), cv = makeCanvas(T.w, 110, T); view.textContent = '';
+      bars(cv, w, w.map(function (_, i) { return i % 4 === 0 ? i : ''; }), { max: 0.4, colors: w.map(function (_, i) { return r.exempt[i] ? T.color : hexA(T.fg, 0.4); }) }, T);
+      view.appendChild(cv.canvas);
+      view.appendChild(kv([['weights', 'w₀ = ' + fmt(w[0], 2) + ' (sink), w₂₈..₃₁ = ' + fmt(w[28], 3) + ' each, the other 27 share ' + fmt(sum(w.slice(1, 28)), 2)], ['quantization error per quantized position', '0.25 (simulated 2-bit)'], ['exempt', exempt ? 'positions 0 and 28–31 (' + fmt(r.exemptMass * 100, 0) + '% of the mass, 5 of 32 tokens)' : 'none'],
+        ['weighted error Σ wᵢ·eᵢ', fmt(r.weighted, 4)]]));
+    }
+    box.appendChild(toggle('demo-sinkguard-exempt', '', ['quantize everything', 'exempt sink + newest 4'], function (i) { draw(i === 1); }));
+    box.appendChild(view); draw(false);
+    box.appendChild(note('Attention is the reader: error on a position is felt in proportion to its weight. Five of 32 tokens carry 65% of this query\'s attention; keeping them at full precision cuts the weighted error from 0.25 to 0.0875 while 27 of 32 tokens still sit at 2 bits. KIVI keeps the last 128 in fp16; KVQuant the sink.'));
+  };
+
+  LABS.spotlight = function (box, T) {
+    var keys = calc.spotKeys(), q = [1, 0.4], view = el('div'), S = 4.5;
+    function draw(k) {
+      var r = calc.spotlight(keys, q, k), cv = makeCanvas(170, 170, T); view.textContent = '';
+      var lit = {}; r.topExact.forEach(function (i) { lit[i] = true; });
+      map(cv, { points: keys.map(function (p) { return [p[0] / S, p[1] / S]; }), assign: keys.map(function (_, i) { return lit[i] ? 4 : 7; }), r: 3, arrows: [{ from: [0, 0], to: [q[0] / S * 2, q[1] / S * 2], color: T.fg }], labels: [{ x: q[0] / S * 2 + 0.05, y: q[1] / S * 2, text: 'q' }] }, T);
+      r.topProxy.forEach(function (i) { var ctx = cv.ctx, x = 10 + (keys[i][0] / S + 1) / 2 * (cv.w - 20), y = cv.h - 10 - (keys[i][1] / S + 1) / 2 * (cv.h - 20); ctx.strokeStyle = T.color; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke(); });
+      view.appendChild(row(cv.canvas, kv([['exact top-' + k, r.topExact.join(', ')], ['proxy top-' + k, r.topProxy.join(', ')], ['overlap', r.overlap + ' of ' + k], ['attention mass in exact top-' + k, fmt(r.massExact, 3)], ['mass the proxy\'s picks actually carry', fmt(r.massProxy, 3)]])));
+      view.appendChild(el('div', 'cyc-h', 'dots: keys (yellow = exact top-k)  ·  rings: proxy picks'));
+    }
+    box.appendChild(slider('demo-spotlight-k', 'top-k', 1, 8, 1, 4, draw));
+    box.appendChild(view); draw(4);
+    box.appendChild(note('32 keys, q = (1, 0.4), exact weights softmax(q·k). The proxy is a 1-bit copy of each key: sign per coordinate times that key\'s mean |coordinate|, scored the same way. Four keys sit near q and take most of the mass; distortion on the rest would cost nothing. The proxy is the address book: cheap, read in full every step, never compressed further.'));
+  };
+
+  LABS.basis = function (box, T) {
+    var dims = [128, 512, 1024, 4096, 8192], view = el('div');
+    function fmtBytes(b) { return b >= Math.pow(2, 30) ? fmt(b / Math.pow(2, 30), 2) + ' GiB' : b >= Math.pow(2, 20) ? fmt(b / Math.pow(2, 20), 1) + ' MiB' : fmt(b / 1024, 1) + ' KiB'; }
+    function draw(i) {
+      var d = dims[i], b = calc.basisBytes(d, 80); view.textContent = '';
+      view.appendChild(kv([['basis', d + ' × ' + d + ' bf16 = ' + fmtBytes(b.shared)], ['one shared across all layers', fmtBytes(b.shared)], ['one per layer (× 80)', fmtBytes(b.perLayer)],
+        ['Hadamard rotation', '0 bytes: defined by a formula'], ['DCT', '0 bytes: in the standard'], ['KVTC reported', '2.4% of a 70B model ≈ ' + fmt(b.kvtcParams / 1e9, 2) + ' B parameters ≈ ' + fmt(b.kvtcBytes / 1e9, 1) + ' GB in bf16']]));
+    }
+    box.appendChild(slider('demo-basis-d', 'basis size d', 0, dims.length - 1, 1, 2, draw, function (i) { return String(dims[i]); }));
+    box.appendChild(view); draw(2);
+    box.appendChild(note('A fitted orthonormal transform is side information exactly like a VQ codebook: fitted once on calibration data, shipped with the model, never in the stream. The bytes grow as d²; sharing one basis across layers is what keeps PCA affordable.'));
+  };
+
+  LABS.tiered = function (box, T) {
+    var sizes = [2048, 4096, 8192], state = { B: 4096, c: 1 }, view = el('div');
+    function draw() {
+      var r = calc.tiered(state.B, state.c), cv = makeCanvas(T.w, 110, T); view.textContent = '';
+      bars(cv, [r.bandwidth / 1e9, r.gather / 1e9, r.pcie / 1e9], ['needed', 'gather kernel', 'PCIe 5 ×16'], { max: 70, values: [fmt(r.bandwidth / 1e9, 2), '37', '64'].map(function (v) { return v + ' GB/s'; }), colors: [r.bandwidth > r.gather ? PALETTE[5] : T.color, hexA(T.fg, 0.4), hexA(T.fg, 0.25)] }, T);
+      view.appendChild(cv.canvas);
+      view.appendChild(kv([['GPU buffer B', state.B + ' entries/layer → miss rate ' + fmt(r.miss * 100, 1) + '% (measured on GLM-5.1, HiSparse)'], ['fetched per token', '78 × 2048 × 656 B × ' + fmt(r.miss, 3) + ' = ' + fmt(r.perToken / 1e6, 1) + ' MB'], ['bandwidth per request', fmt(r.perToken / r.step / 1e9, 2) + ' GB/s at 30 ms/token'], ['× ' + state.c + ' concurrent', fmt(r.bandwidth / 1e9, 2) + ' GB/s' + (r.bandwidth > r.gather ? ' — over the 37 GB/s a gather kernel achieves' : '')],
+        ['GPU memory per request', 'B × 78 × 656 B = ' + fmt(r.gpuBytes / 1e9, 2) + ' GB (vs ' + fmt(r.dense128k / 1e9, 0) + ' GB dense at 128k)']]));
+    }
+    box.appendChild(slider('demo-tiered-buffer', 'GPU buffer B', 0, 2, 1, 1, function (i) { state.B = sizes[i]; draw(); }, function (i) { return String(sizes[i]); }));
+    box.appendChild(slider('demo-tiered-concurrency', 'concurrency', 1, 16, 1, 1, function (v) { state.c = v; draw(); }));
+    box.appendChild(view); draw();
+    box.appendChild(note('The lossless cache lives in host DRAM; the GPU keeps a small LRU buffer of exact entries and pulls misses over PCIe. Fixed: 78 layers, 2048 picks per layer, 656 B per entry, 30 ms per token. A hot shelf twice the pick list misses one in eight; concurrency multiplies the traffic until it no longer hides behind compute.'));
   };
 
   // ===========================================================================
