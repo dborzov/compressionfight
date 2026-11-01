@@ -72,3 +72,36 @@ functions on `CYC.Demos.calc.*` and test those): Huffman CLRS lengths and mean 2
 rANS encode-then-decode of `AAB` round-trips; Rice `37,k=3` → 8 bits; LZW `ABABABA` → `[65,66,256,258]`; Haar
 first level averages `[11,15,99,95]`; LZ77 toy finds a match of length ≥ 8 in the lz77 lab text; μ-law 8-bit relative
 error at 0.01 < 5%; k-means on the city map with K=3 reaches distortion below K=1 by ≥ 5×.
+
+
+---
+
+# Level 5 labs (KV cache fighters)
+
+Same contract and primitives. Ids must match `CYC.FIGHTERS` exactly.
+
+### transform
+- **unrope** — one channel pair of a key, k = (8.0, 0.3), observed at positions m = 0..7 with RoPE angle m·θ, θ = 0.5 rad: show the 8 rotated pairs (x_m, y_m) as a map and as two rows of numbers; per-channel range of x and of y. Then "rewind" (rotate back by −m·θ): all 8 collapse to (8.0, 0.3). Quantize per channel with int3 absmax before and after; show the reconstruction error of the small channel (y) before vs after. ⟲ slider θ 0.1..1.5. Note: RoPE smears a stable outlier across both channels by a position-dependent angle; undoing it costs 0 bits because the decoder knows m.
+- **svd_lowrank** — K (8 tokens × 4 dims) = rank-2 matrix + small noise (give the 8×4 numbers, built from two fixed basis rows). Show singular values (4 numbers, two large, two tiny). ⟲ slider r 1..4: storage 8r + 4r numbers vs 32; relative Frobenius error. Side-by-side a V matrix with flat singular values (4 similar numbers) where the same r gives large error. Note: pre-RoPE keys are low-rank, values are not.
+- **mla** — numbers only, as bars: per token per layer elements: MHA 128 heads × 128 × 2 = 32,768; GQA-8: 8 × 128 × 2 = 2,048; MLA: 512 + 64 = 576. ⟲ toggle model preset: Llama-3-70B (80 layers × 8 × 128 × 2 × 2 B = 320 KiB/token; 40 GiB at 128k) vs DeepSeek-V3 (61 × 576 × 2 B = 68.6 KiB/token; 8.4 GiB at 128k). Note: decided before pretraining; zero cost at inference.
+
+### predict
+- **anchor_delta** — x = [100,103,105,104,108,110,109,113,115,114]. Rows: CHAIN deltas x[t]−x[t−1] = [100,3,2,−1,4,2,−1,4,2,−1]; ANCHOR deltas (anchor x[0]=100 raw) = [100,3,5,4,8,10,9,13,15,14]. ⟲ toggle quantization step Δ ∈ {1,2,4}: quantize deltas (round half away from zero), reconstruct both ways (chain accumulates quantized deltas; anchor adds to the exact anchor), show per-token error rows; chain error grows along the row at Δ=4, anchor error stays ≤ Δ/2. Also show dependency depth 9 vs 1. Note: CacheGen uses anchors every 10 tokens.
+
+### quantize
+- **coupled** — 16 pairs (a,b) listed with b ≈ 0.9a (give numbers to 2 decimals, seeded-looking). SCALAR: sign quantizer per channel (1 bit each) with reconstruction levels ±mean|a|, ±mean|b|; JOINT: 2-D k-means K=4 (run live, 10 iterations, init at 4 given points). Map with both reconstruction sets; MSE for each. Below: H(a)+H(b) vs H(a,b) with 4 bins per axis from the 16 points (coarse but honest; label as 16-sample estimate). Note: same 2 bits per pair.
+- **waterline** — 8 coordinate variances σ² = [64,32,16,8,4,2,1,0.5]. ⟲ slider water level θ 0.25..64 (log). Per coordinate: bits R_i = max(0, ½·log₂(σ²_i/θ)), distortion D_i = min(σ²_i, θ). Totals: ΣR and ΣD. Beside it: equal allocation at the same total bits, R = ΣR/8 each, distortion Σ σ²_i·2^(−2R). Bars of σ² with the water level drawn across. Note: KVTC solves this by dynamic programming per PCA coordinate.
+- **fp4** — E2M1 grid: ±{0, 0.5, 1, 1.5, 2, 3, 4, 6}; draw on a number line (non-uniform spacing). Block of 16 values (give them: mostly in ±0.05 with one at 0.42). NVFP4: scale s = max|x|/6 (keep as float; note the real scale is FP8 E4M3), q = nearest grid point to x/s, x̂ = q·s. Compare int4 absmax on the same block (levels −8..7, s = max|x|/7). Rows: x, NVFP4 x̂, int4 x̂, errors; bits both 4.5 per element (16×4+8)/16 vs (32×4+16)/32. Note: a floating grid has finer steps near zero, like a tiny μ-law.
+- **escape** — the blockint lab's 8 values `[0.012, −0.031, 0.004, 0.550, 0.020, −0.008, 0.015, −0.027]`. Without escape: 3-bit absmax over all 8 (s = 0.55/3): show how the 7 small ones collapse. With escape: the 0.550 goes to a side list at 16 bits + 3-bit index; the remaining 7 quantize with s = 0.031/3. Bits per element: 3 vs 3 + (16+3)/8 ≈ 5.4 here (note: 1% outliers in a real tensor → ≈3.3). ⟲ toggle.
+- **evict** — 16 tokens with attention weights w (give a normalized list where token 0 = 0.30, tokens 12-15 sum to 0.30, the rest small). ⟲ slider k (tokens kept) 2..16: keep the top-k by w, show mass kept Σw_kept, memory kept k/16, and the page view: 2 pages of 8 with freed pages highlighted (a page frees only if all 8 of its tokens are evicted). Note: the score is the Con Artist's job; the pages are the system's.
+
+### perceptual
+- **sinkguard** — 32 positions with attention weights for one query: w₀ = 0.35 (sink), w₂₈..₃₁ = 0.075 each (0.30 total), the remaining 27 share 0.35 (give the numbers as a bar chart). Simulated 2-bit quantization error e_i = 0.25 for every quantized position. Weighted error Σ w_i·e_i: everything quantized → 0.25; exempt positions 0 and 28..31 → 0.35 × 0.25 = 0.0875. ⟲ toggle exemption. Note: KIVI keeps the last 128 in fp16; KVQuant the sink.
+- **spotlight** — 32 keys in 2-D (give coordinates, seeded-looking) and one query q = (1, 0.4). Exact scores softmax(q·k); proxy = sign-quantized keys (each coordinate → ±mean|·|) scored the same way. ⟲ slider k 1..8: top-k by proxy vs top-k by exact: overlap count, attention mass covered by the exact top-k (expect ~0.9 at k=4 if you place 4 keys near q). Map: all keys grey, exact top-k lit, proxy picks outlined. Note: the proxy is the address book; it must be cheap and good enough.
+
+### prior
+- **basis** — side-information calculator. ⟲ slider head_dim·heads d ∈ {128, 512, 1024, 4096, 8192}: a d×d bf16 basis costs d²×2 bytes (1024 → 2 MiB; 8192 → 128 MiB); shared across all layers vs one per layer (× 80). Beside it: Hadamard 0 bytes (formula), DCT 0 bytes (standard), KVTC's reported 2.4% of a 70B model ≈ 1.7 B parameters ≈ 3.4 GB. Note: a fitted transform is side information like a codebook.
+- **tiered** — HiSparse-style budget. Fixed: 78 layers, k = 2048 picks per layer, 656 B per entry, 30 ms per token. ⟲ slider GPU buffer B ∈ {2048, 4096, 8192} → miss rate {30%, 13.4%, 6.7%} (from the HiSparse measurements; label as measured on GLM-5.1). Bytes fetched per token = 78 × 2048 × 656 × miss; per request bandwidth = that / 0.030 s; show against PCIe Gen5 ×16 nominal 64 GB/s and the 37 GB/s a gather kernel achieves; slider concurrency 1..16 multiplies. GPU memory per request = B × 78 × 656 B (+ note: vs 13 GB dense at 128k). Note: the hot shelf twice the pick list misses one in eight.
+
+## Tests (append to `test/demos_test.js`)
+unrope: after rewinding, all 8 pairs equal (8.0, 0.3) within 1e-9 and the y-channel int3 error drops by ≥ 5×; anchor_delta at Δ=4: chain max error > anchor max error; waterline at θ = 2: bits = [2.5, 2, 1.5, 1, 0.5, 0, 0, 0] and ΣD = 2+2+2+2+2+2+1+0.5 = 13.5; fp4: grid has 15 distinct values including 0 and ±6; evict at k=5 on the given weights keeps ≥ 0.60 mass; sinkguard weighted error 0.25 → 0.0875; mla: 32768 / 576 = 56.9.

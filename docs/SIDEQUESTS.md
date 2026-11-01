@@ -25,7 +25,7 @@ Symbols/counts: A 45, B 13, C 12, D 16, E 9, F 5 (so the optimal mean length is 
 Generate the engine-style 32×32 synthetic grayscale image (smooth gradient + disc + edge + noise, seeded). 8×8 DCT-II on 16 blocks. Band k (0..7) = coefficients with zigzag index in [8k, 8k+8). Per-band variance σ²_k over all blocks. Controls: 8 sliders, 0..8 bits per coefficient; budget shown as "B / 1024 bits per block" where the budget = 192 bits per block (3 bits/coef average); block total = Σ 8·b_k... careful: each band has 8 coefficients so block bits = 8·Σ b_k; cap at the budget (disable increases when full). Reconstruction: uniform quantizer per band with Δ_k = (max|coef in band|·2) / 2^{b_k} (b=0 → zero the band), inverse DCT, clamp, draw original vs reconstructed side by side (pixelated upscale), MSE readout. Optimal: reverse water-filling on σ²_k with the same budget: find θ by bisection so that Σ_k 8·max(0, ½log2(σ²_k/θ)) = budget, round to integers greedily (give bits one at a time to the band with the largest σ²_k/4^{b_k} until budget is spent). Show the optimal allocation and its MSE on LOCK IN. Score: 100 × (optimal MSE / your MSE), capped at 100.
 
 ## jnd — Spot the difference
-Same synthetic image, 64×64 (upsample the generator). Variant toggle: LUMA (quantize the gray image) or CHROMA (make an RGB version with a colored gradient; quantize only Cb/Cr after YCbCr). Trial: pick a random side for the degraded image; degrade = 8×8 DCT, uniform quantizer step Δ on all coefficients, inverse. 1-up/1-down staircase on Δ in steps of ×1.25 starting at Δ=24: correct → Δ×1.25 (harder), wrong or SAME → Δ÷1.25. 12 trials; threshold = geometric mean of the last 6 Δ values (the reversals). Convert: bits saved ≈ mean over coefficients of log2(dynamic range/Δ) compared to Δ=1, and print "at this Δ a lossless block costs X bits, yours costs Y" using a real order-0 entropy of the quantized coefficients. Score: informational only; onComplete with 100 if finished.
+Same synthetic image, 64×64 (upsample the generator). Variant toggle: LUMA (quantize the gray image) or CHROMA (make an RGB version with a colored gradient; quantize only Cb/Cr after YCbCr). Trial: pick a random side for the degraded image; degrade = 8×8 DCT, uniform quantizer step Δ on all coefficients, inverse. 1-up/1-down staircase on Δ in steps of ×1.25 starting at Δ=24: correct → Δ÷1.25 (gentler quantization, harder to see), wrong or SAME → Δ×1.25. 12 trials; threshold = geometric mean of the last 6 Δ values (the reversals). Convert: bits saved ≈ mean over coefficients of log2(dynamic range/Δ) compared to Δ=1, and print "at this Δ a lossless block costs X bits, yours costs Y" using a real order-0 entropy of the quantized coefficients. Score: informational only; onComplete with 100 if finished.
 
 ## phrasebook — Train the phrasebook
 Sample messages (6), test message (1), foreign message (1): the same shape as the engine's json payload
@@ -42,3 +42,57 @@ Sample messages (6), test message (1), foreign message (1): the same shape as th
 
 ## Tests (`test/quests_test.js`, node, `global.window = global`, require data.js, quests_data.js, quests.js)
 Huffman on the hufftree counts → mean 2.24; waterfill: the greedy allocation's MSE ≤ the uniform allocation's MSE on the generated image; safehouses: best-of-10 k-means distortion ≤ a single run from a bad init; blockpack: bpw(4, 32, no min) = 4.5 and bpw(8, 32) = 8.5, and rotation reduces RMS error on the outlier data for b=4,n=256; raceaccess: Huffman total bits < 4096×8 and ≥ 4096×H; phrasebook: trainer dictionary saves ≥ 30% on the test message relative to no dictionary, and the foreign message saves < 10%.
+
+
+---
+
+# Level 5 side quests (KV cache)
+
+Content is in `js/quests_data.js` (ids `siamese`, `anchorchain`, `rankkeys`, `pagepurge`). Same contract and style
+as above. Button labels must match the `howto` text: RUN, ENTROPY, WEIGHTED, SCALAR/JOINT, NONE/CHAIN/ANCHOR, SWITCH TO V,
+AUTO, COMPACT, HOLE-FILL / IN-ORDER, LOCK IN, NEW ROUND.
+
+## siamese — Joined at the hip
+4000 seeded pairs: a ~ N(0,1), b = 0.9·a + 0.1·N(0,1) (NEW ROUND cycles slope through 0.9, 0.6, 0.3, 0.0). Mode toggle SCALAR /
+JOINT. SCALAR: 1-D k-means with K=2 on a alone and on b alone (10 iterations), reconstruction = (c_a[i], c_b[j]); draw the 2×2
+grid points. JOINT: 2-D k-means K=4 (seeded init from 4 data points, 15 iterations). Both are 2 bits per pair; show MSE for
+each after RUN. ENTROPY: bin a and b each into 16 equal-width bins over [−4,4]; print H(a), H(b), H(a,b) in bits and the
+mutual information I = H(a)+H(b)−H(a,b). WEIGHTED toggle: k-means with sample weights w = |a| + 0.1 (weighted means);
+show plain MSE and weighted MSE for weighted vs unweighted centroids. Score: 100 × (scalar MSE / joint MSE − 1) / 1.5 capped
+at 100 (joint should be ~2.5× better at slope 0.9) with a minimum of 20 once both RUNs were done.
+
+## anchorchain — Anchor or chain?
+Matrix 64 tokens × 16 channels, seeded: x[t][c] = offset_c + walk_c[t] + noise, offset_c ~ U(−20, 20), walk a random walk
+with step N(0, 0.6), noise N(0, 0.3). Quantizer: uniform step Δ = 1 (round). Modes NONE / CHAIN / ANCHOR with slider g ∈
+{4, 8, 10, 16, 32} (anchor every g tokens coded raw at 8 bits = quantized with Δ but costed at 8 bits/element).
+Entropy: order-0 H of the quantized symbols per mode (NONE: of q(x); CHAIN: of q(x[t]−x̂[t−1]) with x̂ the reconstruction
+(closed-loop) — also show open-loop variant? No: use the simple open-loop residual q(x[t]−x[t−1]) and reconstruct by
+accumulating the quantized deltas so the drift is real; ANCHOR: residual against the anchor's reconstruction). Dependency
+depth: NONE 1, ANCHOR 2, CHAIN 64. Worst-case |error| over all elements after reconstruction. Draw channel 0 as three
+overlaid waveforms (original, chain recon, anchor recon). LOCK IN: score 100 for ANCHOR with g ∈ {8, 10, 16}, 70 for other
+ANCHOR g, 40 for CHAIN, 20 for NONE; summary quotes the three numbers.
+
+## rankkeys — Rank the keys
+Seeded: K = U·diag(s)·Vᵀ + 0.05·N, U (256×64), V (64×64) random orthonormal (QR of Gaussians), s_i = 8·0.85^i; V_vals =
+U'·diag(flat s=2)·V'ᵀ + 0.05·N; Q = 8 × 64 Gaussian scaled by 1/√64. Compute the SVD of the chosen matrix once (power
+iteration with deflation is fine for 64 dims, or Jacobi); slider r 1..64. Show: storage numbers = L·r + r·d vs L·d
+(crossover r where equal), bar chart of singular values with the kept ones highlighted, score error
+mean over queries of Σ_t |softmax(QKᵀ/√d)_t − softmax(QK_rᵀ/√d)_t|, top-16 overlap (mean over queries) for K; for V mode
+show relative Frobenius reconstruction error instead (and note that attention scores do not involve V). SWITCH TO V
+toggles. LOCK IN: score = 100 if r is the smallest rank with overlap ≥ 15/16 (±2), decreasing 10 per rank above, 0 if
+overlap < 15/16.
+
+## pagepurge — Rented by the room
+Grid 16×16, importance scores seeded: each token w ~ Exp(1) normalized, with 3 "sink" tokens at ×10 and the last 16 ×3;
+colour by w. Click toggles evicted. AUTO evicts the 192 lowest w. Readout: kept count, attention mass kept (Σw kept /
+Σw), PAGES FREED (rows with 0 survivors), live. COMPACT with mode HOLE-FILL (repeatedly take a survivor from the row with
+the fewest survivors and move it into the fullest non-full row; count each move as a copy) or IN-ORDER (write survivors
+sequentially into fresh rows in token order; copies = number of survivors whose position changes). Show copies and pages
+freed after compaction; also show "pages needed" = ceil(kept/16). LOCK IN: score 100 if kept ≤ 64, pages used = ceil(kept/16)
+and copies ≤ 1.2 × minimum (hole-fill optimum), 70 if pages minimal but copies high, 40 if pages not minimal, 0 if kept > 64.
+
+## Tests (append to `test/quests_test.js`)
+siamese: at slope 0.9 joint MSE < scalar MSE / 2 and I > 1 bit; anchorchain: CHAIN entropy ≤ ANCHOR(g=10) entropy ≤ NONE
+entropy, and CHAIN worst-case error ≥ ANCHOR worst-case error; rankkeys: for K, overlap at r=16 ≥ 15/16 and storage(r=16)
+< L·d; for V, relative error at r=16 > 0.5; pagepurge: AUTO on the seeded grid frees ≤ 2 pages before compaction, hole-fill
+reaches ceil(64/16)=4 pages with copies ≤ 64.
