@@ -826,3 +826,9 @@ body.fixer-open #app { padding-bottom: 200px; }
   .combo { grid-template-columns: 1fr; }
   .combo-flash { writing-mode: horizontal-tb; transform: none; min-height: 0; padding: 6px 10px; border-left: 0; border-bottom: 3px solid #000; }
 }
+
+/* link out to the /map articles */
+.map-btn { text-decoration: none; border: var(--border); box-shadow: var(--shadow-hard-sm); background: var(--bg-3); color: var(--cyan); }
+.map-btn:hover, .map-btn:focus-visible { background: var(--cyan); color: #000; }
+.map-link { display: inline-block; margin: 10px 0 4px; font-family: var(--font-pixel); font-size: 10px; line-height: 1.4; color: var(--cyan); text-decoration: none; border-bottom: 2px solid var(--cyan); }
+.map-link:hover, .map-link:focus-visible { color: var(--acid); border-color: var(--acid); }

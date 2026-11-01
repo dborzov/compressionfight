@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lloyd steps</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #0b0714; color: #f0efec; font: 14px/1.4 system-ui, sans-serif; }
+  .wrap { display: flex; flex-direction: column; gap: 8px; padding: 8px; box-sizing: border-box; height: 100vh; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button, select { background: #1b1526; color: #f0efec; border: 1px solid #383835; border-radius: 6px; padding: 5px 10px; font: inherit; cursor: pointer; }
+  button:hover { border-color: #898781; }
+  .stat { color: #c3c2b7; }
+  .stat b { color: #f0efec; }
+  canvas { width: 100%; flex: 1; min-height: 0; border-radius: 8px; background: #0b0714; }
+  .hint { color: #898781; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <select id="shape" title="data shape">
+      <option value="corr">correlated pairs (b ≈ a)</option>
+      <option value="iso">independent pairs</option>
+      <option value="two">two families (piggies and chickens)</option>
+    </select>
+    <select id="K" title="codebook size">
+      <option value="2">K = 2 (1 bit)</option>
+      <option value="4" selected>K = 4 (2 bits)</option>
+      <option value="8">K = 8 (3 bits)</option>
+      <option value="16">K = 16 (4 bits)</option>
+    </select>
+    <button id="reseed">new data</button>
+    <button id="init">random codebook</button>
+    <button id="step">one Lloyd step</button>
+    <button id="run">run to convergence</button>
+    <span class="stat">iteration <b id="it">0</b> · codebook MSE <b id="mse">–</b> · scalar grid at the same bits <b id="mseS">–</b></span>
+  </div>
+  <canvas id="c"></canvas>
+  <div class="hint">Dots: 300 points. X: codewords; shaded regions: their Voronoi cells. Thin grey lines: the scalar grid with the same bit budget (√K levels per axis, placed at the per-axis Lloyd-Max optimum). Each Lloyd step assigns every point to its nearest codeword, then moves each codeword to the mean of its points; the error can only go down. Try "correlated" against "independent" and watch how much of the grid's budget lands where there is no data.</div>
+</div>
+<script>
+(() => {
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  const INK = '#f0efec', MUTED = '#898781', GRID = '#2c2c2a';
+  const COLS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9', '#e66767', '#5fb3d9',
+                '#f0a36b', '#4fc9a0', '#e2b84d', '#ea8ab5', '#b3aaf2', '#f08c8c', '#8fd3f0', '#a9c4ff'];
+  let pts = [], cb = [], it = 0, timer = null;
+  const rnd = (() => { let s = 12345; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; })();
+  const gauss = () => { let u = 0, v = 0; while (u === 0) u = rnd(); while (v === 0) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+  function makeData() {
+    const shape = document.getElementById('shape').value; pts = [];
+    for (let i = 0; i < 300; i++) {
+      if (shape === 'corr') { const a = gauss(); pts.push([a, 0.9 * a + 0.35 * gauss()]); }
+      else if (shape === 'iso') { pts.push([gauss(), gauss()]); }
+      else { const f = i < 150 ? [-1.6, 0.9] : [1.6, -0.9]; pts.push([f[0] + 0.45 * gauss(), f[1] + 0.45 * gauss()]); }
+    }
+  }
+  function initCodebook() {
+    const K = +document.getElementById('K').value; cb = [];
+    for (let k = 0; k < K; k++) { const p = pts[Math.floor(rnd() * pts.length)]; cb.push([p[0] + 0.05 * gauss(), p[1] + 0.05 * gauss()]); }
+    it = 0; draw();
+  }
+  const d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+  function assign() { return pts.map(p => { let b = 0, bd = Infinity; cb.forEach((c, k) => { const d = d2(p, c); if (d < bd) { bd = d; b = k; } }); return b; }); }
+  function lloydStep() {
+    const a = assign(); const sum = cb.map(() => [0, 0, 0]);
+    pts.forEach((p, i) => { const s = sum[a[i]]; s[0] += p[0]; s[1] += p[1]; s[2]++; });
+    let moved = 0;
+    cb = cb.map((c, k) => { const s = sum[k]; if (!s[2]) return c; const n = [s[0] / s[2], s[1] / s[2]]; moved += d2(c, n); return n; });
+    it++; draw(); return moved;
+  }
+  function mseVQ() { const a = assign(); return pts.reduce((s, p, i) => s + d2(p, cb[a[i]]), 0) / pts.length; }
+  // scalar grid with the same bits: L = sqrt(K) levels per axis, Lloyd-Max in 1-D on each axis
+  function lloydMax1D(xs, L) {
+    let lv = []; const srt = [...xs].sort((a, b) => a - b);
+    for (let i = 0; i < L; i++) lv.push(srt[Math.floor((i + 0.5) * srt.length / L)]);
+    for (let r = 0; r < 40; r++) {
+      const sum = lv.map(() => [0, 0]);
+      xs.forEach(x => { let b = 0, bd = Infinity; lv.forEach((l, k) => { const d = (x - l) ** 2; if (d < bd) { bd = d; b = k; } }); sum[b][0] += x; sum[b][1]++; });
+      lv = lv.map((l, k) => sum[k][1] ? sum[k][0] / sum[k][1] : l);
+    }
+    return lv;
+  }
+  function scalarGrid() {
+    const K = cb.length, L = Math.round(Math.sqrt(K));
+    const lx = lloydMax1D(pts.map(p => p[0]), L), ly = lloydMax1D(pts.map(p => p[1]), L);
+    const q = x => { let b = 0, bd = Infinity; return v => { b = 0; bd = Infinity; x.forEach((l, k) => { const d = (v - l) ** 2; if (d < bd) { bd = d; b = k; } }); return x[b]; }; };
+    const qx = q(lx), qy = q(ly);
+    const mse = pts.reduce((s, p) => s + (p[0] - qx(p[0])) ** 2 + (p[1] - qy(p[1])) ** 2, 0) / pts.length;
+    return { lx, ly, mse };
+  }
+
+  function draw() {
+    const W = cv.clientWidth, H = cv.clientHeight; if (cv.width !== W * devicePixelRatio) { cv.width = W * devicePixelRatio; cv.height = H * devicePixelRatio; }
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    ctx.fillStyle = '#0b0714'; ctx.fillRect(0, 0, W, H);
+    const R = 3.4, sc = Math.min(W, H) / (2 * R), X = x => W / 2 + x * sc, Y = y => H / 2 - y * sc;
+    // Voronoi shading on a coarse grid
+    const cell = 6;
+    for (let px = 0; px < W; px += cell) for (let py = 0; py < H; py += cell) {
+      const p = [(px + cell / 2 - W / 2) / sc, (H / 2 - py - cell / 2) / sc];
+      let b = 0, bd = Infinity; cb.forEach((c, k) => { const d = d2(p, c); if (d < bd) { bd = d; b = k; } });
+      ctx.fillStyle = COLS[b % COLS.length] + '22'; ctx.fillRect(px, py, cell, cell);
+    }
+    // scalar grid boundaries (midpoints between adjacent levels) and its reconstruction points
+    const g = scalarGrid();
+    ctx.strokeStyle = GRID; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+    for (let i = 0; i + 1 < g.lx.length; i++) { const m = (g.lx[i] + g.lx[i + 1]) / 2; ctx.beginPath(); ctx.moveTo(X(m), 0); ctx.lineTo(X(m), H); ctx.stroke(); }
+    for (let i = 0; i + 1 < g.ly.length; i++) { const m = (g.ly[i] + g.ly[i + 1]) / 2; ctx.beginPath(); ctx.moveTo(0, Y(m)); ctx.lineTo(W, Y(m)); ctx.stroke(); }
+    ctx.setLineDash([]);
+    ctx.fillStyle = MUTED;
+    g.lx.forEach(x => g.ly.forEach(y => { ctx.beginPath(); ctx.arc(X(x), Y(y), 3, 0, 7); ctx.fill(); }));
+    // points
+    const a = assign();
+    pts.forEach((p, i) => { ctx.fillStyle = COLS[a[i] % COLS.length]; ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 3.2, 0, 7); ctx.fill(); });
+    // codewords
+    cb.forEach((c, k) => {
+      ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.beginPath();
+      ctx.moveTo(X(c[0]) - 7, Y(c[1]) - 7); ctx.lineTo(X(c[0]) + 7, Y(c[1]) + 7); ctx.moveTo(X(c[0]) + 7, Y(c[1]) - 7); ctx.lineTo(X(c[0]) - 7, Y(c[1]) + 7); ctx.stroke();
+      ctx.strokeStyle = COLS[k % COLS.length]; ctx.lineWidth = 1.5; ctx.stroke();
+    });
+    document.getElementById('it').textContent = it;
+    document.getElementById('mse').textContent = mseVQ().toFixed(3);
+    document.getElementById('mseS').textContent = g.mse.toFixed(3);
+  }
+  document.getElementById('reseed').onclick = () => { makeData(); initCodebook(); };
+  document.getElementById('shape').onchange = () => { makeData(); initCodebook(); };
+  document.getElementById('K').onchange = initCodebook;
+  document.getElementById('init').onclick = initCodebook;
+  document.getElementById('step').onclick = () => lloydStep();
+  document.getElementById('run').onclick = () => {
+    if (timer) return;
+    timer = setInterval(() => { if (lloydStep() < 1e-9 || it > 200) { clearInterval(timer); timer = null; } }, 350);
+  };
+  window.addEventListener('resize', draw);
+  makeData(); initCodebook();
+})();
+</script>
+</body>
+</html>

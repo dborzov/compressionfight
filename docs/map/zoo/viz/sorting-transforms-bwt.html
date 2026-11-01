@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BWT explorer</title>
+<style>
+  :root { --bg: #0b0714; --ink: #e8e4f0; --muted: #9b93aa; --grid: #2a2238; --f: #3b8fd6; --l: #c4812a; --ok: #2fa06e; --mtf: #b85fb0; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 "DejaVu Sans", system-ui, sans-serif; }
+  .wrap { padding: 12px 16px; max-width: 1100px; margin: 0 auto; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  input { background: #140f21; color: var(--ink); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 10px; font: 16px "DejaVu Sans Mono", monospace; width: 22em; }
+  button { background: #1a1328; color: var(--ink); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  .muted { color: var(--muted); }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+  canvas { width: 100%; height: auto; display: block; }
+  .out { font: 15px "DejaVu Sans Mono", monospace; white-space: pre-wrap; word-break: break-all; }
+  .L { color: var(--l); } .F { color: var(--f); } .M { color: var(--mtf); } .ok { color: var(--ok); }
+  small { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="row">
+    <label class="muted" for="s">block</label>
+    <input id="s" value="banana$" maxlength="40" spellcheck="false">
+    <button data-s="banana$">banana$</button>
+    <button data-s="abracadabra$">abracadabra$</button>
+    <button data-s="the_theme_of_the_thesis$">the_theme_of_the_thesis$</button>
+    <span class="muted">a trailing $ is added if missing (it sorts first)</span>
+  </div>
+  <div class="cols">
+    <div>
+      <canvas id="c" width="560" height="420"></canvas>
+      <small>Rotations sorted. <span class="F">F</span> = first column, <span class="L">L</span> = last column (the transform). The <span class="ok">green</span> row is the original: the primary index. Hover a row to see its context and the character that precedes it.</small>
+    </div>
+    <div class="out" id="o"></div>
+  </div>
+</div>
+<script>
+(function () {
+  const BG = "#0b0714", INK = "#e8e4f0", MUTED = "#9b93aa", GRID = "#2a2238", F = "#3b8fd6", L = "#c4812a", OK = "#2fa06e", MTF = "#b85fb0";
+  const inp = document.getElementById("s"), cv = document.getElementById("c"), ctx = cv.getContext("2d"), out = document.getElementById("o");
+  let hover = -1, state = null;
+
+  function compute(s) {
+    if (!s.endsWith("$")) s += "$";
+    const n = s.length;
+    const rots = [];
+    for (let i = 0; i < n; i++) rots.push({ i, r: s.slice(i) + s.slice(0, i) });
+    rots.sort((a, b) => a.r < b.r ? -1 : a.r > b.r ? 1 : 0);
+    const Lc = rots.map(x => x.r[n - 1]).join("");
+    const idx = rots.findIndex(x => x.i === 0);
+    const alphabet = Array.from(new Set(s)).sort();
+    const table = alphabet.slice(), mtf = [];
+    for (const c of Lc) { const j = table.indexOf(c); mtf.push(j); table.splice(j, 1); table.unshift(c); }
+    const runs = t => { let r = 1; for (let i = 1; i < t.length; i++) if (t[i] !== t[i - 1]) r++; return r; };
+    const H = t => { const m = new Map(); for (const c of t) m.set(c, (m.get(c) || 0) + 1); let h = 0; for (const v of m.values()) { const p = v / t.length; h -= p * Math.log2(p); } return h; };
+    return { s, n, rots, L: Lc, idx, mtf, runsRaw: runs(s), runsL: runs(Lc), h0: H(s), hL: H(Lc), hM: H(mtf.map(String)) };
+  }
+
+  function draw() {
+    const st = state, n = st.n, dpr = window.devicePixelRatio || 1;
+    const Wcss = cv.clientWidth || 560, rowH = Math.max(14, Math.min(26, 380 / n)), Hcss = rowH * n + 40;
+    cv.width = Wcss * dpr; cv.height = Hcss * dpr; cv.style.height = Hcss + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, Wcss, Hcss);
+    const cell = Math.min(rowH, (Wcss - 60) / n), x0 = 40, y0 = 30;
+    ctx.font = `${Math.round(cell * 0.7)}px "DejaVu Sans Mono", monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = F; ctx.globalAlpha = 0.18; ctx.fillRect(x0, y0 - 4, cell, rowH * n + 8);
+    ctx.fillStyle = L; ctx.fillRect(x0 + cell * (n - 1), y0 - 4, cell, rowH * n + 8); ctx.globalAlpha = 1;
+    ctx.fillStyle = F; ctx.fillText("F", x0 + cell / 2, 14); ctx.fillStyle = L; ctx.fillText("L", x0 + cell * (n - 0.5), 14);
+    for (let r = 0; r < n; r++) {
+      const y = y0 + r * rowH + rowH / 2, rot = st.rots[r].r;
+      if (r === hover) { ctx.fillStyle = GRID; ctx.fillRect(x0 - 2, y0 + r * rowH, cell * n + 4, rowH); }
+      if (r === st.idx) { ctx.strokeStyle = OK; ctx.lineWidth = 2; ctx.strokeRect(x0 - 2, y0 + r * rowH, cell * n + 4, rowH); }
+      ctx.fillStyle = MUTED; ctx.textAlign = "right"; ctx.fillText(String(r), x0 - 8, y); ctx.textAlign = "center";
+      for (let j = 0; j < n; j++) {
+        ctx.fillStyle = (j === 0 || j === n - 1) ? INK : MUTED;
+        ctx.fillText(rot[j], x0 + cell * j + cell / 2, y);
+      }
+    }
+    cv._geom = { x0, y0, rowH, cell };
+  }
+
+  function render() {
+    state = compute(inp.value);
+    draw();
+    const st = state, ctxRow = hover >= 0 && hover < st.n ? st.rots[hover].r : null;
+    let txt = `L = <span class="L">${st.L}</span>   primary index = <span class="ok">${st.idx}</span>\n\n`;
+    txt += `runs: ${st.runsRaw} in the block, <span class="L">${st.runsL}</span> in L\n`;
+    txt += `order-0 entropy: ${st.h0.toFixed(3)} bits before, <span class="L">${st.hL.toFixed(3)}</span> after (a permutation cannot change it)\n\n`;
+    txt += `move-to-front of L: <span class="M">[${st.mtf.join(", ")}]</span>\n`;
+    txt += `order-0 entropy of the MTF output: <span class="M">${st.hM.toFixed(3)}</span> bits\n`;
+    txt += `zeros in MTF output: ${st.mtf.filter(v => v === 0).length} of ${st.n}\n\n`;
+    if (ctxRow) {
+      txt += `row ${hover}: context "<span class="F">${ctxRow.slice(0, Math.min(4, st.n - 1))}</span>…" is preceded in the block by "<span class="L">${ctxRow[st.n - 1]}</span>"`;
+    } else {
+      txt += `<span class="muted">Each row's last character is the one that precedes that row's context in the block; sorting by context lines up the characters that share one.</span>`;
+    }
+    out.innerHTML = txt;
+  }
+
+  cv.addEventListener("mousemove", e => {
+    const g = cv._geom; if (!g) return;
+    const rect = cv.getBoundingClientRect(), y = e.clientY - rect.top;
+    const r = Math.floor((y - g.y0) / g.rowH); const h = (r >= 0 && r < state.n) ? r : -1;
+    if (h !== hover) { hover = h; render(); }
+  });
+  cv.addEventListener("mouseleave", () => { hover = -1; render(); });
+  inp.addEventListener("input", () => { hover = -1; render(); });
+  document.querySelectorAll("button[data-s]").forEach(b => b.addEventListener("click", () => { inp.value = b.dataset.s; hover = -1; render(); }));
+  window.addEventListener("resize", draw);
+  render();
+})();
+</script>
+</body>
+</html>

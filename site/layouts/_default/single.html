@@ -1,0 +1,37 @@
+{{ define "main" }}
+{{ $g := partial "gameroot.html" . }}
+{{ $isArticle := eq .Section "zoo" }}
+{{ $chairs := dict "foundations" "Foundations" "entropy" "The Packer" "predict" "The Oracle" "transform" "The Lens" "quantize" "The Butcher" "perceptual" "The Con Artist" "prior" "The Inside Man" "jobs" "Jobs" }}
+<div class="cols">
+<article class="article">
+  {{ if $isArticle }}
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ "" | relURL }}">The Map</a><span>/</span>{{ with .Params.chair }}<span>{{ index $chairs . | default . }}</span>{{ end }}{{ with .Params.family }}<span>/</span><span>{{ . }}</span>{{ end }}</nav>
+  <header class="art-head">
+    <div class="eyebrow">{{ with .Params.chair }}{{ index $chairs . | default . }}{{ end }}{{ with .Params.family }} · {{ . }}{{ end }}</div>
+    {{ $hero := printf "img/hero/%s.png" (.File.ContentBaseName) }}
+    {{ if fileExists (printf "static/%s" $hero) }}<img class="hero" src="{{ $hero | relURL }}" width="768" height="288" alt="" decoding="async">{{ end }}
+    <h1 class="title">{{ .Title }}</h1>
+    {{ with .Params.summary }}<p class="summary">{{ . }}</p>{{ end }}
+    <div class="meta">{{ .Params.reading_time | default .ReadingTime }} min read</div>
+  </header>
+  {{ end }}
+  <div class="prose">{{ .Content }}</div>
+
+  {{ if $isArticle }}
+  {{ with .Params.fighters }}
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters">{{ range . }}<li><a href="{{ $g }}#fighter={{ . }}" title="{{ . }}"><img src="{{ $g }}img/fighters/{{ . }}.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>{{ . }}</span></a></li>{{ end }}</ul>
+  </aside>{{ end }}
+  {{ with .Params.related }}
+  <aside class="box"><h2>Related</h2><ul class="rel">{{ range . }}{{ $p := site.GetPage (printf "/zoo/%s" .) }}{{ if $p }}<li><a href="{{ $p.RelPermalink }}">{{ $p.Title }}</a></li>{{ end }}{{ end }}</ul></aside>{{ end }}
+  {{ $slugs := slice }}{{ range hugo.Data.map.sections }}{{ range .items }}{{ if site.GetPage (printf "/zoo/%s" .slug) }}{{ $slugs = $slugs | append .slug }}{{ end }}{{ end }}{{ end }}
+  {{ $me := .File.ContentBaseName }}{{ $i := 0 }}{{ range $k, $s := $slugs }}{{ if eq $s $me }}{{ $i = $k }}{{ end }}{{ end }}
+  <nav class="pn" aria-label="Previous and next article">
+    {{ if gt $i 0 }}{{ $p := site.GetPage (printf "/zoo/%s" (index $slugs (sub $i 1))) }}<a class="prev" href="{{ $p.RelPermalink }}"><small>&larr; Previous</small>{{ $p.Title }}</a>{{ else }}<span></span>{{ end }}
+    {{ if lt (add $i 1) (len $slugs) }}{{ $p := site.GetPage (printf "/zoo/%s" (index $slugs (add $i 1))) }}<a class="next" href="{{ $p.RelPermalink }}"><small>Next &rarr;</small>{{ $p.Title }}</a>{{ end }}
+  </nav>
+  {{ end }}
+</article>
+{{ if and $isArticle .TableOfContents }}<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div>{{ .TableOfContents }}</aside>{{ end }}
+</div>
+{{ end }}

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} · Choose Your Codec{{ end }}</title>
+<meta name="description" content="{{ with .Params.summary }}{{ . }}{{ else }}{{ site.Title }}{{ end }}">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+{{ $css := slice (resources.Get "css/map.css") (resources.Get "css/syntax.css") | resources.Concat "css/map.bundle.css" | minify }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/{{ site.Params.katexVersion }}/katex.min.css">
+</head>
+<body class="{{ if .IsHome }}is-home{{ else }}is-page{{ end }}">
+<a class="skip" href="#main">Skip to content</a>
+{{ partial "header.html" . }}
+<div class="shell">
+  {{ partial "sidebar.html" . }}
+  <main id="main">
+  {{ block "main" . }}{{ end }}
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="{{ partial "gameroot.html" . }}">play the game</a> · compression, taught by playing</footer>
+{{ partial "scripts.html" . }}
+</body>
+</html>

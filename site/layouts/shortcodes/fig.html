@@ -1,0 +1,2 @@
+{{- $src := .Get "src" -}}
+<figure class="fig"><a href="{{ $src | relURL }}"><img src="{{ $src | relURL }}" alt="{{ .Get "alt" }}" loading="lazy"></a>{{ with .Get "caption" }}<figcaption>{{ . | markdownify }}</figcaption>{{ end }}</figure>

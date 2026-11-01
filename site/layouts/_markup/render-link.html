@@ -1,0 +1,12 @@
+{{- $d := .Destination -}}
+{{- $g := partial "gameroot.html" . -}}
+{{- if strings.HasPrefix $d "/compressionfight/" }}{{ $d = printf "%s%s" $g (strings.TrimPrefix "/compressionfight/" $d) }}{{ end -}}
+{{- if and (not (findRE `^[a-z]+:` $d)) (not (strings.HasPrefix $d "#")) (not (strings.HasPrefix $d "/")) }}
+  {{- $parts := split $d "#" -}}{{ $path := index $parts 0 }}
+  {{- if strings.HasSuffix $path ".md" }}
+    {{- $path = strings.TrimSuffix ".md" $path | printf "%s/" -}}
+    {{- if and (not .Page.IsHome) (not (strings.HasPrefix $path "../")) }}{{ $path = printf "../%s" $path }}{{ end -}}
+    {{- $d = $path }}{{ if gt (len $parts) 1 }}{{ $d = printf "%s#%s" $path (index $parts 1) }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+<a href="{{ $d | safeURL }}"{{ with .Title }} title="{{ . }}"{{ end }}{{ if findRE `^https?:` $d }} rel="noopener"{{ end }}>{{ .Text | safeHTML }}</a>

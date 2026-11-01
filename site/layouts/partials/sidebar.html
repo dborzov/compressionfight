@@ -1,0 +1,17 @@
+{{ $cur := "" }}{{ if and (eq .Section "zoo") .File }}{{ $cur = .File.ContentBaseName }}{{ end }}
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home{{ if .IsHome }} on{{ end }}" href="{{ "" | relURL }}">The Map</a>
+  <a class="side-home{{ if eq .Kind "page" }}{{ if eq .Section "" }} on{{ end }}{{ end }}" href="{{ "primer/" | relURL }}">Primer</a>
+  {{ range hugo.Data.map.sections }}
+  <div class="side-sec">
+    <div class="side-h">{{ .name }}{{ with .sub }}<small>{{ . }}</small>{{ end }}</div>
+    <ul>
+    {{ range .items }}
+      {{ $p := site.GetPage (printf "/zoo/%s" .slug) }}
+      {{ if $p }}<li><a href="{{ $p.RelPermalink }}"{{ if eq .slug $cur }} class="on" aria-current="page"{{ end }}>{{ .title }}</a></li>
+      {{ else }}<li class="soon">{{ .title }}</li>{{ end }}
+    {{ end }}
+    </ul>
+  </div>
+  {{ end }}
+</nav>

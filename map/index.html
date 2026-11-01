@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Choose Your Codec: The Map</title>
+<meta name="description" content="A systematic taxonomy of the compression toolkit, organised by the role each algorithm plays in a codec pipeline, with an introduction article for every family.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+	<meta name="generator" content="Hugo 0.169.0">
+</head>
+<body class="is-home">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">MENU</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game"><span class="a">CHOOSE</span><span class="b">YOUR</span><span class="c">CODEC</span></a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/" aria-current="page">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home on" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li class="soon">Modeling and coding: bits are surprise</li>
+    
+      
+      <li class="soon">The anatomy of a job</li>
+    
+      
+      <li class="soon">Rate and distortion</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Packer<small>entropy coders</small></div>
+    <ul>
+    
+      
+      <li class="soon">Prefix codes</li>
+    
+      
+      <li class="soon">Fractional-bit coders</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Oracle<small>prediction and modeling</small></div>
+    <ul>
+    
+      
+      <li class="soon">Dictionary matchers: the LZ family</li>
+    
+      
+      <li class="soon">Linear and spatial predictors</li>
+    
+      
+      <li class="soon">Statistical context models</li>
+    
+      
+      <li class="soon">Temporal prediction: motion compensation</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Lens<small>transforms and rearrangements</small></div>
+    <ul>
+    
+      
+      <li class="soon">Frequency transforms</li>
+    
+      
+      <li class="soon">Rotations, projections and rank</li>
+    
+      
+      <li class="soon">Channel and layout transforms</li>
+    
+      
+      <li class="soon">Sorting transforms</li>
+    
+      
+      <li class="soon">Learned transforms</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Butcher<small>quantizers</small></div>
+    <ul>
+    
+      
+      <li class="soon">Scalar quantizers</li>
+    
+      
+      <li class="soon">Vector quantizers</li>
+    
+      
+      <li class="soon">Block-scaled integer and float formats</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Con Artist<small>consumer models</small></div>
+    <ul>
+    
+      
+      <li class="soon">Human perceptual models</li>
+    
+      
+      <li class="soon">A transformer as the audience</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Inside Man<small>shared priors and side information</small></div>
+    <ul>
+    
+      
+      <li class="soon">Side information</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Jobs<small>the systems that pick the chairs</small></div>
+    <ul>
+    
+      
+      <li class="soon">The five vaults of the KV cache</li>
+    
+      
+      <li class="soon">Codecs as pipelines: worked dissections</li>
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+<article class="article home">
+  <div class="eyebrow">Choose Your Codec · field guide</div>
+  <div class="prose"><h1 id="the-map-a-taxonomy-of-the-compression-toolkit">The Map: a taxonomy of the compression toolkit</h1>
+<p>Every practical codec is a pipeline of the same chairs: a <strong>transform</strong> that rearranges the data, a <strong>predictor</strong> that
+guesses what comes next, a <strong>quantizer</strong> that throws away what the consumer will not miss (the only lossy stage), an
+<strong>entropy coder</strong> that cashes predictability in for bits, a <strong>perceptual model</strong> that defines &ldquo;will not miss&rdquo;, and a
+<strong>shared prior</strong> the decoder already holds before the first byte arrives. The <a href="primer/">primer</a>
+ explains why. This
+page lists what can sit in each chair, grouped into families and sub-families, and links to an introduction article for
+each family. In the game, every fighter card links back here.</p>
+<p>Read in order if you are new: the three <strong>Foundations</strong> articles first, then any chair.</p>
+<h2 id="foundations">Foundations</h2>
+<ul>
+<li><a href="zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a>
+ — entropy as the floor, −log₂ p as the price of a symbol, cross-entropy as the mismatch tax, and why &ldquo;how well can you compress X&rdquo; and &ldquo;how well can you predict X&rdquo; are the same question.</li>
+<li><a href="zoo/anatomy-of-a-job/">The anatomy of a job</a>
+ — the five axes that pin down any compression problem (fidelity contract, redundancy profile, access pattern, compute envelope, where the prior lives), and why random access, latency and block boundaries are paid for in ratio.</li>
+<li><a href="zoo/rate-and-distortion/">Rate and distortion</a>
+ — the one irreversible chair, the R(D) curve, Δ²/12, 6 dB per bit, reverse water-filling, and the consumer model that decides what counts as error.</li>
+</ul>
+<h2 id="the-packer-entropy-coders-symbols--probabilities--bits-always-the-last-stage">The Packer: entropy coders (symbols + probabilities → bits; always the last stage)</h2>
+<ul>
+<li><strong>Prefix codes</strong> (whole bits per symbol) — <a href="zoo/prefix-codes/">article</a>
+
+<ul>
+<li>Huffman coding (static, two-pass semi-static with transmitted tables, canonical Huffman)</li>
+<li>Golomb-Rice codes (one parameter, optimal for geometric residuals: FLAC, JPEG-LS)</li>
+<li>Run-length encoding and zigzag scans (manufacturing a single symbol out of a run of zeros: JPEG, fax)</li>
+<li>Fixed-length codes (the deliberate empty chair: random access, SIMD, GPU kernels)</li>
+</ul>
+</li>
+<li><strong>Fractional-bit coders</strong> (reach the entropy bound) — <a href="zoo/arithmetic-and-ans/">article</a>
+
+<ul>
+<li>Arithmetic coding and range coding (one number for the whole message; per-symbol adaptive models)</li>
+<li>Binary adaptive coders (CABAC in H.264/HEVC, the MQ coder in JPEG 2000)</li>
+<li>Asymmetric numeral systems: rANS (interleaved, SIMD) and tANS/FSE (table-driven: zstd, JPEG XL)</li>
+</ul>
+</li>
+<li><strong>Adaptivity</strong> as a property: static tables, semi-static headers, fully adaptive models (cross-cuts both families; see <a href="zoo/side-information/">side information</a>
+)</li>
+</ul>
+<h2 id="the-oracle-prediction-and-modeling-expose-structure-lower-the-entropy-produce-no-bits">The Oracle: prediction and modeling (expose structure; lower the entropy; produce no bits)</h2>
+<ul>
+<li><strong>Dictionary matchers: the LZ family</strong> — <a href="zoo/lz-family/">article</a>
+
+<ul>
+<li>LZ77 and the sliding window (DEFLATE, zstd, LZ4, Brotli, LZMA); window size and parse effort as the two dials</li>
+<li>LZ78 / LZW and explicit phrase dictionaries (GIF, compress)</li>
+<li>Macro-scale matching: deduplication with content-defined chunking, rsync delta sync, git packfiles</li>
+</ul>
+</li>
+<li><strong>Linear and spatial predictors</strong> — <a href="zoo/linear-prediction/">article</a>
+
+<ul>
+<li>Delta and delta-of-delta (time series, timestamps)</li>
+<li>Linear predictive coding: fixed polynomial predictors and fitted LPC (FLAC, speech codecs)</li>
+<li>Spatial filters and intra prediction (PNG Sub/Up/Paeth, H.264/AV1 directional modes)</li>
+<li>Anchor-based prediction (groups of pictures; CacheGen&rsquo;s anchor tokens)</li>
+</ul>
+</li>
+<li><strong>Statistical context models</strong> — <a href="zoo/context-models/">article</a>
+
+<ul>
+<li>Order-k Markov models, PPM with escapes</li>
+<li>Context mixing (PAQ, cmix) and the Hutter Prize</li>
+<li>Contexts inside binary coders (CABAC&rsquo;s neighbour contexts)</li>
+<li>Learned probability models: hyperpriors in learned image codecs, language models as compressors</li>
+</ul>
+</li>
+<li><strong>Temporal prediction: motion compensation</strong> — <a href="zoo/motion-compensation/">article</a>
+
+<ul>
+<li>Block matching, motion vectors, sub-pixel interpolation</li>
+<li>I/P/B frames, the GOP length as a ratio-vs-seek dial, in-loop filters</li>
+<li>Low-latency configurations (no B-frames, intra refresh)</li>
+</ul>
+</li>
+</ul>
+<h2 id="the-lens-transforms-and-rearrangements-save-nothing-alone-set-up-the-other-chairs">The Lens: transforms and rearrangements (save nothing alone; set up the other chairs)</h2>
+<ul>
+<li><strong>Frequency transforms</strong> — <a href="zoo/block-transforms/">article</a>
+
+<ul>
+<li>Block DCT (JPEG, video integer DCTs), energy compaction and transform coding gain</li>
+<li>Lapped transforms: the MDCT and time-domain aliasing cancellation (MP3, AAC, Opus CELT)</li>
+<li>Wavelets and multiresolution (JPEG 2000)</li>
+</ul>
+</li>
+<li><strong>Rotations, projections and rank</strong> — <a href="zoo/rotations-and-rank/">article</a>
+
+<ul>
+<li>Karhunen-Loève / PCA as the optimal decorrelator; OPQ rotations for product quantization</li>
+<li>Hadamard rotations that preserve dot products (QuaRot, SpinQuant)</li>
+<li>Low-rank truncation of key matrices (ShadowKV, xKV); undoing RoPE before quantizing</li>
+</ul>
+</li>
+<li><strong>Channel and layout transforms</strong> — <a href="zoo/channel-and-layout/">article</a>
+
+<ul>
+<li>RGB→YCbCr and chroma planes; stereo mid/side; integer-reversible variants (YCoCg-R)</li>
+<li>Byte shuffling of float arrays; struct-of-arrays; columnar storage (Parquet)</li>
+<li>Blocking and framing as plumbing (parallelism, seek, corruption containment)</li>
+</ul>
+</li>
+<li><strong>Sorting transforms</strong> — <a href="zoo/sorting-transforms/">article</a>
+
+<ul>
+<li>Burrows-Wheeler transform, move-to-front, the bzip2 stack</li>
+<li>BWT as a search index (FM-index) in genomics</li>
+</ul>
+</li>
+<li><strong>Learned transforms</strong> — <a href="zoo/learned-transforms/">article</a>
+
+<ul>
+<li>Autoencoders as analysis/synthesis pairs; neural audio codecs (SoundStream, EnCodec, DAC)</li>
+<li>Learned image compression (Ballé et al.), the VAE in diffusion models</li>
+<li>Transforms baked into model architecture: GQA, Multi-head Latent Attention, DeepSeek-V4 compressed attention</li>
+</ul>
+</li>
+</ul>
+<h2 id="the-butcher-quantizers-the-only-lossy-chair">The Butcher: quantizers (the only lossy chair)</h2>
+<ul>
+<li><strong>Scalar quantizers</strong> — <a href="zoo/scalar-quantization/">article</a>
+
+<ul>
+<li>Uniform quantization, dead zones, rate-distortion-optimized rounding (video RDO, GPTQ)</li>
+<li>Non-uniform and companded quantizers (μ-law, MP3&rsquo;s power law, NF4); Lloyd-Max</li>
+<li>Frequency-weighted step sizes (JPEG tables) and bit allocation across coordinates (water-filling, KVTC)</li>
+<li>Outlier handling: dense-and-sparse decomposition, escape codes</li>
+</ul>
+</li>
+<li><strong>Vector quantizers</strong> — <a href="zoo/vector-quantization/">article</a>
+
+<ul>
+<li>k-means / Lloyd&rsquo;s algorithm, codebook design, palettes as VQ</li>
+<li>Residual VQ (SoundStream, EnCodec; audio tokens), product quantization (Faiss), additive quantization</li>
+<li>Coupled quantization of correlated channels (joint entropy vs marginals)</li>
+</ul>
+</li>
+<li><strong>Block-scaled integer and float formats</strong> — <a href="zoo/block-float-formats/">article</a>
+
+<ul>
+<li>int8/int4 with per-block scales and minimums (GGUF Q4_0, Q4_K, bitsandbytes), AWQ/GPTQ encoders</li>
+<li>NVFP4 / MX formats: micro-scaled floats decoded by the tensor core</li>
+<li>Per-channel vs per-token grouping for keys and values (KIVI); eviction as a two-level quantizer</li>
+</ul>
+</li>
+<li><strong>Token selection and eviction</strong> (see <a href="zoo/attention-as-audience/">attention as the audience</a>
+)</li>
+</ul>
+<h2 id="the-con-artist-consumer-models-what-will-the-reader-not-notice">The Con Artist: consumer models (what will the reader not notice?)</h2>
+<ul>
+<li><strong>Human perceptual models</strong> — <a href="zoo/perceptual-models/">article</a>
+
+<ul>
+<li>Psychoacoustic masking, pre-echo and short blocks (MP3, AAC, Opus)</li>
+<li>Contrast sensitivity, chroma subsampling, just-noticeable differences (JPEG, video)</li>
+<li>Adversarial and feature losses for generative decoders (neural codecs, HiFiC)</li>
+</ul>
+</li>
+<li><strong>A transformer as the audience</strong> — <a href="zoo/attention-as-audience/">article</a>
+
+<ul>
+<li>Attention sinks and recent windows kept at full precision (KIVI, KVQuant)</li>
+<li>Top-k selection with cheap proxies (DSA indexer, landmarks, PQ codes, 1-bit copies)</li>
+<li>Eviction (StreamingLLM, H2O, SnapKV) and the paged-memory problem; FlashAttention leaves no scores</li>
+</ul>
+</li>
+</ul>
+<h2 id="the-inside-man-shared-priors-and-side-information-what-the-decoder-already-holds">The Inside Man: shared priors and side information (what the decoder already holds)</h2>
+<ul>
+<li><strong>Side information</strong> — <a href="zoo/side-information/">article</a>
+
+<ul>
+<li>Standard tables in the spec vs self-describing headers (DEFLATE fixed vs dynamic blocks)</li>
+<li>Trained dictionaries (zstd &ndash;train, Brotli&rsquo;s web dictionary, HTTP compression dictionaries)</li>
+<li>Codebooks (VQ, neural codecs, Faiss indexes), trained transform bases (KVTC, SpinQuant)</li>
+<li>Learned decoders as priors; cross-entropy mismatch when the prior was trained on other data</li>
+<li>Tiered copies: a lossless original one hop away (HiSparse, SpeCache, ShadowKV)</li>
+</ul>
+</li>
+</ul>
+<h2 id="jobs-the-systems-that-pick-the-chairs">Jobs: the systems that pick the chairs</h2>
+<ul>
+<li><a href="zoo/kv-cache-vaults/">The five vaults of the KV cache</a>
+ — one tensor, five jobs: resident in HBM, offloaded over PCIe, parked in cold storage, streamed over a network, or evicted; and the model-level shrinks (GQA, MLA) that happened before any codec.</li>
+<li><a href="zoo/codec-dissections/">Codecs as pipelines: worked dissections</a>
+ — DEFLATE, PNG, FLAC, JPEG, MP3, Opus, H.264, zstd, SoundStream, GGUF, Faiss PQ, each decomposed chair by chair, with the job&rsquo;s stat sheet beside it.</li>
+</ul>
+</div>
+</article>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'COPY';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'COPIED'; setTimeout(function () { b.textContent = 'COPY'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'SPECIAL MOVE LAB' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

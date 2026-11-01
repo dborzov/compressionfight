@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title> · Choose Your Codec</title>
+<meta name="description" content="Choose Your Codec: The Map">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">MENU</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game"><span class="a">CHOOSE</span><span class="b">YOUR</span><span class="c">CODEC</span></a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/" aria-current="page">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home on" href="/compressionfight/map/primer/">Primer</a>
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li class="soon">Modeling and coding: bits are surprise</li>
+    
+      
+      <li class="soon">The anatomy of a job</li>
+    
+      
+      <li class="soon">Rate and distortion</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Packer<small>entropy coders</small></div>
+    <ul>
+    
+      
+      <li class="soon">Prefix codes</li>
+    
+      
+      <li class="soon">Fractional-bit coders</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Oracle<small>prediction and modeling</small></div>
+    <ul>
+    
+      
+      <li class="soon">Dictionary matchers: the LZ family</li>
+    
+      
+      <li class="soon">Linear and spatial predictors</li>
+    
+      
+      <li class="soon">Statistical context models</li>
+    
+      
+      <li class="soon">Temporal prediction: motion compensation</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Lens<small>transforms and rearrangements</small></div>
+    <ul>
+    
+      
+      <li class="soon">Frequency transforms</li>
+    
+      
+      <li class="soon">Rotations, projections and rank</li>
+    
+      
+      <li class="soon">Channel and layout transforms</li>
+    
+      
+      <li class="soon">Sorting transforms</li>
+    
+      
+      <li class="soon">Learned transforms</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Butcher<small>quantizers</small></div>
+    <ul>
+    
+      
+      <li class="soon">Scalar quantizers</li>
+    
+      
+      <li class="soon">Vector quantizers</li>
+    
+      
+      <li class="soon">Block-scaled integer and float formats</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Con Artist<small>consumer models</small></div>
+    <ul>
+    
+      
+      <li class="soon">Human perceptual models</li>
+    
+      
+      <li class="soon">A transformer as the audience</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">The Inside Man<small>shared priors and side information</small></div>
+    <ul>
+    
+      
+      <li class="soon">Side information</li>
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Jobs<small>the systems that pick the chairs</small></div>
+    <ul>
+    
+      
+      <li class="soon">The five vaults of the KV cache</li>
+    
+      
+      <li class="soon">Codecs as pipelines: worked dissections</li>
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <div class="prose"><h1 id="a-field-map-of-data-compression">A Field Map of Data Compression</h1>
+<hr>
+<h2 id="part-0--the-one-idea-that-organizes-everything">Part 0 — The One Idea That Organizes Everything</h2>
+<p>Before the taxonomy, one unifying idea. Almost everything in this document is a corollary of it.</p>
+<blockquote>
+<p>[!Key] <strong>Compression = modeling + coding.</strong>
+A compressor is:</p>
+<ul>
+<li>a <em>model</em> that predicts the data</li>
+<li>a <em>coder</em> that turns good predictions into short bit strings.</li>
+</ul>
+</blockquote>
+<p>Shannon&rsquo;s result gives the exchange rate: if your model assigns probability <code>P</code> to the symbol that actually occurs, the optimal code spends <code>-log2(P)</code> bits on it. Predict well (high <code>P</code>) → pay few bits. Predict badly → pay many. A perfect coder attached to a model pays exactly the model&rsquo;s <em>cross-entropy</em> on the data — which is why &ldquo;how well can you compress X&rdquo; and &ldquo;how well can you predict X&rdquo; are literally the same question. (This is also why a modern LLM plus an arithmetic coder is, without any modification, a state-of-the-art text compressor.)</p>
+<p>This splits the entire toolkit into three families of parts:</p>
+<ol>
+<li>
+<p><strong>Coders (entropy coders).</strong> The universal back end. Given symbols plus probability estimates, they emit bits at nearly <code>-log2(P)</code> per symbol. Huffman, arithmetic, ANS, Rice. This part is essentially <em>solved</em> — modern coders get within a fraction of a percent of the Shannon bound. All the interesting engineering variation is in speed, adaptivity, and hardware friendliness.</p>
+</li>
+<li>
+<p><strong>Models, transforms, and predictors.</strong> The front end. Everything else in your list — LZ, delta, BWT, MTF, PPM, Markov models, motion compensation, DCT — is machinery for <em>exposing structure</em>: rewriting the data so that, by the time it reaches the entropy coder, the symbols are highly predictable / heavily skewed. None of these save bits by themselves; they set up the shot.</p>
+</li>
+<li>
+<p><strong>Quantizers.</strong> The one and only place where information is deliberately <em>destroyed</em>. Everything lossy — MP3, JPEG, video, NVFP4 — is &ldquo;throw away what the consumer won&rsquo;t miss (quantize), then pack what&rsquo;s left losslessly (model + code).&rdquo;</p>
+</li>
+</ol>
+<p>So every practical format is a pipeline with this skeleton:</p>
+<pre tabindex="0"><code> raw data
+    │
+    ▼
+[ lossy formats only: transform → quantize ]     ← decide what information survives
+    │
+    ▼
+[ model / predict / transform / match ]          ← expose the remaining redundancy
+    │
+    ▼
+[ entropy code ]                                 ← cash predictions in for bits
+    │
+    ▼
+ compressed bits (should look like white noise)
+</code></pre><p>A useful sanity check you can apply to any format: the final output should be statistically indistinguishable from random noise. If gzipping a <code>.zip</code> file shrank it, the zip left money on the table. It doesn&rsquo;t — which tells you deflate&rsquo;s entropy stage did its job.</p>
+<p>Two words worth pinning down, because the whole lossy world hangs on the distinction:</p>
+<ul>
+<li><strong>Redundancy</strong> — structure that lets you reconstruct data exactly from fewer bits (&ldquo;the next pixel is probably like the last one&rdquo;). Exploited by <em>lossless</em> tools.</li>
+<li><strong>Irrelevance</strong> — information the consumer genuinely cannot perceive or does not need (audio masked by a louder tone, chroma detail your eye can&rsquo;t resolve, mantissa bits a neural net doesn&rsquo;t care about). Exploited by <em>lossy</em> tools, i.e., quantization guided by a model of the consumer.</li>
+</ul>
+<p>Lossless compression attacks only redundancy. Lossy compression attacks both — which is why its ratios are 10–100× larger.</p>
+<hr>
+<h2 id="part-1--the-jobs-a-taxonomy-of-compression-problems">Part 1 — The Jobs: A Taxonomy of Compression Problems</h2>
+<p>&ldquo;Which tool is right&rdquo; is meaningless until you can state the job precisely. In practice a compression job is pinned down by five axes. Learn these five and you can characterize any codec, format, or system in one sentence.</p>
+<h3 id="axis-1--the-fidelity-contract">Axis 1 — The fidelity contract</h3>
+<ul>
+<li><strong>Lossless.</strong> Decoder output is bit-identical to input. Non-negotiable for executables, source code, text, databases, medical/legal archives, and any data that will be <em>processed further</em> rather than consumed by a human.</li>
+<li><strong>Lossy.</strong> Output only needs to be <em>good enough</em> for a defined consumer. This immediately raises two questions that define the whole sub-field:
+<ul>
+<li><em>Who is the consumer?</em> Human ear (psychoacoustics), human eye (psychovisual models), a neural network (accuracy on a task), a downstream analytic (error bounds on floats). The consumer model tells you what is irrelevant.</li>
+<li><em>Where on the rate–distortion curve?</em> Every lossy codec is a knob trading bitrate against distortion. &ldquo;Quality 85 JPEG,&rdquo; &ldquo;128 kbps MP3,&rdquo; &ldquo;CRF 23 x264&rdquo; are all positions on this curve.</li>
+</ul>
+</li>
+<li><strong>Perceptually / effectively lossless.</strong> Technically lossy, but distortion is below the consumer&rsquo;s detection threshold. Marketing term with real engineering content: it means the quantizer was tuned against a perceptual model, not a math-error metric.</li>
+</ul>
+<h3 id="axis-2--the-datas-redundancy-profile">Axis 2 — The data&rsquo;s redundancy profile</h3>
+<p>Different data has different <em>kinds</em> of exploitable structure, and each kind has dedicated tools. This is the single most useful checklist when facing new data:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Redundancy type</th>
+					<th>What it looks like</th>
+					<th>Toy example</th>
+					<th>Tool family that eats it</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><strong>Statistical skew</strong></td>
+					<td>Some symbols much more frequent than others</td>
+					<td>English text: <code>e</code> ≫ <code>z</code></td>
+					<td>Entropy coding</td>
+			</tr>
+			<tr>
+					<td><strong>Exact repeats</strong></td>
+					<td>The same byte strings recur, near or far</td>
+					<td>Logs, HTML, source code, tarballs</td>
+					<td>LZ / dictionary matching; at macro scale, dedup</td>
+			</tr>
+			<tr>
+					<td><strong>Context correlation</strong></td>
+					<td>Next symbol predictable from previous k symbols</td>
+					<td>After <code>q</code> comes <code>u</code>; after <code>&lt;htm</code> comes <code>l</code></td>
+					<td>Markov / PPM / context models, context-adaptive coding</td>
+			</tr>
+			<tr>
+					<td><strong>Local smoothness</strong></td>
+					<td>Neighboring samples are numerically close</td>
+					<td>Audio waveforms, photo pixels, sensor timestamps</td>
+					<td>Prediction + residual (delta, LPC, filters); decorrelating transforms (DCT, wavelets)</td>
+			</tr>
+			<tr>
+					<td><strong>Cross-signal correlation</strong></td>
+					<td>Parallel channels move together</td>
+					<td>L/R stereo, RGB channels</td>
+					<td>Channel transforms (mid/side, RGB→YCbCr)</td>
+			</tr>
+			<tr>
+					<td><strong>Cross-item redundancy</strong></td>
+					<td>Whole files/blocks duplicated across a corpus</td>
+					<td>500 VM images sharing an OS; nightly backups</td>
+					<td>Deduplication, delta sync, shared dictionaries</td>
+			</tr>
+			<tr>
+					<td><strong>Perceptual irrelevance</strong></td>
+					<td>Detail the consumer can&rsquo;t perceive</td>
+					<td>Quiet tone next to a loud one; chroma detail</td>
+					<td>Quantization guided by a consumer model</td>
+			</tr>
+			<tr>
+					<td><strong>Numeric structure</strong></td>
+					<td>Value distributions inside binary numbers</td>
+					<td>Float32 tensors: exponents low-entropy, mantissas ≈ noise</td>
+					<td>Bit/byte-plane splitting, block-scaled quantization</td>
+			</tr>
+	</tbody>
+</table>
+<p>Note that most real data has <em>several</em> of these at once — which is precisely why real formats are pipelines of several tools (Part 2, composition rules).</p>
+<h3 id="axis-3--access-pattern-and-delivery-model">Axis 3 — Access pattern and delivery model</h3>
+<p>This axis is the most underrated one, and it&rsquo;s where &ldquo;the MP3 job&rdquo; and &ldquo;the Zoom job&rdquo; diverge despite both being &ldquo;compress audio.&rdquo;</p>
+<ul>
+<li><strong>Encode/decode symmetry.</strong>
+<ul>
+<li><em>Encode once, decode many</em> (MP3 release, YouTube video, software package): the encoder can burn hours of CPU and use exhaustive search; only decode cost matters at scale. Expect asymmetric designs — expensive optimal parsing, cheap table-driven decoding.</li>
+<li><em>Symmetric / encode-heavy</em> (backups, on-the-fly network compression, live streams): encode speed is on the critical path. Expect greedy, single-pass, hardware-light encoders.</li>
+</ul>
+</li>
+<li><strong>Latency budget.</strong> How much of the future may the encoder look at before it must emit bits?
+<ul>
+<li><em>Interactive real time</em> (VoIP, video calls, game streaming, cloud gaming): total mouth-to-ear budget ~150 ms, of which the codec may get 5–30 ms. This caps frame size and forbids lookahead — a hard structural constraint, not a tuning parameter.</li>
+<li><em>Buffered streaming</em> (Netflix, live TV): seconds of buffer; codec latency is nearly free, so you can use bidirectional prediction (B-frames) and multi-pass rate control.</li>
+<li><em>Offline / archival:</em> unbounded. Use anything.</li>
+</ul>
+</li>
+<li><strong>Random access / seekability.</strong> Can the decoder jump to the middle?
+<ul>
+<li>Sequential-only streams let context, dictionaries, and adaptive models grow forever (best ratio).</li>
+<li>Seekable formats must <em>reset</em> context at intervals — independent blocks, keyframes, restart markers. Every reset costs ratio; the reset interval is a ratio ↔ seek-granularity dial. (Same mechanism also enables parallel encode/decode and limits damage from corruption.)</li>
+</ul>
+</li>
+<li><strong>Error environment.</strong> File on disk / TCP: assume reliable. UDP / radio: packets vanish, so the format needs independent packets, concealment strategies, and recovery frames. This constraint alone reshapes codecs (see Opus vs MP3, and video-call vs streaming video configs).</li>
+<li><strong>Update pattern.</strong> Write-once archive, append-only log, mutable file that must be re-synced (the rsync job), or a deduplicated store receiving daily near-duplicates.</li>
+</ul>
+<h3 id="axis-4--compute-memory-and-energy-envelope">Axis 4 — Compute, memory, and energy envelope</h3>
+<ul>
+<li><strong>Where does the decoder run?</strong> If the answer is &ldquo;in silicon on a billion phones and TVs&rdquo; (video), the format must be standardized, decoder-cheap, fixed for a decade, and designed around hardware-friendly primitives. If it&rsquo;s &ldquo;in software we ship,&rdquo; you can iterate freely (zstd&rsquo;s rapid evolution vs H.264&rsquo;s frozen spec).</li>
+<li><strong>Memory window.</strong> LZ match window, BWT block size, context-model tables — all trade RAM for ratio. A 64 KB-RAM microcontroller and a 256 GB server are different jobs.</li>
+<li><strong>Throughput class.</strong> Rough tiers worth memorizing: <em>storage/network path</em> compression wants GB/s per core (LZ4, snappy, zstd-fast); <em>general file</em> compression wants ~100s of MB/s (zstd default, gzip); <em>archival</em> tolerates ~1–10 MB/s (xz, PPM); <em>research/record-setting</em> tolerates KB/s (PAQ, neural).</li>
+<li><strong>Energy.</strong> Mobile encode (your phone recording 4K) pushes toward hardware encoders even at some ratio cost.</li>
+</ul>
+<h3 id="axis-5--where-the-prior-knowledge-lives">Axis 5 — Where the prior knowledge lives</h3>
+<p>Every compressor needs a model of the data. The engineering question is where that model is stored and how it&rsquo;s paid for:</p>
+<ul>
+<li><strong>Learned from the stream itself (adaptive):</strong> self-contained, great on large inputs, but pays a &ldquo;cold start&rdquo; tax — the first kilobytes compress poorly while statistics warm up.</li>
+<li><strong>Shipped in the header (semi-static):</strong> two-pass encoder measures the data, writes a table (e.g., deflate&rsquo;s dynamic Huffman trees). Costs header bytes; bad for tiny inputs.</li>
+<li><strong>Shared dictionary:</strong> model trained on a corpus sample once, distributed to both sides out-of-band (zstd <code>--train</code> dictionaries, Brotli&rsquo;s built-in web-text dictionary). This is <em>the</em> fix for the small-message problem (compressing thousands of 2 KB JSON documents).</li>
+<li><strong>Baked into a trained model:</strong> neural codecs (Lyra, Encodec) push this to the extreme — megabytes of network weights on both sides encode &ldquo;what speech sounds like,&rdquo; so the wire only needs to carry a few kbps of &ldquo;which speech.&rdquo;</li>
+</ul>
+<p>The pattern: the more prior knowledge both ends share, the fewer bits the wire needs. Dedup, rsync, dictionaries, and neural codecs are all points on this one spectrum.</p>
+<h3 id="stating-a-job-in-one-sentence">Stating a job in one sentence</h3>
+<p>Put the axes together and any job becomes a fill-in-the-blank:</p>
+<blockquote>
+<p><em>&ldquo;Compress data with redundancy profile ⟨R⟩ under fidelity contract ⟨F⟩, with access pattern ⟨A⟩, inside compute envelope ⟨C⟩, with prior knowledge living at ⟨K⟩.&rdquo;</em></p>
+</blockquote>
+<p>Worked contrast — the example from your question:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Axis</th>
+					<th><strong>The MP3 job</strong> (music distribution)</th>
+					<th><strong>The VoIP/Zoom job</strong> (Opus, Lyra)</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>Fidelity</td>
+					<td>Lossy, consumer = human ear, transparent at ~192 kbps</td>
+					<td>Lossy, consumer = intelligibility first, naturalness second</td>
+			</tr>
+			<tr>
+					<td>Data</td>
+					<td>Full-band music, arbitrary content</td>
+					<td>Mostly one voice, band-limited, long silences</td>
+			</tr>
+			<tr>
+					<td>Symmetry</td>
+					<td>Encode once / decode billions of times</td>
+					<td>Fully symmetric, both directions, live</td>
+			</tr>
+			<tr>
+					<td>Latency</td>
+					<td>Irrelevant (hundreds of ms fine)</td>
+					<td><strong>Hard budget: ~20 ms frames, minimal lookahead</strong></td>
+			</tr>
+			<tr>
+					<td>Errors</td>
+					<td>Reliable file/HTTP</td>
+					<td>UDP loss: needs concealment, in-band FEC, per-packet independence</td>
+			</tr>
+			<tr>
+					<td>Compute</td>
+					<td>Cheap decode on 1990s hardware</td>
+					<td>Real-time encode+decode on a phone, on battery</td>
+			</tr>
+			<tr>
+					<td>Knowledge</td>
+					<td>Generic psychoacoustic model in the spec</td>
+					<td>Speech-specific priors; neural codecs ship a whole voice model</td>
+			</tr>
+	</tbody>
+</table>
+<p>Same medium, almost no overlapping constraints — which is why the resulting codecs share almost no design (MP3: big MDCT windows + psychoacoustics + Huffman; Opus: LPC speech model + short MDCT + packet-loss machinery). Once you can build this table for a new problem, tool selection in Part 2 becomes almost mechanical.</p>
+<h3 id="-cheatsheet-1--the-jobs">🗺 Cheatsheet 1 — The Jobs</h3>
+<ul>
+<li><strong>One idea:</strong> compression = modeling + coding; bits paid = <code>-log2 P(symbol)</code> under your model.</li>
+<li><strong>Five axes define any job:</strong>
+<ul>
+<li><strong>Fidelity contract</strong>
+<ul>
+<li>Lossless (bit-exact; data that gets processed further)</li>
+<li>Lossy (rate–distortion knob; requires a <em>consumer model</em> to define irrelevance)</li>
+<li>Consumer = ear / eye / neural net / error-bounded analytics</li>
+</ul>
+</li>
+<li><strong>Redundancy profile</strong> (usually several at once)
+<ul>
+<li>Statistical skew → entropy coding</li>
+<li>Exact repeats → LZ / dedup</li>
+<li>Context correlation → Markov / PPM / context-adaptive coding</li>
+<li>Local smoothness → prediction+residual, decorrelating transforms</li>
+<li>Cross-channel / cross-item → channel transforms / dedup, delta sync</li>
+<li>Perceptual irrelevance → quantization + consumer model</li>
+<li>Numeric structure → bit/byte splitting, block-scaled formats</li>
+</ul>
+</li>
+<li><strong>Access pattern</strong>
+<ul>
+<li>Symmetry: encode-once-decode-many ⇒ spend on the encoder</li>
+<li>Latency: interactive (ms, no lookahead) vs buffered vs offline</li>
+<li>Random access ⇒ context resets (blocks/keyframes) ⇒ ratio ↔ seekability dial</li>
+<li>Error environment: reliable vs lossy channel ⇒ packet independence, concealment</li>
+</ul>
+</li>
+<li><strong>Compute envelope</strong>
+<ul>
+<li>Hardware decoder ⇒ standardized, frozen, decade-long formats (video)</li>
+<li>Throughput tiers: GB/s path ▸ 100s MB/s general ▸ MB/s archival ▸ KB/s record-chasing</li>
+<li>Memory window ↔ ratio</li>
+</ul>
+</li>
+<li><strong>Where knowledge lives</strong> (a single spectrum)
+<ul>
+<li>Adaptive from stream → header tables → shared dictionaries → trained neural weights</li>
+<li>More shared prior ⇒ fewer wire bits; small inputs <em>need</em> shared priors</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>Litmus test:</strong> compressed output should look like random noise; if it re-compresses, the entropy stage underperformed.</li>
+</ul>
+<hr>
+<h2 id="part-2--the-toolkit-atomic-algorithms-as-roles-in-a-pipeline">Part 2 — The Toolkit: Atomic Algorithms as Roles in a Pipeline</h2>
+<p>The classification that makes everything click is <strong>by role in the pipeline</strong>, not by family resemblance or historical lineage. Every atomic algorithm you listed plays exactly one of five roles: it <em>codes</em>, it <em>matches</em>, it <em>predicts</em>, it <em>rearranges</em>, or it <em>quantizes</em>. Below is the toolkit organized that way, with each tool&rsquo;s defining properties: what redundancy it eats, what it emits, and what it costs.</p>
+<h3 id="2a--entropy-coders-the-universal-back-end">2A — Entropy coders: the universal back end</h3>
+<p><strong>Role:</strong> convert symbols + probability estimates into bits, at close to <code>-log2 P</code> bits per symbol. <strong>Eats:</strong> statistical skew. <strong>Emits:</strong> noise-like bits. <strong>Always the last stage.</strong></p>
+<ul>
+<li><strong>Huffman coding.</strong> Builds a prefix code: each symbol gets a whole number of bits. Fast (table lookups, trivially hardware-friendly), but the whole-bit granularity is a real tax when probabilities are extreme.
+<ul>
+<li><em>Toy example:</em> <code>P(A)=0.9, P(B)=0.1</code>. Entropy is 0.47 bits/symbol, but Huffman can&rsquo;t code A in less than 1 bit — you pay more than <strong>2×</strong> the optimal rate. This single weakness explains a lot of the ecosystem below.</li>
+<li><em>Workaround you know as &ldquo;symbol grouping&rdquo;:</em> code pairs/triples as super-symbols (<code>AA</code>, <code>AB</code>, …). The whole-bit tax amortizes over the group; cost is exponentially bigger tables. Rarely worth it today — the modern answer is ANS.</li>
+</ul>
+</li>
+<li><strong>Arithmetic / range coding.</strong> Codes the entire message as one long fraction; each symbol effectively consumes a <em>fractional</em> number of bits, hitting the Shannon bound. Its killer feature isn&rsquo;t the ratio on static distributions — it&rsquo;s that the probability model can change <em>per symbol</em>, which unlocks the whole adaptive/context-modeling world (PPM, CABAC, PAQ, neural coding). Costs: multiplications per symbol (slower than Huffman), inherently serial, and it was patent-encumbered for the &rsquo;80s–&rsquo;90s — a non-technical fact that shaped real formats (it&rsquo;s why JPEG&rsquo;s arithmetic mode exists but nobody uses it, and why bzip2 uses Huffman).</li>
+<li><strong>ANS — Asymmetric Numeral Systems</strong> (tANS/FSE, rANS). The 2010s breakthrough: arithmetic-grade ratios at Huffman-grade speed, by encoding into a single integer state with table-driven (tANS) or multiply-based (rANS) transitions. Quirk: decoding runs in <em>reverse</em> order of encoding, so it fits block-based designs, not symbol-by-symbol adaptive ones. This is the default entropy stage of the modern era: zstd (FSE), JPEG XL, Apple LZFSE, CRAM.</li>
+<li><strong>Rice/Golomb codes.</strong> Parameter-k prefix codes that are optimal for geometric distributions (&ldquo;small values common, big values rare&rdquo;) — exactly the shape of prediction residuals. No tables, no state, cheap in hardware. This is why they show up wherever there&rsquo;s a predictor: FLAC, lossless image codecs, seismic/sensor formats.</li>
+<li><strong>Adaptivity — a property, not an algorithm.</strong> Any coder can be driven three ways:
+<ul>
+<li><em>Static:</em> fixed hard-coded tables (deflate&rsquo;s &ldquo;static Huffman&rdquo; blocks; fine for a known distribution).</li>
+<li><em>Semi-static:</em> two passes — measure, ship a table in the header, then code (deflate&rsquo;s &ldquo;dynamic&rdquo; blocks). Costs header bytes; hurts tiny inputs.</li>
+<li><em>Adaptive:</em> both sides update the model symbol-by-symbol from decoded history. No header, learns local statistics, best ratio — but serial, slower, and any corruption desynchronizes everything downstream. Adaptive + arithmetic is the ratio-maximalist combo (PPM, CABAC, PAQ).</li>
+</ul>
+</li>
+</ul>
+<h3 id="2b--match-models-turning-repeats-into-references">2B — Match models: turning repeats into references</h3>
+<p><strong>Role:</strong> find that &ldquo;this chunk of data already occurred&rdquo; and emit a short back-reference instead. <strong>Eats:</strong> exact repeats, near and far. <strong>Emits:</strong> a mixed stream of literals + (offset, length) copy commands — which, note, still has skewed statistics.</p>
+<ul>
+<li><strong>LZ77 (sliding window).</strong> Keep the last W bytes; replace repeats with <code>(offset back, length)</code> pairs.
+<ul>
+<li><em>Toy:</em> <code>to be or not to be</code> → <code>to be or not</code> + <code>(offset=13, len=5)</code>.</li>
+<li>Its two big dials map straight onto job axes: <strong>window size</strong> = how far back repeats can be found = memory cost (deflate: 32 KB, a 1990 decision that still constrains gzip; LZMA: up to GBs; zstd <code>--long</code>: 128 MB+ for tarball-scale repeats). <strong>Parse effort</strong> = how hard the encoder searches for the <em>best</em> set of matches (greedy → lazy → optimal parsing). Parse effort is exactly what &ldquo;compression levels&rdquo; sell: <code>zstd -1</code> vs <code>-19</code> and <code>gzip -1</code> vs <code>-9</code> change encode-side search only — decode speed stays nearly constant. That decode-invariance is <em>the</em> property that made the LZ family the backbone of encode-once-decode-many distribution.</li>
+</ul>
+</li>
+<li><strong>LZ78 / LZW.</strong> Instead of a sliding window, both sides grow an explicit phrase dictionary and emit dictionary indices. Historically important (Unix <code>compress</code>, GIF), patent-plagued (the famous GIF/Unisys mess), and now essentially retired: LZ77&rsquo;s implicit &ldquo;dictionary = the data itself&rdquo; proved more flexible.</li>
+<li><strong>Shared / external dictionaries.</strong> Pre-load the LZ window with a corpus sample so even the first bytes of a tiny input find matches. zstd&rsquo;s trained dictionaries and Brotli&rsquo;s built-in ~120 KB web-text dictionary. This is the standard cure for the small-message problem — thousands of 2 KB JSONs compress terribly alone, wonderfully against a shared dictionary.</li>
+<li><strong>The same idea at macro scale.</strong> Deduplication (find repeated <em>chunks</em> across a whole storage system via fingerprints) and rsync/delta-sync (find repeats where the &ldquo;window&rdquo; is a file on the <em>other machine</em>) are LZ matching with the window blown up to terabytes or across a network. Part 3.6 walks through these.</li>
+</ul>
+<h3 id="2c--predictors-guess-the-next-value-encode-the-miss">2C — Predictors: guess the next value, encode the miss</h3>
+<p><strong>Role:</strong> predict each value from what&rsquo;s already been decoded; encode only the <em>residual</em> (prediction error). A good predictor turns smooth, correlated data into residuals that are small, zero-centered, and geometrically distributed — i.e., exactly what Rice codes or an entropy coder with a peaky model want. <strong>Eats:</strong> local smoothness and context correlation.</p>
+<ul>
+<li><strong>Delta coding.</strong> The trivial predictor: &ldquo;next = previous.&rdquo;
+<ul>
+<li><em>Toy:</em> timestamps <code>1700000000, 1700000060, 1700000120, …</code> → deltas <code>60, 60, 60, …</code> → an entropy coder or RLE now eats it alive. Delta-of-delta (predict &ldquo;same spacing&rdquo;) flattens it further — the trick behind time-series databases like Gorilla/Prometheus.</li>
+<li>Signed residuals get <strong>zigzag-mapped</strong> (<code>0, -1, 1, -2, 2 → 0, 1, 2, 3, 4</code>) so &ldquo;small magnitude&rdquo; becomes &ldquo;small unsigned integer.&rdquo;</li>
+</ul>
+</li>
+<li><strong>Linear prediction.</strong> Predict the next sample as a weighted sum of the last few. This is <strong>LPC</strong> in FLAC (weights fitted per block to the audio) and the <strong>per-row filters</strong> in PNG (fixed predictor menu: left / up / average / Paeth, chosen per row). Same tool, one fitted, one chosen from a menu.</li>
+<li><strong>Context models (your &ldquo;Markov chain something something&rdquo;).</strong> An order-k Markov model keeps, per k-symbol context, a probability distribution over the next symbol, and feeds it to an arithmetic coder. <code>P(u | &quot;q&quot;) ≈ 0.98</code> → the <code>u</code> costs 0.03 bits.
+<ul>
+<li><strong>PPM (Prediction by Partial Matching)</strong> is the classic engineering realization: try the longest context seen before (say order 5); if the next symbol is new in that context, emit an <em>escape</em> and fall back to order 4, 3, … This was the compression-ratio king of the 1990s; its costs (RAM for context tables, serial adaptive arithmetic coding) kept it out of mainstream formats.</li>
+<li><strong>Context mixing (PAQ family) and neural models</strong> are the modern extreme: run many models, mix their predictions (logistic mixing, then RNNs, then transformers), arithmetic-code against the blend. This lineage owns the benchmark records (Hutter Prize / enwik9) at speeds of KB/s — a pure demonstration that modeling is the whole game.</li>
+</ul>
+</li>
+<li><strong>Motion-compensated prediction</strong> — the thing you asked the name of. In video, predict a block of the current frame as a <em>shifted</em> block from a previously decoded <strong>reference frame</strong>; transmit the shift (<strong>motion vector</strong>) plus the residual. Frames predicted this way are <strong>P-frames</strong> (from past references) and <strong>B-frames</strong> (from past <em>and</em> future references); self-contained frames are <strong>I-frames / keyframes</strong>. It&rsquo;s the predictor role again — just 2D, across time, with search. Full walkthrough in Part 3.4.</li>
+</ul>
+<h3 id="2d--transforms--reorderings-rearrange-so-other-tools-can-bite">2D — Transforms &amp; reorderings: rearrange so other tools can bite</h3>
+<p><strong>Role:</strong> save no bits themselves; reversibly restructure data so its redundancy lands in a form some <em>other</em> stage eats. The connective tissue of every pipeline.</p>
+<ul>
+<li><strong>RLE (run-length encoding).</strong> <code>AAAAABBB</code> → <code>(A,5)(B,3)</code>. Only useful when something upstream manufactures runs — RLE is almost always found <em>downstream of</em> MTF, quantization (zero runs), or a palette.</li>
+<li><strong>Move-to-front (MTF).</strong> Keep symbols in a list; emit each symbol&rsquo;s current position, then move it to the front. Converts <em>locality</em> (&ldquo;recently seen symbols recur&rdquo;) into <em>global skew</em> (&ldquo;small numbers dominate&rdquo;) — translating a kind of redundancy entropy coders can&rsquo;t see into the kind they can.</li>
+<li><strong>Burrows–Wheeler Transform (BWT).</strong> Sort all rotations of a block; output the last column (plus an index). Effect: characters that occur in <em>similar contexts</em> end up adjacent.
+<ul>
+<li><em>Toy:</em> <code>banana$</code> → BWT → <code>annb$aa</code> — the <code>n</code>s cluster (both preceded by <code>a</code>), the <code>a</code>s cluster.</li>
+<li>On text, the BWT output is long runs of locally-repeating symbols — which is precisely MTF&rsquo;s food, whose output is precisely an entropy coder&rsquo;s food. Hence the canonical stack <strong>BWT → MTF → RLE → entropy coder</strong> (= bzip2). BWT is the elegant trick that gets context-model-class ratios out of cheap non-adaptive back-end stages; costs are blockwise operation (no streaming, seek resets) and sort-heavy encoding.</li>
+</ul>
+</li>
+<li><strong>Decorrelating transforms (DCT, MDCT, wavelets).</strong> Rotate a block of correlated samples into frequency-ish coefficients so the energy concentrates in a few of them.
+<ul>
+<li><em>Toy:</em> 8 pixels of a smooth ramp <code>[10,12,14,16,18,20,22,24]</code> → DCT → one big &ldquo;average&rdquo; (DC) coefficient, one modest &ldquo;tilt&rdquo; coefficient, six ≈ 0. Sixteen meaningful numbers became ~2.</li>
+<li>Crucially, this is the <em>setup move for quantization</em>: after the transform, &ldquo;throw away small high-frequency coefficients&rdquo; maps cleanly onto &ldquo;discard what the eye/ear misses.&rdquo; Nearly every lossy media codec is transform → quantize at its core (JPEG: DCT; MP3/AAC/Opus-CELT: MDCT; JPEG 2000: wavelets).</li>
+</ul>
+</li>
+<li><strong>Channel &amp; layout transforms.</strong> RGB → YCbCr (separate brightness from color so each can be treated per the eye&rsquo;s acuity); stereo → mid/side; array-of-structs → struct-of-arrays; <strong>byte shuffle</strong> on float arrays (group all byte-0s, all byte-1s… — exponent bytes are near-constant and compress hugely, mantissa bytes are noise and stop polluting the rest); column stores (Parquet) as the same idea at table scale. One principle: <em>group bytes that share statistics, separate ones that don&rsquo;t</em>, so downstream LZ/entropy stages see clean distributions instead of interleaved mush.</li>
+<li><strong>Blocking / framing.</strong> Splitting into fixed-size blocks isn&rsquo;t a compression trick at all — it&rsquo;s plumbing that buys <strong>parallelism, random access, bounded memory, and corruption containment</strong>, and it always <em>costs</em> ratio (every block boundary resets context and matches). The block size is a dial: bigger blocks → better ratio, worse seek/parallel granularity. You&rsquo;ll see this dial on everything: bzip2&rsquo;s 100–900 KB blocks, video GOP length, FLAC frames, Parquet row groups, dedup chunk sizes.</li>
+</ul>
+<h3 id="2e--quantizers-the-only-lossy-stage">2E — Quantizers: the only lossy stage</h3>
+<p><strong>Role:</strong> map many possible values to fewer representable ones. The <em>only</em> stage that discards information; everything after it is lossless packing. The design question is never &ldquo;how to quantize&rdquo; (rounding is easy) but &ldquo;<strong>what does the consumer not care about?</strong>&rdquo; — a quantizer is only as good as its consumer model.</p>
+<ul>
+<li><strong>Scalar quantization.</strong> <code>round(x / step)</code>; <code>step</code> is the rate–distortion knob. In media codecs the step varies per coefficient: JPEG&rsquo;s quantization tables and MP3&rsquo;s psychoacoustic bit allocation are <em>consumer models compiled into step sizes</em> — coarse where the eye/ear is insensitive (high frequencies, masked tones), fine where it isn&rsquo;t.</li>
+<li><strong>Vector quantization (VQ).</strong> Quantize whole vectors at once: keep a <strong>codebook</strong> of representative vectors, transmit nearest-codeword indices. A GIF&rsquo;s 256-color palette is VQ on RGB triples. VQ&rsquo;s modern renaissance: <strong>residual VQ</strong> in neural codecs (SoundStream/Encodec/Lyra), where cascaded codebooks quantize a learned latent into the discrete &ldquo;audio tokens&rdquo; that also power audio LLMs.</li>
+<li><strong>Block-scaled number formats (NVFP4 and friends).</strong> Your tensor example, and a perfect specimen: a block of 16–32 values shares one scale factor (stored in higher precision), each value keeps ~4 bits of significand. It&rsquo;s quantization tailored to two facts: (1) the redundancy — neighboring tensor values share magnitude, so the exponent is nearly common across a block; (2) the consumer — a neural net&rsquo;s accuracy tolerates coarse mantissas if the dynamic range survives. Same rate–distortion logic as JPEG, different consumer model (a loss curve instead of an eyeball).</li>
+</ul>
+<h3 id="2f--composition-rules-why-real-stacks-look-the-way-they-do">2F — Composition rules: why real stacks look the way they do</h3>
+<p>This is the payoff of the role-based classification. Six rules generate essentially every real-world pipeline:</p>
+<ol>
+<li><strong>Each stage eats one redundancy type and must emit output shaped for the next stage&rsquo;s appetite.</strong> Pipelines are chains of matched interfaces, not grab-bags.</li>
+<li><strong>The entropy coder is always last</strong> — its output is incompressible by construction, so nothing useful can follow it.</li>
+<li><strong>Lossy stages come first</strong> (transform → quantize), because you decide what information survives <em>before</em> you pack it. Every lossy codec is literally &ldquo;irrelevance remover in front of a lossless compressor.&rdquo;</li>
+<li><strong>Never stack two tools that eat the same redundancy.</strong> The second one starves (gzip on a JPEG: ~0%). Corollary: compress <em>before</em> encrypting — ciphertext has no exploitable structure at all.</li>
+<li><strong>Predictors and matchers are front-ends that manufacture skew; coders are back-ends that cash it in.</strong> A front-end without a back-end leaves money on the table; a back-end without a front-end only sees byte frequencies.</li>
+<li><strong>Every structural convenience (blocks, keyframes, packet independence, context resets) is bought with ratio.</strong> Where you set those dials is dictated by Axis 3 of the job, not by the data.</li>
+</ol>
+<p>Two canonical worked examples of the rules in action:</p>
+<ul>
+<li><strong>Why LZ77 + Huffman (deflate) is the right pairing.</strong> LZ77 eats the <em>repeat</em> redundancy but its output — literals, match lengths, offsets — is itself heavily skewed (short matches and common letters dominate; offsets cluster) — statistical redundancy LZ cannot touch. Huffman eats exactly that. Conversely, Huffman alone is blind to repeats: it sees <code>abcabcabc</code> as flat byte frequencies. Each covers the other&rsquo;s blind spot (rules 1 &amp; 5). Deflate even codes the three token types with separate Huffman trees — separating streams with different statistics (the 2D layout principle, in miniature). zstd is the same architecture with each part upgraded: bigger window, smarter parsing, FSE/tANS instead of Huffman for the tight distributions.</li>
+<li><strong>Why BWT needs MTF and RLE.</strong> BWT&rsquo;s output has <em>locality</em>, not global skew — an entropy coder sees near-flat symbol frequencies over the whole block and shrugs. MTF translates locality → small-number skew; RLE crushes the zero-runs MTF produces; <em>now</em> the entropy coder feasts (rule 1, three links deep). bzip2 is exactly this chain.</li>
+</ul>
+<h3 id="-cheatsheet-2--the-toolkit">🗺 Cheatsheet 2 — The Toolkit</h3>
+<ul>
+<li><strong>Classify every algorithm by pipeline role:</strong>
+<ul>
+<li><strong>Code</strong> (skew → bits, always last)
+<ul>
+<li>Huffman — fast, whole-bit tax (bad at P&gt;0.5); fix via symbol grouping, or better, ANS</li>
+<li>Arithmetic/range — optimal, per-symbol model swaps ⇒ enables all adaptive/context coding; slower, serial</li>
+<li>ANS (tANS/FSE, rANS) — arithmetic ratio at Huffman speed; block-oriented; the modern default</li>
+<li>Rice/Golomb — free-standing optimal for geometric residuals; the predictor&rsquo;s companion</li>
+<li>Drive any of them static / semi-static (header table) / adaptive (best ratio, serial, fragile)</li>
+</ul>
+</li>
+<li><strong>Match</strong> (repeats → references)
+<ul>
+<li>LZ77 — dials: window (memory ↔ reach) &amp; parse effort (= &ldquo;compression levels&rdquo;, encode-only!)</li>
+<li>LZ78/LZW — explicit dictionary; historical (compress, GIF)</li>
+<li>Shared dictionaries — pre-warmed window; the small-message cure</li>
+<li>Dedup / rsync / delta = LZ with a terabyte- or network-sized window</li>
+</ul>
+</li>
+<li><strong>Predict</strong> (smoothness → small residuals; pair with Rice/zigzag)
+<ul>
+<li>Delta, delta-of-delta (time series)</li>
+<li>Linear prediction: LPC (FLAC), PNG row filters</li>
+<li>Context models: order-k Markov → PPM (escape &amp; fallback) → context mixing / neural (ratio records, KB/s)</li>
+<li>Motion compensation: reference frames + motion vectors + residual; I/P/B frames</li>
+</ul>
+</li>
+<li><strong>Rearrange</strong> (translate redundancy into an edible form; saves nothing by itself)
+<ul>
+<li>RLE (needs upstream run-makers) · MTF (locality → skew) · BWT (context → locality; blockwise)</li>
+<li>DCT/MDCT/wavelets (smoothness → few big coefficients; the setup for quantization)</li>
+<li>Channel/layout: YCbCr, mid/side, byte-shuffle floats, column stores — group like statistics</li>
+<li>Blocking/framing: buys parallelism + seek + robustness, always costs ratio</li>
+</ul>
+</li>
+<li><strong>Quantize</strong> (the only lossy stage; quality = quality of the consumer model)
+<ul>
+<li>Scalar + perceptual step sizes (JPEG tables, psychoacoustics)</li>
+<li>Vector quantization: palettes → residual VQ → neural-codec tokens</li>
+<li>Block-scaled formats (NVFP4/MX): shared per-block scale + few-bit values; consumer = model accuracy</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>Composition rules:</strong>
+<ul>
+<li>Chain stages by matching output shape → next stage&rsquo;s appetite</li>
+<li>Entropy coder last · lossy first · never two eaters of the same redundancy (⇒ compress before encrypt)</li>
+<li>Front-ends manufacture skew, back-ends cash it in — you generally want both</li>
+<li>Structural conveniences (blocks/keyframes/packets) are paid for in ratio; set them per the <em>job</em>, not the data</li>
+</ul>
+</li>
+<li><strong>Canonical stacks to memorize:</strong>
+<ul>
+<li>deflate/zstd: <code>LZ77 → entropy(tokens)</code></li>
+<li>bzip2: <code>BWT → MTF → RLE → entropy</code></li>
+<li>FLAC/PNG: <code>predict → residual → entropy</code></li>
+<li>JPEG/MP3/video: <code>transform → perceptual quantize → [predict/RLE] → entropy</code></li>
+<li>PPM/PAQ/LLM: <code>context model → adaptive arithmetic</code></li>
+<li>Neural codec: <code>learned transform → VQ → (entropy)</code></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="part-3--the-lay-of-the-land-domain-walkthroughs">Part 3 — The Lay of the Land: Domain Walkthroughs</h2>
+<p>Now the framework earns its keep. For each domain: the job stated on the five axes, then the timeline of landmark formats, each decomposed into toolkit roles — so you can <em>see</em> the job constraints selecting the tools.</p>
+<h3 id="31-general-purpose-lossless-files-packages-network-payloads">3.1 General-purpose lossless (files, packages, network payloads)</h3>
+<p><strong>The job:</strong> unknown byte streams (Axis 2: expect repeats + skew + some context correlation, but guarantee nothing) · lossless · usually one-shot sequential · the defining tension is <strong>Axis 4: which throughput tier?</strong> — which is why this domain&rsquo;s signature UX is a <em>speed dial</em> (compression levels) rather than a quality dial.</p>
+<p><strong>Timeline, decomposed:</strong></p>
+<ul>
+<li><strong><code>compress</code> (1984) — LZW alone.</strong> Match stage only, no entropy back-end. Fast for its day, mediocre ratio, killed by patents.</li>
+<li><strong>deflate / zip / gzip / zlib (1990–95) — LZ77(32 KB window) → semi-static Huffman.</strong> The complete two-stage architecture (match + code) in one cheap package. So well-matched to its era&rsquo;s constraints that it became the substrate of everything: ZIP, gzip, PNG, HTTP, PDF, git. Its frozen 32 KB window is also the textbook lesson in how Axis-4 decisions calcify.</li>
+<li><strong>bzip2 (1996) — RLE → BWT(≤900 KB blocks) → MTF → RLE → Huffman.</strong> The rearrange-heavy path to near-context-model ratios without patented arithmetic coding. Better ratio than gzip, slower both ways, blockwise (parallelizable — see <code>pbzip2</code>). Now mostly displaced by xz/zstd.</li>
+<li><strong>LZMA / 7-Zip / xz (~2000s) — LZ77 with huge window (up to GBs) + optimal parsing → adaptive range coder with context modeling of the token stream.</strong> Turn every ratio dial to max: reach (window), parse effort, and an adaptive-arithmetic back-end that models literals in context. The archival corner: encode slow, decode moderate, ratios that held the practical crown for a decade. Still the default for software distribution (<code>.tar.xz</code>).</li>
+<li><strong>Snappy / LZ4 (~2011) — LZ77 only, byte-aligned, no entropy stage at all.</strong> The opposite corner: rule 5 deliberately violated (no back-end) to buy multi-GB/s decode. Born inside Google/databases for the storage path, where compression must be cheaper than the disk/network I/O it saves. Ratio ~2× vs gzip&rsquo;s ~3× — and nobody in this tier cares.</li>
+<li><strong>zstd (2016) — LZ77 (levels 1–22, <code>--long</code> window to 128 MB+) → FSE(tANS) for match tokens + fast Huffman for literals; trained shared dictionaries; frame-parallel.</strong> The modern synthesis: one codec spanning LZ4-ish speed to xz-ish ratio on a single dial, with the small-message problem solved via <code>--train</code> dictionaries. Rapidly became the default in filesystems, databases, package managers, HTTP (<code>Content-Encoding: zstd</code>).</li>
+<li><strong>Brotli (2015) — LZ77 + context modeling + built-in ~120 KB web-text dictionary → Huffman.</strong> zstd&rsquo;s web-specialized sibling: the shared dictionary and context models are pre-tuned for HTML/CSS/JS, buying ratio exactly where the web&rsquo;s Axis-5 profile allows.</li>
+<li><strong>The ratio-unbounded fringe — PPM, PAQ, cmix, NNCP, LLM-based.</strong> Pure context modeling + adaptive arithmetic coding, compute be damned (KB/s). Owns the Hutter Prize / enwik9 benchmarks; practically used almost nowhere; conceptually important as the existence proof that better <em>prediction</em> is the only remaining frontier.</li>
+</ul>
+<p><strong>The map in one picture:</strong> every entry above is <code>match front-end (or BWT rearrange, or context model) → entropy back-end</code>, and the domain&rsquo;s whole history is a walk along the speed↔ratio frontier as CPU, RAM, and patent constraints shifted.</p>
+<h3 id="32-images">3.2 Images</h3>
+<p><strong>The job splits on Axis 1</strong> — lossless graphics (screenshots, diagrams, line art: sharp edges, flat regions, exact repeats) vs lossy photographs (smooth gradients + perceptual irrelevance: the eye&rsquo;s low chroma acuity and insensitivity to fine high-frequency texture). Both: encode-once-decode-many, random access per-image, decoder must be cheap and universal.</p>
+<ul>
+<li><strong>GIF (1987) — palette (≤256 colors = crude VQ) → LZW on the index stream.</strong> A quantizer and a matcher, no entropy stage. Every limitation follows: 256 colors, mediocre ratio, patent drama.</li>
+<li><strong>PNG (1996) — per-row predictors (None/Sub/Up/Average/Paeth) → deflate.</strong> Textbook predictor + generic back-end. The filters exist because rule 4 says deflate alone starves on photographic data: natural images have <em>smoothness</em>, not exact repeats, so a predictor first converts smoothness into near-zero residuals that deflate&rsquo;s Huffman stage can eat. On flat-color graphics the residuals become long zero runs and PNG shines; on photos it&rsquo;s honest but big — the <em>lossless</em> contract simply can&rsquo;t touch perceptual irrelevance.</li>
+<li><strong>JPEG (1992) — the canonical lossy stack, worth knowing cold:</strong>
+<ol>
+<li>RGB → <strong>YCbCr</strong> + <strong>chroma subsampling</strong> (4:2:0 keeps ¼ of the color samples) — channel transform + the first quantization, cashing in the eye&rsquo;s low color acuity;</li>
+<li>split into <strong>8×8 blocks</strong> (framing: bounded memory on 1990 hardware, some corruption containment);</li>
+<li><strong>DCT</strong> per block — smoothness → a few big low-frequency coefficients;</li>
+<li><strong>quantize</strong> with a perceptual table — coarse steps for high frequencies (the consumer model, and the sole quality knob);</li>
+<li><strong>zigzag scan + RLE</strong> of the resulting zero runs (rearrange to manufacture runs);</li>
+<li><strong>Huffman</strong> (arithmetic mode existed, patents killed it — an Axis-4-adjacent constraint shaping a format). Every pipeline role appears once, in the canonical order of rules 2–3. Read this list against Cheatsheet 2 and the whole framework snaps into focus.</li>
+</ol>
+</li>
+<li><strong>JPEG 2000 (2000) — wavelets + arithmetic coding (EBCOT).</strong> Technically superior (progressive decode, no 8×8 blocking artifacts); lost in the market to JPEG&rsquo;s installed base + patent fears. A lesson that Axis 4&rsquo;s &ldquo;decoder universality&rdquo; can outweigh ratio.</li>
+<li><strong>WebP / HEIC / AVIF (2010s) — a still image = one intra frame of a video codec</strong> (VP8 / HEVC / AV1 respectively). Video&rsquo;s intra toolbox (rich spatial prediction modes, variable block sizes, adaptive arithmetic coding) had lapped JPEG, so images just borrowed it. AVIF ≈ 50% of JPEG&rsquo;s bits at equal quality.</li>
+<li><strong>JPEG XL (2022) — VarDCT + strong spatial predictors + ANS</strong>, plus a lossless mode and bit-exact JPEG recompression (~20% smaller). The state of the art on pure merit; adoption is, as ever, an Axis-4 story about decoders everywhere.</li>
+</ul>
+<h3 id="33-audio">3.3 Audio</h3>
+<p><strong>Three genuinely different jobs</strong> share this medium; keep them separate and every codec explains itself.</p>
+<ul>
+<li><strong>Job A: lossless archival — FLAC (2001).</strong> Blocks → stereo decorrelation (mid/side) → <strong>linear prediction (LPC)</strong> fitted per block → <strong>Rice-coded residuals</strong>. Pure predict-and-code; ~50–60% of WAV. Note the toolkit pairing doing exactly what Cheatsheet 2 promises: fitted predictor → geometric residuals → Rice.</li>
+<li><strong>Job B: music distribution — MP3 (1993), AAC (1997).</strong> Encode once, decode on everything, latency irrelevant; consumer = the ear, so the design center is the <strong>psychoacoustic model</strong> (frequency masking: a loud tone hides quiet neighbors; you can&rsquo;t hear what&rsquo;s masked, so spend ~0 bits there).
+<ul>
+<li>Stack: <strong>MDCT</strong> filterbank (long ~25 ms windows for frequency resolution — affordable because latency is free) → <strong>quantization steered per-band by the psychoacoustic model</strong> (the consumer model <em>is</em> the codec) → <strong>Huffman</strong>. AAC is the same architecture with the compromises removed. Transparent quality around 128–192 kbps vs 1411 kbps for CD PCM — a ~10× win, nearly all of it from cashing in <em>irrelevance</em>, which is exactly the lossy premium promised in Part 0.</li>
+</ul>
+</li>
+<li><strong>Job C: real-time conversation — Opus (2012).</strong> Rebuild the Axis-3 column from the Part 1 table: ~20 ms frames, minimal lookahead, UDP loss, symmetric battery-powered encode. Opus&rsquo;s answers: a <strong>speech model</strong> (SILK: LPC-based, exploiting &ldquo;this is one human voice&rdquo;) + a low-latency <strong>MDCT mode</strong> (CELT) with seamless switching; per-packet independence; <strong>packet-loss concealment</strong> and <strong>in-band FEC</strong> (redundant coarse copies of previous frames); bitrate re-negotiable every 20 ms. None of these features improves ratio — every one of them buys survival on Axis 3, which is the whole point.</li>
+<li><strong>Job C, extreme edition: neural codecs — Lyra (2021), SoundStream, Encodec.</strong> Push Axis 5 to the limit: both endpoints ship megabytes of trained weights, so the wire carries ~3 kbps (vs Opus&rsquo;s ~24+ for comparable speech). Stack: <strong>learned encoder</strong> (a transform, same role as MDCT, just learned) → <strong>residual VQ</strong> into discrete tokens (the quantizer) → <strong>learned decoder that <em>generates</em> plausible audio</strong> from the tokens. It&rsquo;s the same three lossy roles as JPEG — transform, quantize, pack — with two stages swapped for neural networks and the &ldquo;irrelevance model&rdquo; learned instead of hand-built. Costs, per the framework: compute per sample, and a new failure mode — reconstruction is <em>plausible</em> rather than <em>faithful</em> (the decoder can hallucinate), which redefines the fidelity contract itself. Bonus: those RVQ tokens are exactly what audio-generating LLMs operate on — compression tokens became a <em>representation</em>.</li>
+</ul>
+<h3 id="34-video">3.4 Video</h3>
+<p><strong>The boss-level job, so state it fully:</strong> raw 1080p30 truecolor is 1920 × 1080 × 3 B × 30 fps ≈ 187 MB/s ≈ <strong>1.5 Gbps</strong>; a good stream ships at ~5 Mbps, so the job is <strong>~300:1</strong> — achievable only because video is drowning in <em>every</em> redundancy type at once: temporal (frames nearly repeat), spatial (smoothness), statistical, and perceptual. Plus brutal Axis 3/4 constraints: seeking, broadcast, packet loss (calls), and decode <strong>in silicon on billions of devices</strong> — which is why video codecs are decade-scale frozen standards with committee names.</p>
+<p><strong>The hybrid codec architecture.</strong> Every mainstream codec since ~1990 — MPEG-2, H.264/AVC, HEVC, VP9, AV1, VVC — is the <em>same machine</em> with better parts. One pass through it, mapped to toolkit roles:</p>
+<ol>
+<li><strong>Partition</strong> the frame into blocks (16×16 macroblocks → adaptive trees up to 128×128). <em>Framing.</em></li>
+<li><strong>Predict each block</strong>, choosing per-block between:
+<ul>
+<li><strong>Intra prediction</strong> — extrapolate from already-decoded neighboring pixels in the <em>same</em> frame (<em>spatial predictor</em>; a still image codec is this stage alone);</li>
+<li><strong>Inter prediction / motion compensation</strong> — copy a block from a <strong>reference frame</strong>, displaced by a transmitted <strong>motion vector</strong> with sub-pixel precision (<em>temporal predictor</em> — the &ldquo;reference frames + deltas&rdquo; machinery you asked about). Frame types: <strong>I</strong> (intra-only: seek points, error recovery, expensive), <strong>P</strong> (predicts from past frames), <strong>B</strong> (predicts from past <em>and</em> future — best ratio, needs buffering ⇒ banned in low-latency configs). The I-to-I spacing (<strong>GOP length / keyframe interval</strong>) is the Part-2F ratio↔seekability dial, set per job: ~2 s for streaming, infrequent-plus-gradual-refresh for video calls.</li>
+</ul>
+</li>
+<li><strong>Transform the residual</strong> (integer DCT-like, plus wavelet-ish options in newer codecs) — <em>decorrelate what prediction missed</em>.</li>
+<li><strong>Quantize</strong> the coefficients — the only lossy step, and the knob <strong>rate control</strong> turns per-block to hit a target bitrate (CBR for broadcast, VBR/CRF for files) while a perceptual model decides <em>where</em> quality is spent.</li>
+<li><strong>Entropy-code everything</strong> — modes, motion vectors, coefficients — with <strong>CABAC</strong>-style context-adaptive binary arithmetic coding: dozens of contexts (&ldquo;is the neighbor block skipped?&rdquo;) sharpen every probability. Adaptive-arithmetic ratio was worth hardening into silicon here because Axis 3 says decode-many-forever.</li>
+<li><strong>In-loop filters</strong> (deblocking etc.) clean the reconstruction <em>inside</em> the prediction loop, so future frames predict from the filtered result — a feedback detail unique to video&rsquo;s predictor-of-predictions structure.</li>
+</ol>
+<p><strong>The generational story is then one sentence:</strong> H.264 (2003) → HEVC (2013) → AV1 (2018) → VVC (2020) each buy roughly <strong>30–50% bitrate at equal quality for ~5–10× encoder complexity</strong>, by adding <em>more and smarter prediction</em> (more intra modes, flexible partitions, better motion) and <em>sharper entropy coding</em> — never by changing the skeleton. Moore&rsquo;s law is spent almost entirely on the encoder, because Axis 3 says encode-once-decode-many and Axis 4 keeps decoders cheap.</p>
+<p><strong>Same medium, different job, different config:</strong> a video <em>call</em> takes the same codec and flips the Axis-3 switches — no B-frames, tiny or intra-refresh GOPs, slice-per-packet, reference-frame selection driven by receiver ACKs (predict only from frames the other side confirmed). Compare with Opus-vs-MP3: identical pattern.</p>
+<h3 id="35-tensors-ml-data-and-scientific-arrays">3.5 Tensors, ML data, and scientific arrays</h3>
+<p><strong>The job:</strong> giant float arrays; the consumer is a <em>training run or inference pass</em>, so &ldquo;distortion&rdquo; = accuracy loss on a task — a consumer model you can actually measure, unlike an eyeball.</p>
+<ul>
+<li><strong>Lossy, in the compute path: block-scaled quantization (NVFP4, MXFP4, block floating point).</strong> Split tensors into blocks of 16–32 elements; each block shares one higher-precision <strong>scale</strong> (sometimes with a second per-tensor scale layered on top); each element keeps a ~4-bit value. Framework reading: the <em>redundancy</em> is that neighboring weights/activations share magnitude (so the exponent is nearly block-constant — pull it out once); the <em>irrelevance</em> is that networks tolerate coarse mantissas if dynamic range and a few outliers survive (hence the scale hierarchy and outlier tricks). It&rsquo;s JPEG&rsquo;s rate–distortion logic with a loss curve as the eye. Calibration (choosing scales against real activation statistics) plays the role of the psychoacoustic model.</li>
+<li><strong>Lossless, at rest: checkpoints and datasets.</strong> Raw float32 barely compresses — mantissas are noise (Axis-2 numeric structure). The standard move is rearrange-then-general-purpose: <strong>byte-shuffle</strong> (group sign/exponent bytes, which are highly skewed, away from mantissa bytes) <strong>→ zstd</strong>. Same principle in HDF5/Blosc for scientific arrays, and error-bounded lossy variants (ZFP, SZ) for simulation output where &ldquo;consumer&rdquo; = analyses with known tolerance.</li>
+<li><strong>VQ as representation.</strong> The neural-codec pattern from 3.3 generalizes: learned transform + vector quantization turns any modality into discrete tokens — compression machinery quietly becoming the interface format of modern ML.</li>
+</ul>
+<h3 id="36-storage-systems-deduplication-and-sync">3.6 Storage systems, deduplication, and sync</h3>
+<p>The least codec-like domain, and the best test of the framework — because it&rsquo;s <em>pure Axis-2 cross-item redundancy + Axis-5 shared knowledge</em>, with hardly any new algorithms.</p>
+<ul>
+<li><strong>Deduplication (backup systems, VM storage: Data Domain, borg, restic).</strong> The redundancy is whole repeated <em>chunks</em> across terabytes and across days of snapshots — far beyond any LZ window. So rebuild LZ at macro scale: split streams into chunks, fingerprint each (SHA-family hash), store each unique chunk once, and represent files as chunk-reference lists. The one sharp idea is <strong>content-defined chunking</strong>: fixed-size chunks break catastrophically when one byte is inserted (every subsequent boundary shifts — nothing matches anymore), so instead cut chunks where a <strong>rolling hash</strong> of the local bytes hits a pattern; boundaries then stick to <em>content</em>, and an insertion perturbs only its own chunk. That&rsquo;s the whole trick. Per-chunk zstd runs downstream (different redundancy, per rule 4&rsquo;s converse: stack eaters of <em>different</em> redundancy).</li>
+<li><strong>rsync — delta sync across a network.</strong> Job: update a remote copy of a file cheaply. Framework reading: it&rsquo;s LZ77 where the match window is <em>the old version of the file, sitting on the other machine</em> (Axis 5: the receiver&rsquo;s copy is the shared dictionary). Mechanics: receiver sends per-block weak-rolling + strong checksums of its old file; sender slides the rolling checksum over the new file, finds matching blocks, and transmits only literals + block references. The rolling hash plays the same role as in dedup: finding matches at arbitrary alignment, cheaply.</li>
+<li><strong>git packfiles.</strong> Loose objects are just zlib. Packs add a match layer above deflate: heuristically sort similar objects (same path, similar size — versions of one file land together), <strong>delta-encode each object against a similar one</strong> (chains of deltas), then deflate the result. Repeats-across-versions eaten by delta; leftover skew eaten by zlib. Two eaters, two redundancies, correct order.</li>
+<li><strong>Columnar analytics formats (Parquet, ORC).</strong> A table stored row-wise interleaves unlike statistics — the 2D layout sin. Store it <strong>column-wise</strong> and each column becomes homogeneous, low-entropy data begging for the light toolkit: <strong>dictionary encoding</strong> (few distinct values → small indices), <strong>RLE + bit-packing</strong> (sorted/repetitive columns), <strong>delta</strong> (timestamps, IDs) — then generic zstd/snappy per page as the back-end. This is the &ldquo;group like statistics&rdquo; principle from 2D promoted from bytes to database schema, and it&rsquo;s why the same table is often 5–10× smaller in Parquet than in gzipped CSV <em>and</em> faster to query (decode only the columns you touch — Axis 3 random access, by construction).</li>
+</ul>
+<h3 id="-cheatsheet-3--domains-at-a-glance">🗺 Cheatsheet 3 — Domains at a Glance</h3>
+<ul>
+<li><strong>General lossless:</strong> unknown bytes ⇒ match + entropy, UX = speed dial
+<ul>
+<li>deflate <code>LZ77/32K → Huffman</code> (the frozen substrate) · bzip2 <code>BWT→MTF→RLE→Huff</code> · xz <code>bigLZ→adaptive range</code> (archival corner) · LZ4 <code>LZ only</code> (GB/s corner) · <strong>zstd</strong> <code>LZ→FSE/Huff + dictionaries</code> (the modern span) · Brotli (web-tuned dict) · PAQ/LLM (ratio-unbounded fringe)</li>
+</ul>
+</li>
+<li><strong>Images:</strong> split on fidelity contract
+<ul>
+<li>Lossless graphics: PNG <code>row predictors → deflate</code> (GIF: palette-VQ → LZW, retired)</li>
+<li>Lossy photos: JPEG <code>YCbCr+subsample → 8×8 DCT → perceptual quant → zigzag/RLE → Huffman</code> — the canonical lossy stack</li>
+<li>Moderns = video intra frames (WebP/HEIC/AVIF) or JPEG XL (VarDCT+ANS); adoption gated by decoder ubiquity</li>
+</ul>
+</li>
+<li><strong>Audio:</strong> three jobs, three designs
+<ul>
+<li>Archive: FLAC <code>LPC → Rice</code> (predict-and-code, ~2:1)</li>
+<li>Distribute: MP3/AAC <code>MDCT → psychoacoustic quant → Huffman</code> (~10:1; latency free ⇒ long windows)</li>
+<li>Converse: Opus <code>SILK speech-LPC + CELT short-MDCT</code> + PLC/FEC (~20 ms frames; every feature buys Axis-3 survival)</li>
+<li>Converse, extreme: Lyra/Encodec <code>learned encoder → RVQ tokens → generative decoder</code> (~3 kbps; knowledge lives in weights; fidelity → plausibility)</li>
+</ul>
+</li>
+<li><strong>Video:</strong> ~300:1 via every redundancy at once; one skeleton since 1990
+<ul>
+<li><code>partition → predict (intra | motion-comp vs reference frames; I/P/B, GOP dial) → residual DCT → quantize (rate control) → CABAC → in-loop filters</code></li>
+<li>Generations (H.264→HEVC→AV1→VVC): −30–50% bits for ~10× <em>encoder</em> cost — decode stays silicon-cheap</li>
+<li>Calls = same codec, low-latency switches: no B-frames, intra refresh, ACK-driven references</li>
+</ul>
+</li>
+<li><strong>Tensors:</strong> consumer = task accuracy
+<ul>
+<li>In-path lossy: block-scaled formats (NVFP4/MX): shared per-block scale + 4-bit values; calibration = the &ldquo;psychoacoustic model&rdquo;</li>
+<li>At-rest lossless: byte-shuffle → zstd (exponents compress, mantissas are noise); error-bounded ZFP/SZ for sims</li>
+</ul>
+</li>
+<li><strong>Storage/sync:</strong> cross-item redundancy + shared knowledge, few new algorithms
+<ul>
+<li>Dedup: content-defined chunking (rolling hash) → fingerprints → store once; per-chunk zstd downstream</li>
+<li>rsync: LZ whose window is the receiver&rsquo;s old copy; rolling checksum finds unaligned matches</li>
+<li>git packs: delta vs similar objects → zlib</li>
+<li>Parquet: columnar layout → dictionary/RLE/delta per column → zstd (grouping-like-statistics at schema scale)</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="closing--how-to-attack-a-new-compression-problem">Closing — How to Attack a New Compression Problem</h2>
+<p>The framework, compiled into a checklist:</p>
+<ol>
+<li><strong>State the job on the five axes</strong> (fidelity contract &amp; consumer · redundancy profile · access pattern · compute envelope · where knowledge can live). Most of the design is already decided here.</li>
+<li><strong>Lossy allowed?</strong> If yes, find the consumer model first — it defines irrelevance, which is where the big ratios are. Pick transform + quantizer to match (perceptual tables, block scales, VQ&hellip;). If no, skip to 3.</li>
+<li><strong>Inventory the redundancy</strong> and assign one eater per type, in pipeline order: rearrange/split unlike statistics apart → match repeats (size the window to the repeat distance — file? corpus? other machine?) → predict smoothness (encode residuals) → entropy-code the leftovers.</li>
+<li><strong>Set the structural dials from Axis 3, not from the data:</strong> block/keyframe/reset intervals per your seek, parallelism, and loss requirements — and accept the ratio you pay for them.</li>
+<li><strong>Spend compute where the symmetry says:</strong> encode-once-decode-many ⇒ buy ratio with encoder search and keep the decoder table-driven; symmetric/real-time ⇒ greedy single-pass everything.</li>
+<li><strong>Small inputs?</strong> You need shared prior knowledge — train a dictionary or ship a model.</li>
+<li><strong>Verify with the noise test:</strong> if the output re-compresses, a redundancy survived — find which type and which stage let it through.</li>
+<li><strong>Before building anything: check whether zstd (plus a trained dictionary, plus maybe a byte-shuffle or delta pre-pass) already solves it.</strong> It usually does — and now you know exactly why.</li>
+</ol>
+</div>
+
+  
+</article>
+
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'COPY';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'COPIED'; setTimeout(function () { b.textContent = 'COPY'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'SPECIAL MOVE LAB' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

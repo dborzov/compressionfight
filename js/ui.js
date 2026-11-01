@@ -306,6 +306,11 @@ CYC.UI = (function () {
     return box;
   }
 
+  function mapLink(slug, label) {
+    if (!slug) return null;
+    return el('a', { class: 'map-link', href: `map/zoo/${slug}/`, text: label });
+  }
+
   function detailCard(f, opts) {
     opts = opts || {};
     const isEmpty = f.id === 'none';
@@ -336,6 +341,7 @@ CYC.UI = (function () {
       f.weakness ? [el('h4', { text: 'WEAKNESS' }), el('p', { class: 'weakness', text: f.weakness })] : null,
       el('h4', { text: 'STATS' }), statBars(f.stats, color, false),
       f.domains && f.domains.length ? [el('h4', { text: 'DOMAINS' }), el('div', { class: 'chips' }, f.domains.map((d) => chip(d, null, true)))] : null,
+      mapLink(CYC.MAP && CYC.MAP.fighters && CYC.MAP.fighters[f.id], 'READ THE INTRO \u2192'),
       actions.length ? el('div', { class: 'detail-actions' }, actions) : null,
       isEmpty ? null : demoBox(f.id),
     );
@@ -478,7 +484,8 @@ CYC.UI = (function () {
           state.ctx === 'explore' ? el('span', { class: 'badge badge-level', text: `CODEC: ${h.codec}` }) : null,
           el('span', { class: 'dim', text: `sample payload: ${payloadLabel(h.payload)}` })),
         el('p', { class: 'heist-brief', text: h.brief }),
-        el('details', { class: 'briefing' }, el('summary', { text: 'BRIEFING' }), el('ul', {}, (h.reqNotes || []).map((n) => el('li', { text: n })))),
+        el('details', { class: 'briefing' }, el('summary', { text: 'BRIEFING' }), el('ul', {}, (h.reqNotes || []).map((n) => el('li', { text: n }))),
+          mapLink(CYC.MAP && ((CYC.MAP.heists || {})[h.id] || CYC.MAP.defaultHeistArticle), 'READ THE BACKGROUND \u2192')),
         state.codec ? el('p', { class: 'dim', text: state.codec.notes }) : null,
       ),
       el('div', {}, el('div', { class: 'pix', style: { color: 'var(--ink-dim)', marginBottom: '6px' }, text: 'JOB SHEET' }), reqBars(h.req, false)),
@@ -1284,6 +1291,19 @@ CYC.UI = (function () {
     if (missing.length) { note.hidden = false; note.textContent = `Still loading: ${missing.join(', ')}. Those parts show a placeholder until they arrive.`; }
 
     show('title');
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+  }
+
+  // #fighter=<id> deep link (from the /map articles): open that fighter's card in Explore -> Roster
+  function applyHash() {
+    const m = /fighter=([\w-]+)/.exec(location.hash || '');
+    const f = m && CYC.byId && CYC.byId[m[1]];
+    if (!f) return;
+    state.exploreTab = 'roster';
+    setMode('explore');
+    setExploreTab('roster');
+    openDetail(f);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

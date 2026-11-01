@@ -1,0 +1,2 @@
+{{- $h := .Get "height" | default "420" -}}
+<div class="viz"><iframe src="{{ .Get "src" | relURL }}" height="{{ $h }}" loading="lazy" title="Interactive visualization" style="height:{{ $h }}px"></iframe></div>

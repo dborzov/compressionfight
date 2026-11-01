@@ -1,0 +1,62 @@
+# Hugo project for the /map subsection. Source of truth: ../docs/map. Output: ../map (committed).
+baseURL = "https://www.borzov.ca/compressionfight/map/"
+title = "Choose Your Codec: The Map"
+languageCode = "en"
+publishDir = "../map"
+disableKinds = ["taxonomy", "term", "RSS", "sitemap", "robotsTXT"]
+enableRobotsTXT = false
+pluralizeListTitles = false
+relativeURLs = false
+canonifyURLs = false
+ignoreLogs = ["warning-goldmark-raw-html"]
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+    [markup.goldmark.extensions]
+      [markup.goldmark.extensions.passthrough]
+        enable = true
+        [markup.goldmark.extensions.passthrough.delimiters]
+          block = [['$$', '$$'], ['\[', '\]']]
+          inline = [['$', '$'], ['\(', '\)']]
+  [markup.highlight]
+    noClasses = false
+    lineNos = false
+    guessSyntax = false
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
+
+[module]
+  [[module.mounts]]
+    source = "../docs/map/zoo"
+    target = "content/zoo"
+    files = ["! BRIEFS.md", "! style.md", "! img/**", "! src/**", "! viz/**"]
+  [[module.mounts]]
+    source = "../docs/map/map.md"
+    target = "content/_index.md"
+  [[module.mounts]]
+    source = "../docs/map/primer.md"
+    target = "content/primer.md"
+  [[module.mounts]]
+    source = "../docs/map/zoo/img"
+    target = "static/img"
+  [[module.mounts]]
+    source = "../docs/map/zoo/viz"
+    target = "static/viz"
+  [[module.mounts]]
+    source = "static"
+    target = "static"
+  [[module.mounts]]
+    source = "layouts"
+    target = "layouts"
+  [[module.mounts]]
+    source = "assets"
+    target = "assets"
+  [[module.mounts]]
+    source = "data"
+    target = "data"
+
+[params]
+  katexVersion = "0.16.11"

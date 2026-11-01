@@ -1,0 +1,1115 @@
+{
+ "roles": {
+  "transform": {
+   "id": "transform",
+   "codename": "THE LENS",
+   "title": "Transform",
+   "question": "Which directions matter?",
+   "blurb": "Re-express the data in a basis where energy is concentrated and samples are decorrelated. Compresses nothing by itself: 64 pixels in, 64 coefficients out. It sets up the Butcher and the Packer to win.",
+   "jargon": [
+    "transform coding",
+    "decorrelation",
+    "energy compaction",
+    "basis",
+    "coefficients"
+   ],
+   "color": "#38d6ff"
+  },
+  "predict": {
+   "id": "predict",
+   "codename": "THE ORACLE",
+   "title": "Prediction / modeling",
+   "question": "Can I guess the next thing from what I already have?",
+   "blurb": "Predict each sample from the past, then only code the residual (the surprise). Also known as the \"modeling\" half of modeling + coding. Dictionary matchers like LZ77 live here too: a match is a prediction that came true.",
+   "jargon": [
+    "residual",
+    "predictor",
+    "context",
+    "back-reference",
+    "modeling vs coding"
+   ],
+   "color": "#4dff7c"
+  },
+  "quantize": {
+   "id": "quantize",
+   "codename": "THE BUTCHER",
+   "title": "Quantization",
+   "question": "How do I turn numbers into a few bits?",
+   "blurb": "The only stage that throws information away. Rounds continuous values onto a grid or a codebook. Every lossy codec has exactly one of these; every lossless codec has none. Controls the rate-distortion trade-off.",
+   "jargon": [
+    "step size Δ",
+    "dead zone",
+    "codebook",
+    "rate-distortion",
+    "bits per sample"
+   ],
+   "color": "#ff6a3d"
+  },
+  "entropy": {
+   "id": "entropy",
+   "codename": "THE PACKER",
+   "title": "Entropy coding",
+   "question": "Some symbols are common. Can I give them shorter codes?",
+   "blurb": "Lossless. Turns a stream of symbols with a known (or adaptive) probability model into close to H bits per symbol, the Shannon bound. This is the only stage that produces actual bits. If upstream stages did their job, the symbols here are skewed and cheap.",
+   "jargon": [
+    "Shannon entropy H",
+    "prefix code",
+    "probability model",
+    "bits/symbol",
+    "coding vs modeling"
+   ],
+   "color": "#d05cff"
+  },
+  "perceptual": {
+   "id": "perceptual",
+   "codename": "THE CON ARTIST",
+   "title": "Perceptual model",
+   "question": "What will the human never notice?",
+   "blurb": "Decides where the Butcher is allowed to be brutal. A psychoacoustic model, a contrast-sensitivity curve, a trained discriminator. Not a stage that data flows through, more a stage that steers the quantizer.",
+   "jargon": [
+    "masking",
+    "JND",
+    "perceptual weighting",
+    "bit allocation",
+    "rate control"
+   ],
+   "color": "#ffe23d"
+  },
+  "prior": {
+   "id": "prior",
+   "codename": "THE INSIDE MAN",
+   "title": "Shared prior / side information",
+   "question": "What does the decoder already know before the first byte arrives?",
+   "blurb": "Anything shipped to the decoder ahead of time and not counted in the bitstream: standard tables, a trained dictionary, a VQ codebook, a neural decoder. The more the two sides pre-agree on, the fewer bits travel. The cost: versioning, size, and a decoder that only understands one kind of data.",
+   "jargon": [
+    "side information",
+    "dictionary",
+    "codebook",
+    "prior",
+    "out-of-band",
+    "self-describing stream"
+   ],
+   "color": "#ffc14d"
+  }
+ },
+ "codecs": [
+  {
+   "id": "deflate",
+   "name": "DEFLATE / zip / gzip",
+   "year": 1993,
+   "heist": "archive",
+   "squad": {
+    "predict": [
+     "lz77"
+    ],
+    "entropy": [
+     "huffman"
+    ]
+   },
+   "notes": "LZ77 32 KB window + two Huffman trees per block. Self-describing: trees travel in the header."
+  },
+  {
+   "id": "zstd",
+   "name": "zstd",
+   "year": 2016,
+   "heist": "logpipe",
+   "squad": {
+    "predict": [
+     "lz77"
+    ],
+    "entropy": [
+     "ans",
+     "huffman"
+    ],
+    "prior": [
+     "dictionary"
+    ]
+   },
+   "notes": "LZ77 with a large window + FSE (tANS) for match lengths/offsets, Huffman for literals. Optional trained dictionary."
+  },
+  {
+   "id": "png",
+   "name": "PNG",
+   "year": 1996,
+   "heist": "pixelart",
+   "squad": {
+    "predict": [
+     "spatial",
+     "lz77"
+    ],
+    "entropy": [
+     "huffman"
+    ]
+   },
+   "notes": "Per-row Paeth-family filters, then DEFLATE. Invented to dodge the LZW patent."
+  },
+  {
+   "id": "bzip2",
+   "name": "bzip2",
+   "year": 1996,
+   "heist": "library",
+   "squad": {
+    "transform": [
+     "bwt"
+    ],
+    "entropy": [
+     "rle",
+     "huffman"
+    ]
+   },
+   "notes": "Burrows-Wheeler block sort + move-to-front + RLE + Huffman. A transform in a lossless codec."
+  },
+  {
+   "id": "paq",
+   "name": "PAQ / cmix",
+   "year": 2002,
+   "heist": "library",
+   "squad": {
+    "predict": [
+     "cm"
+    ],
+    "entropy": [
+     "arith"
+    ]
+   },
+   "notes": "Context mixing with a neural mixer feeding a binary arithmetic coder. The ratio ceiling, at KB/s speeds."
+  },
+  {
+   "id": "jpeg",
+   "name": "JPEG",
+   "year": 1992,
+   "heist": "gallery",
+   "squad": {
+    "transform": [
+     "prism",
+     "dct"
+    ],
+    "perceptual": [
+     "chroma"
+    ],
+    "quantize": [
+     "qmatrix"
+    ],
+    "entropy": [
+     "rle",
+     "huffman"
+    ],
+    "prior": [
+     "tables"
+    ]
+   },
+   "notes": "YCbCr 4:2:0, 8×8 DCT, quant tables, zigzag run/size Huffman."
+  },
+  {
+   "id": "jpeg2000",
+   "name": "JPEG 2000",
+   "year": 2000,
+   "heist": "gallery",
+   "squad": {
+    "transform": [
+     "prism",
+     "dwt"
+    ],
+    "perceptual": [
+     "chroma"
+    ],
+    "quantize": [
+     "uniform"
+    ],
+    "entropy": [
+     "arith"
+    ]
+   },
+   "notes": "Wavelets + EBCOT bit-plane arithmetic coding. 20% better than JPEG, far more complex; lives in cinema and medical imaging."
+  },
+  {
+   "id": "webp",
+   "name": "WebP (lossy)",
+   "year": 2010,
+   "heist": "webphoto",
+   "squad": {
+    "transform": [
+     "prism",
+     "dct"
+    ],
+    "predict": [
+     "spatial"
+    ],
+    "perceptual": [
+     "chroma"
+    ],
+    "quantize": [
+     "uniform"
+    ],
+    "entropy": [
+     "arith"
+    ]
+   },
+   "notes": "VP8 intra frame: directional block prediction, 4×4 DCT, boolean arithmetic coder. WebP lossless is a different squad: Neighbor + LZ77 + Huffman with color cache."
+  },
+  {
+   "id": "flac",
+   "name": "FLAC",
+   "year": 2001,
+   "heist": "studio",
+   "squad": {
+    "transform": [
+     "prism"
+    ],
+    "predict": [
+     "lpc"
+    ],
+    "entropy": [
+     "rice"
+    ]
+   },
+   "notes": "Mid/side + LPC order ≤32 + Rice. Integer-only decoder."
+  },
+  {
+   "id": "mp3",
+   "name": "MP3",
+   "year": 1993,
+   "heist": "walkman",
+   "squad": {
+    "transform": [
+     "mdct"
+    ],
+    "perceptual": [
+     "psychoacoustic"
+    ],
+    "quantize": [
+     "companding"
+    ],
+    "entropy": [
+     "huffman"
+    ],
+    "prior": [
+     "tables"
+    ]
+   },
+   "notes": "Hybrid filterbank + MDCT, psychoacoustic model, power-law quantizer, 32 standard Huffman tables."
+  },
+  {
+   "id": "opus",
+   "name": "Opus",
+   "year": 2012,
+   "heist": "phonecall",
+   "squad": {
+    "transform": [
+     "mdct"
+    ],
+    "predict": [
+     "lpc"
+    ],
+    "quantize": [
+     "vq"
+    ],
+    "entropy": [
+     "arith"
+    ],
+    "prior": [
+     "tables"
+    ]
+   },
+   "notes": "SILK (LPC, speech) + CELT (MDCT with 2.5-20 ms frames, algebraic PVQ defined in the spec) + range coder. The best non-neural low-latency codec; 6-510 kbps."
+  },
+  {
+   "id": "soundstream",
+   "name": "SoundStream / EnCodec",
+   "year": 2021,
+   "heist": "phonecall",
+   "squad": {
+    "transform": [
+     "neural_enc"
+    ],
+    "quantize": [
+     "rvq"
+    ],
+    "perceptual": [
+     "gan"
+    ],
+    "prior": [
+     "decoder_net",
+     "codebook"
+    ]
+   },
+   "notes": "Causal conv encoder, residual VQ, conv decoder, adversarial training. Fixed-rate tokens; no entropy coder by default."
+  },
+  {
+   "id": "h264",
+   "name": "H.264 / AVC",
+   "year": 2003,
+   "heist": "primetime",
+   "squad": {
+    "transform": [
+     "prism",
+     "dct"
+    ],
+    "predict": [
+     "motion",
+     "spatial"
+    ],
+    "perceptual": [
+     "chroma"
+    ],
+    "quantize": [
+     "uniform"
+    ],
+    "entropy": [
+     "arith"
+    ],
+    "prior": [
+     "tables"
+    ]
+   },
+   "notes": "The hybrid video codec template: inter + intra prediction, integer DCT, RDO-driven quantizer, CABAC."
+  },
+  {
+   "id": "faiss",
+   "name": "Faiss IVF-OPQ-PQ",
+   "year": 2017,
+   "heist": "vectorvault",
+   "squad": {
+    "transform": [
+     "pca"
+    ],
+    "quantize": [
+     "pq"
+    ],
+    "prior": [
+     "codebook"
+    ]
+   },
+   "notes": "OPQ rotation, 8-bit product codes, codebooks in the index, fixed-length codes for ADC scanning."
+  },
+  {
+   "id": "gguf",
+   "name": "GGUF Q4_K_M",
+   "year": 2023,
+   "heist": "weightsvault",
+   "squad": {
+    "quantize": [
+     "blockint"
+    ]
+   },
+   "notes": "Block-wise 4-bit with 6-bit scales. Dequantize inside the matmul kernel. No entropy coding."
+  },
+  {
+   "id": "safetensors",
+   "name": "safetensors",
+   "year": 2022,
+   "heist": "weightsvault",
+   "squad": {},
+   "notes": "No compression at all: JSON header + raw tensor bytes. Optimizes for mmap, zero-copy and safe loading. An empty squad is a legitimate design."
+  },
+  {
+   "id": "kivi",
+   "name": "KIVI / QuaRot (KV cache)",
+   "year": 2024,
+   "heist": "kvcache",
+   "squad": {
+    "transform": [
+     "pca"
+    ],
+    "quantize": [
+     "blockint"
+    ],
+    "perceptual": [
+     "sinkguard"
+    ]
+   },
+   "notes": "Per-channel keys, per-token values, group 32, newest 128 tokens in fp16; optional Hadamard rotation to tame outlier channels. Online, inside the forward pass."
+  },
+  {
+   "id": "kvquant",
+   "name": "KVQuant",
+   "year": 2024,
+   "heist": "onebit",
+   "squad": {
+    "transform": [
+     "unrope"
+    ],
+    "quantize": [
+     "escape",
+     "blockint"
+    ],
+    "perceptual": [
+     "sinkguard"
+    ],
+    "prior": [
+     "basis"
+    ]
+   },
+   "notes": "Pre-RoPE keys, per-layer non-uniform levels from calibration, 1% outliers in a sparse fp16 list, sink token at full precision. 1M tokens of LLaMA-7B on one A100."
+  },
+  {
+   "id": "cq",
+   "name": "Coupled Quantization / CommVQ",
+   "year": 2024,
+   "heist": "onebit",
+   "squad": {
+    "transform": [
+     "unrope"
+    ],
+    "quantize": [
+     "coupled"
+    ],
+    "prior": [
+     "codebook"
+    ],
+    "perceptual": [
+     "sinkguard"
+    ]
+   },
+   "notes": "VQ over 4-8 channels with Fisher-weighted centroids (CQ), or additive RoPE-commuting codebooks (CommVQ). 1-2 bits per element, fixed-length, no Packer."
+  },
+  {
+   "id": "hisparse",
+   "name": "HiSparse (SGLang)",
+   "year": 2026,
+   "heist": "overflow",
+   "squad": {
+    "perceptual": [
+     "spotlight"
+    ],
+    "prior": [
+     "tiered"
+    ],
+    "quantize": [
+     "fp4"
+    ]
+   },
+   "notes": "DSA indexer on the GPU, full KV in host DRAM, per-layer LRU buffer, one fused gather kernel. The address book stays dense; the latents travel."
+  },
+  {
+   "id": "shadowkv",
+   "name": "ShadowKV",
+   "year": 2025,
+   "heist": "overflow",
+   "squad": {
+    "transform": [
+     "unrope",
+     "svd_lowrank"
+    ],
+    "perceptual": [
+     "spotlight"
+    ],
+    "prior": [
+     "tiered"
+    ]
+   },
+   "notes": "Rank-160 pre-RoPE key factors and chunk landmarks on the GPU, values on the CPU, 256 chunks of 8 fetched per step."
+  },
+  {
+   "id": "specache",
+   "name": "SpeCache / PQCache",
+   "year": 2025,
+   "heist": "overflow",
+   "squad": {
+    "quantize": [
+     "blockint",
+     "pq"
+    ],
+    "perceptual": [
+     "spotlight"
+    ],
+    "prior": [
+     "tiered"
+    ]
+   },
+   "notes": "A 1-bit copy (SpeCache) or 12-bit PQ codes (PQCache) on the GPU rank tokens; the exact fp16 pairs are fetched from host RAM, speculatively one step ahead."
+  },
+  {
+   "id": "kvtc",
+   "name": "KVTC",
+   "year": 2026,
+   "heist": "coldkv",
+   "squad": {
+    "transform": [
+     "unrope",
+     "pca"
+    ],
+    "quantize": [
+     "waterline"
+    ],
+    "entropy": [
+     "lz77",
+     "huffman"
+    ],
+    "perceptual": [
+     "sinkguard"
+    ],
+    "prior": [
+     "basis"
+    ]
+   },
+   "notes": "A JPEG for KV: PCA basis shared across layers, water-filling bit allocation, DEFLATE. 18-22× for storage and transfer, never attended over directly."
+  },
+  {
+   "id": "trtfp4",
+   "name": "TensorRT-LLM cold pages (NVFP4)",
+   "year": 2026,
+   "heist": "coldkv",
+   "squad": {
+    "quantize": [
+     "fp4"
+    ]
+   },
+   "notes": "NVFP4 applied as a KV page migrates to host or disk, decoded as it comes back. 3.5× against FP16, no transform, no Packer."
+  },
+  {
+   "id": "cachegen",
+   "name": "CacheGen",
+   "year": 2024,
+   "heist": "kvcourier",
+   "squad": {
+    "predict": [
+     "anchor_delta"
+    ],
+    "quantize": [
+     "blockint"
+    ],
+    "entropy": [
+     "arith"
+    ],
+    "prior": [
+     "tables"
+    ]
+   },
+   "notes": "Anchor-token deltas, layer-dependent bin sizes, arithmetic coding with per-(layer, channel) tables, CUDA decoder. The one KV codec with a real bitstream, because its channel is a network."
+  },
+  {
+   "id": "snapkv",
+   "name": "SnapKV / StreamingLLM / TriAttention",
+   "year": 2024,
+   "heist": "purge",
+   "squad": {
+    "quantize": [
+     "evict"
+    ],
+    "perceptual": [
+     "spotlight",
+     "sinkguard"
+    ]
+   },
+   "notes": "Keep sinks and a window, or score once from an observation window, or use pre-RoPE key geometry. Then compact pages or the memory never comes back."
+  },
+  {
+   "id": "mla",
+   "name": "GQA / MLA / DeepSeek-V4",
+   "year": 2024,
+   "heist": "bornsmall",
+   "squad": {
+    "transform": [
+     "mla"
+    ]
+   },
+   "notes": "Compression decided before pretraining. 576 elements per token per layer instead of 32,768; V4 caches one entry per 4 or per 128 tokens."
+  }
+ ],
+ "fighters": {
+  "dct": {
+   "name": "COSINE",
+   "real": "Block DCT (8×8 / 4×4 integer DCT)",
+   "role": "transform"
+  },
+  "mdct": {
+   "name": "LAPWING",
+   "real": "MDCT (lapped transform, 50% overlap)",
+   "role": "transform"
+  },
+  "dwt": {
+   "name": "RIPPLE",
+   "real": "Discrete wavelet transform",
+   "role": "transform"
+  },
+  "prism": {
+   "name": "PRISM",
+   "real": "Channel decorrelation (RGB→YCbCr, L/R→Mid/Side)",
+   "role": "transform"
+  },
+  "pca": {
+   "name": "AXIS",
+   "real": "PCA / OPQ rotation / Hadamard rotation",
+   "role": "transform"
+  },
+  "bwt": {
+   "name": "SHUFFLER",
+   "real": "Burrows–Wheeler transform (+ move-to-front)",
+   "role": "transform"
+  },
+  "neural_enc": {
+   "name": "NEURON",
+   "real": "Learned encoder network (conv / transformer analysis transform)",
+   "role": "transform"
+  },
+  "lz77": {
+   "name": "ECHO",
+   "real": "LZ77 sliding-window matching",
+   "role": "predict"
+  },
+  "lzw": {
+   "name": "SCRIBE",
+   "real": "LZ78 / LZW (explicit dictionary)",
+   "role": "predict"
+  },
+  "delta": {
+   "name": "GHOST",
+   "real": "Delta / fixed polynomial predictor",
+   "role": "predict"
+  },
+  "lpc": {
+   "name": "PROPHET",
+   "real": "Linear predictive coding (adaptive LPC)",
+   "role": "predict"
+  },
+  "spatial": {
+   "name": "NEIGHBOR",
+   "real": "Spatial (intra) prediction: PNG filters, intra modes",
+   "role": "predict"
+  },
+  "motion": {
+   "name": "TRACKER",
+   "real": "Motion-compensated (inter-frame) prediction",
+   "role": "predict"
+  },
+  "cm": {
+   "name": "MENTALIST",
+   "real": "Context modeling / context mixing (PPM, CM, PAQ-style)",
+   "role": "predict"
+  },
+  "neural_prior": {
+   "name": "ORACLE PRIME",
+   "real": "Learned probability model (hyperprior, autoregressive / LM-based coding)",
+   "role": "predict"
+  },
+  "uniform": {
+   "name": "GRID",
+   "real": "Uniform scalar quantizer (round(x/Δ))",
+   "role": "quantize"
+  },
+  "qmatrix": {
+   "name": "SCULPTOR",
+   "real": "Frequency-weighted quantization matrix",
+   "role": "quantize"
+  },
+  "companding": {
+   "name": "BENDER",
+   "real": "Non-uniform / companded quantizer (μ-law, log, power-law)",
+   "role": "quantize"
+  },
+  "vq": {
+   "name": "CATALOG",
+   "real": "Vector quantization (k-means codebook)",
+   "role": "quantize"
+  },
+  "rvq": {
+   "name": "MATRYOSHKA",
+   "real": "Residual vector quantization (stacked codebooks)",
+   "role": "quantize"
+  },
+  "pq": {
+   "name": "SPLITTER",
+   "real": "Product quantization (independent sub-vector codebooks)",
+   "role": "quantize"
+  },
+  "blockint": {
+   "name": "BLOCKY",
+   "real": "Block-wise low-bit integer quantization (int8 / int4 + per-block scale)",
+   "role": "quantize"
+  },
+  "huffman": {
+   "name": "WOODCUTTER",
+   "real": "Huffman coding (static or two-pass)",
+   "role": "entropy"
+  },
+  "arith": {
+   "name": "FENCER",
+   "real": "Arithmetic / range coding (incl. binary CABAC)",
+   "role": "entropy"
+  },
+  "ans": {
+   "name": "STACKER",
+   "real": "Asymmetric numeral systems (rANS / tANS / FSE)",
+   "role": "entropy"
+  },
+  "rice": {
+   "name": "RULER",
+   "real": "Golomb-Rice coding",
+   "role": "entropy"
+  },
+  "rle": {
+   "name": "REPEATER",
+   "real": "Run-length encoding (and zigzag scan)",
+   "role": "entropy"
+  },
+  "psychoacoustic": {
+   "name": "HYPNOTIST",
+   "real": "Psychoacoustic masking model",
+   "role": "perceptual"
+  },
+  "chroma": {
+   "name": "ILLUSIONIST",
+   "real": "Visual sensitivity model: chroma subsampling, CSF weighting",
+   "role": "perceptual"
+  },
+  "gan": {
+   "name": "FORGER",
+   "real": "Adversarial / perceptual loss (discriminator, feature losses)",
+   "role": "perceptual"
+  },
+  "tables": {
+   "name": "RULEBOOK",
+   "real": "Standardized static tables",
+   "role": "prior"
+  },
+  "dictionary": {
+   "name": "PHRASEBOOK",
+   "real": "Trained dictionary (zstd --train, Brotli static dictionary)",
+   "role": "prior"
+  },
+  "codebook": {
+   "name": "KEYMASTER",
+   "real": "Trained VQ codebook (shipped to the decoder)",
+   "role": "prior"
+  },
+  "decoder_net": {
+   "name": "BRAINJAR",
+   "real": "Learned decoder weights (synthesis network)",
+   "role": "prior"
+  },
+  "unrope": {
+   "name": "REWIND",
+   "real": "Pre-RoPE key storage (undo the positional rotation before quantizing)",
+   "role": "transform"
+  },
+  "svd_lowrank": {
+   "name": "PROJECTOR",
+   "real": "Rank-r SVD truncation of the key matrix (per-sequence, optionally shared across layers)",
+   "role": "transform"
+  },
+  "mla": {
+   "name": "BOTTLENECK",
+   "real": "Multi-head Latent Attention: a learned low-rank KV latent baked into the model",
+   "role": "transform"
+  },
+  "anchor_delta": {
+   "name": "ANCHORMAN",
+   "real": "Anchor-token delta coding (a group-of-pictures for KV)",
+   "role": "predict"
+  },
+  "coupled": {
+   "name": "SIAMESE",
+   "real": "Coupled quantization: VQ over groups of 2-8 channels with loss-weighted centroids",
+   "role": "quantize"
+  },
+  "waterline": {
+   "name": "WATERLINE",
+   "real": "Adaptive bit allocation across transform coefficients (reverse water-filling)",
+   "role": "quantize"
+  },
+  "fp4": {
+   "name": "QUARTER",
+   "real": "NVFP4: 4-bit E2M1 floats with an FP8 scale per 16 values",
+   "role": "quantize"
+  },
+  "escape": {
+   "name": "ESCAPE HATCH",
+   "real": "Dense-and-sparse decomposition: the top 1% outliers ride in a sparse fp16 side list",
+   "role": "quantize"
+  },
+  "evict": {
+   "name": "REAPER",
+   "real": "Token eviction: keep or drop whole tokens by an importance score",
+   "role": "quantize"
+  },
+  "sinkguard": {
+   "name": "BOUNCER",
+   "real": "Importance exemptions: attention sinks and the newest tokens stay at full precision",
+   "role": "perceptual"
+  },
+  "spotlight": {
+   "name": "SPOTLIGHT",
+   "real": "Top-k attention selector: a cheap stand-in scores which tokens matter this step",
+   "role": "perceptual"
+  },
+  "basis": {
+   "name": "BLUEPRINT",
+   "real": "Trained transform basis shipped with the model (PCA matrices, learned rotations)",
+   "role": "prior"
+  },
+  "tiered": {
+   "name": "UNDERSTUDY",
+   "real": "Two-tier cache: a lossy stand-in on the GPU, the lossless original in CPU DRAM, fetched on demand",
+   "role": "prior"
+  }
+ },
+ "heists": {
+  "archive": {
+   "name": "THE ARCHIVE JOB",
+   "codec": "DEFLATE (zip / gzip)",
+   "req": {
+    "lossless": true,
+    "latency": 4,
+    "encBudget": 3,
+    "decBudget": 2,
+    "ra": 1,
+    "bandwidth": 3,
+    "decMem": 2,
+    "priorOK": false
+   }
+  },
+  "pixelart": {
+   "name": "PIXEL PERFECT",
+   "codec": "PNG",
+   "req": {
+    "lossless": true,
+    "latency": 4,
+    "encBudget": 3,
+    "decBudget": 2,
+    "ra": 2,
+    "bandwidth": 3,
+    "decMem": 2,
+    "priorOK": false
+   }
+  },
+  "studio": {
+   "name": "STUDIO MASTER",
+   "codec": "FLAC",
+   "req": {
+    "lossless": true,
+    "latency": 3,
+    "encBudget": 3,
+    "decBudget": 1,
+    "ra": 4,
+    "bandwidth": 2,
+    "decMem": 1,
+    "priorOK": false
+   }
+  },
+  "gallery": {
+   "name": "THE GALLERY",
+   "codec": "JPEG (baseline)",
+   "req": {
+    "lossless": false,
+    "latency": 4,
+    "encBudget": 2,
+    "decBudget": 1,
+    "ra": 3,
+    "bandwidth": 4,
+    "decMem": 2,
+    "priorOK": true
+   }
+  },
+  "walkman": {
+   "name": "WALKMAN",
+   "codec": "MP3 (MPEG-1 Layer III)",
+   "req": {
+    "lossless": false,
+    "latency": 4,
+    "encBudget": 4,
+    "decBudget": 1,
+    "ra": 3,
+    "bandwidth": 5,
+    "decMem": 1,
+    "priorOK": true
+   }
+  },
+  "primetime": {
+   "name": "PRIME TIME",
+   "codec": "H.264 / AV1 (streaming video)",
+   "req": {
+    "lossless": false,
+    "latency": 3,
+    "encBudget": 5,
+    "decBudget": 1,
+    "ra": 2,
+    "bandwidth": 5,
+    "decMem": 2,
+    "priorOK": true
+   }
+  },
+  "library": {
+   "name": "THE LIBRARY",
+   "codec": "bzip2 / xz / PAQ (max-ratio text archive)",
+   "req": {
+    "lossless": true,
+    "latency": 5,
+    "encBudget": 5,
+    "decBudget": 4,
+    "ra": 0,
+    "bandwidth": 5,
+    "decMem": 5,
+    "priorOK": false
+   }
+  },
+  "phonecall": {
+   "name": "THE PHONE CALL",
+   "codec": "SoundStream / EnCodec (neural audio codec)",
+   "req": {
+    "lossless": false,
+    "latency": 0,
+    "encBudget": 3,
+    "decBudget": 3,
+    "ra": 0,
+    "bandwidth": 5,
+    "decMem": 3,
+    "priorOK": true
+   }
+  },
+  "logpipe": {
+   "name": "THE LOG PIPE",
+   "codec": "zstd with a trained dictionary",
+   "req": {
+    "lossless": true,
+    "latency": 1,
+    "encBudget": 2,
+    "decBudget": 2,
+    "ra": 2,
+    "bandwidth": 4,
+    "decMem": 2,
+    "priorOK": true
+   }
+  },
+  "vectorvault": {
+   "name": "THE VECTOR VAULT",
+   "codec": "Faiss IVF-OPQ-PQ",
+   "req": {
+    "lossless": false,
+    "latency": 1,
+    "encBudget": 3,
+    "decBudget": 1,
+    "ra": 5,
+    "bandwidth": 4,
+    "decMem": 3,
+    "priorOK": true
+   }
+  },
+  "weightsvault": {
+   "name": "THE WEIGHTS VAULT",
+   "codec": "GGUF Q4_K_M (vs. safetensors)",
+   "req": {
+    "lossless": false,
+    "latency": 0,
+    "encBudget": 4,
+    "decBudget": 0,
+    "ra": 5,
+    "bandwidth": 4,
+    "decMem": 0,
+    "priorOK": false
+   }
+  },
+  "kvcache": {
+   "name": "THE CONTEXT WINDOW",
+   "codec": "KV-cache quantization (KIVI / int8 KV)",
+   "req": {
+    "lossless": false,
+    "latency": 0,
+    "encBudget": 0,
+    "decBudget": 0,
+    "ra": 5,
+    "bandwidth": 3,
+    "decMem": 1,
+    "priorOK": false
+   }
+  },
+  "webphoto": {
+   "name": "THE SHOWROOM",
+   "codec": "WebP lossy / learned image compression",
+   "req": {
+    "lossless": false,
+    "latency": 4,
+    "encBudget": 5,
+    "decBudget": 2,
+    "ra": 2,
+    "bandwidth": 5,
+    "decMem": 2,
+    "priorOK": true
+   }
+  },
+  "onebit": {
+   "name": "THE ONE-BIT VAULT",
+   "codec": "Coupled Quantization / CommVQ (calibrated vector quantization of KV)",
+   "req": {
+    "lossless": false,
+    "latency": 0,
+    "encBudget": 1,
+    "decBudget": 1,
+    "ra": 5,
+    "bandwidth": 5,
+    "decMem": 1,
+    "priorOK": true
+   }
+  },
+  "overflow": {
+   "name": "THE WAREHOUSE RUN",
+   "codec": "HiSparse / ShadowKV / SpeCache (tiered sparse KV)",
+   "req": {
+    "lossless": false,
+    "latency": 1,
+    "encBudget": 2,
+    "decBudget": 1,
+    "ra": 5,
+    "bandwidth": 5,
+    "decMem": 2,
+    "priorOK": true
+   }
+  },
+  "coldkv": {
+   "name": "THE COLD STORAGE",
+   "codec": "KVTC (KV transform coding) / TensorRT-LLM cold-page NVFP4",
+   "req": {
+    "lossless": false,
+    "latency": 3,
+    "encBudget": 2,
+    "decBudget": 2,
+    "ra": 1,
+    "bandwidth": 5,
+    "decMem": 3,
+    "priorOK": true
+   }
+  },
+  "kvcourier": {
+   "name": "THE COURIER",
+   "codec": "CacheGen (KV cache streaming)",
+   "req": {
+    "lossless": false,
+    "latency": 2,
+    "encBudget": 3,
+    "decBudget": 2,
+    "ra": 2,
+    "bandwidth": 5,
+    "decMem": 3,
+    "priorOK": true
+   }
+  },
+  "purge": {
+   "name": "THE PURGE",
+   "codec": "SnapKV / StreamingLLM / TriAttention (token eviction)",
+   "req": {
+    "lossless": false,
+    "latency": 0,
+    "encBudget": 1,
+    "decBudget": 0,
+    "ra": 5,
+    "bandwidth": 3,
+    "decMem": 1,
+    "priorOK": false
+   }
+  },
+  "bornsmall": {
+   "name": "THE ARCHITECT'S CUT",
+   "codec": "GQA / MLA / DeepSeek-V4 CSA-HCA (compression baked into the model)",
+   "req": {
+    "lossless": false,
+    "latency": 0,
+    "encBudget": 0,
+    "decBudget": 0,
+    "ra": 5,
+    "bandwidth": 4,
+    "decMem": 1,
+    "priorOK": true
+   }
+  }
+ }
+}

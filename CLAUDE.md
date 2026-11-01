@@ -90,3 +90,17 @@ GitHub Pages serves the repo root of `main` (there is a `.nojekyll`). Nothing to
 deploy. Live URL: https://www.borzov.ca/compressionfight/ (the account's user site has that custom domain, so
 `dborzov.github.io/compressionfight/` and `borzov.ca/compressionfight/` both 301 there). `deploy/README.md`
 has the details and an optional Cloudflare Worker fallback in `deploy/worker/` (not deployed).
+
+## Map section (/map)
+
+The long-form field guide lives in `docs/map/` (the single source of truth): `map.md` (taxonomy, becomes the `/map/` index),
+`primer.md`, and `zoo/<slug>.md` articles with images in `zoo/img/<slug>/`, hero images in `zoo/img/hero/<slug>.png`
+(768x288 pixel art, optional), and self-contained HTML visualizations in `zoo/viz/`. `BRIEFS.md`, `style.md` and `src/` are
+not published. Build with `./build.sh` (or `make map`); `./build.sh --local` builds for `http://127.0.0.1:8080/map/`
+(serve the repo root with `python3 -m http.server 8080`). The Hugo (extended, via mise) project is in `site/` (custom theme in
+`site/layouts`, CSS in `site/assets/css/map.css`; `site/data/map.yaml` is generated from `map.md` by `site/tools/gen_map_data.py`).
+Output goes to `map/`, which IS committed (GitHub Pages serves it as-is); rebuild in production mode before committing.
+Frontmatter and shortcodes: `{{< lab id="huffman" >}}` (the game's demo lab via `CYC.Demos.render`), `{{< fig src="img/<slug>/x.png" alt="" caption="" >}}`,
+`{{< viz src="viz/<file>.html" height="420" >}}`, plus KaTeX `$...$` / `$$...$$` and `[text](../<slug>/)` cross-links; see `docs/map/zoo/BRIEFS.md`.
+The game links in via the MAP button, "READ THE INTRO" on fighter cards and the heist briefing (`CYC.MAP` at the end of `js/data.js`);
+`/#fighter=<id>` opens that fighter's card in Explore > Roster.

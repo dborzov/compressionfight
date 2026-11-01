@@ -355,7 +355,7 @@ CYC.FIGHTERS = [
     stats: { enc: 1, dec: 1, ratio: 5, latency: 0, mem: 1, ra: 1, lossless: true },
     domains: ['text', 'image', 'audio', 'video', 'weights', 'activations'],
     move: 'Push the State: encode symbols onto a single big integer like a stack; decode pops them off in reverse. Entropy-bound ratio at Huffman speed.',
-    usedIn: ['zstd (FSE for lengths/offsets)', 'JPEG XL', 'AV1 (as a multi-symbol coder)', 'Draco 3D', 'Apple LZFSE'],
+    usedIn: ['zstd (FSE for lengths/offsets)', 'JPEG XL', 'Draco 3D', 'Apple LZFSE', 'CRAM (genomics)'],
     why: 'Jarek Duda\'s 2014 invention that ended the Huffman-vs-arithmetic trade-off. Same compression as arithmetic coding, but the tabled variant (tANS/FSE) is a state machine with no multiplications and the ranged variant (rANS) interleaves several streams for SIMD. Decoder is LIFO, so it processes blocks backwards.',
     weakness: 'LIFO order complicates streaming and adaptive models. Still young in hardware.',
     persona: 'a speed-skater stacking glowing numbered crates into a tall tower at full sprint, aerodynamic suit, purple and yellow',

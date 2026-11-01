@@ -1,0 +1,3 @@
+{{- /* game root = baseURL path minus the trailing "map/" , e.g. /compressionfight/ */ -}}
+{{- $p := (urls.Parse site.BaseURL).Path -}}
+{{- strings.TrimSuffix "map/" $p -}}
