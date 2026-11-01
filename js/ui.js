@@ -745,7 +745,7 @@ CYC.UI = (function () {
     );
   }
   function warningsBlock(warnings, extraClass) {
-    if (!warnings || !warnings.length) return null;
+    if (!warnings || !warnings.length) return document.createDocumentFragment();
     return el('div', { class: 'warn-list' }, warnings.map((w) => el('div', { class: `callout ${extraClass || ''}`, text: w })));
   }
   function enginePlaceholder() {
