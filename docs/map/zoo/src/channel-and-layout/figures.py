@@ -6,15 +6,17 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 import matplotlib.image as mimg
 from matplotlib.patches import FancyBboxPatch
 
-BG, FG, DIM = "#0b0714", "#ece6f5", "#8a7fa3"
-ACC1, ACC2, ACC3, ACC4 = "#ffb454", "#5ad1ff", "#ff6b9d", "#9df27a"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
+ACC1, ACC2, ACC3, ACC4 = "#b8892e", "#246b66", "#b05a4c", "#6f8f4e"
 plt.rcParams.update({
     "figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
     "text.color": FG, "axes.labelcolor": FG, "xtick.color": DIM, "ytick.color": DIM,
-    "axes.edgecolor": DIM, "grid.color": "#2a2240", "font.size": 13,
+    "axes.edgecolor": DIM, "grid.color": "#b89f78", "font.size": 13,
     "axes.titlesize": 15, "axes.titleweight": "bold",
 })
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -75,7 +77,7 @@ ax.set_title("4096 float32 samples: a slow sine around 2.0 with a little noise")
 ax.grid(True, alpha=0.4)
 ax = fig.add_subplot(gs[1, 0])
 show = by[:160, ::-1].T  # rows: b3 b2 b1 b0
-ax.imshow(show, cmap="magma", aspect="auto", interpolation="nearest")
+ax.imshow(show, cmap="YlGnBu", aspect="auto", interpolation="nearest")
 ax.set_yticks(range(4)); ax.set_yticklabels(["byte 3 (sign + exp)", "byte 2 (exp LSB + mantissa)", "byte 1 (mantissa)", "byte 0 (mantissa)"])
 ax.set_xlabel("first 160 samples →"); ax.set_title("The four byte planes, as one row each")
 ax = fig.add_subplot(gs[1, 1])
@@ -101,7 +103,7 @@ rows = [("2024-03-01", "GET", "200", "/api/users", "12"),
         ("2024-03-01", "GET", "200", "/api/items", "11"),
         ("2024-03-01", "GET", "200", "/api/users", "14")]
 colnames = ["date", "method", "status", "path", "ms"]
-colcol = [ACC4, ACC2, ACC1, ACC3, "#c3a6ff"]
+colcol = [ACC4, ACC2, ACC1, ACC3, "#6b4a7a"]
 fig, axes = plt.subplots(1, 2, figsize=(16, 7.2))
 for ax in axes:
     ax.set_xlim(0, 10); ax.set_ylim(0, 7.4); ax.axis("off")

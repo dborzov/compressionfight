@@ -1,5 +1,5 @@
 ---
-title: "Context models: the mentalist"
+title: "Context models: predicting the next symbol"
 slug: context-models
 chair: predict
 family: "Statistical context models"
@@ -119,13 +119,13 @@ Two things in that listing. With weights that have learned to trust the first mo
 
 What it wins is a prize. In 2006 Marcus Hutter offered money for compressing the first 100 MB of English Wikipedia, enwik8, and in 2020 raised the stakes to the first gigabyte, enwik9, with half a million euros on the table paid out in proportion to improvement. The PAQ lineage and its successor cmix have held the record throughout; the current entries land around 110 MB for the gigabyte, roughly 0.9 bits per character.
 
-The prize has one rule that matters more than the number. **The size that counts is the compressed file plus the decompressor.** You could "compress" enwik9 to zero bytes by shipping a decompressor with enwik9 inside it. You could compress it very well indeed by shipping a decompressor with a 70-billion-parameter language model inside it. Neither counts, because the whole point of a compressor is that what the receiver already holds is part of the bill. This is the [side information](../side-information/) chair stated as a contest rule, and it is why the Hutter Prize is a prize for *learning*, in Hutter's own framing: a decompressor of size $S$ that reproduces the data from $C$ bytes has found $S + C$ bytes of description, and the shortest description is the best model of what Wikipedia is.
+The prize has one rule that matters more than the number. **The size that counts is the compressed file plus the decompressor.** You could "compress" enwik9 to zero bytes by shipping a decompressor with enwik9 inside it. You could compress it very well indeed by shipping a decompressor with a 70-billion-parameter language model inside it. Neither counts, because the whole point of a compressor is that what the receiver already holds is part of the bill. This is the [side information](../side-information/) stage stated as a contest rule, and it is why the Hutter Prize is a prize for *learning*, in Hutter's own framing: a decompressor of size $S$ that reproduces the data from $C$ bytes has found $S + C$ bytes of description, and the shortest description is the best model of what Wikipedia is.
 
 ## Any predictor is a compressor
 
 Now the step that makes this article the hinge of the modern map. The mixer in PAQ is a tiny neural network producing $P(\text{next bit} \mid \text{context})$. A transformer language model is a large neural network producing $P(\text{next token} \mid \text{context})$. There is no difference in kind. Attach an arithmetic coder to a 7B-parameter LLM, give it English, and it compresses to about 0.8 bits per character, below cmix, far below zstd's 2.5, with zero code written for compression. The model's cross-entropy on the text *is* the compressed size; that was the content of the [first article](../modeling-and-coding/), and here it is as a product.
 
-The price is what the Mentalist's fighter card lists as weaknesses, and every one of them follows from the ladder and the mixer. The decoder must run the identical model, so decompression costs a forward pass per token: symmetric and slow. The model's state is the entire context: gigabytes of memory, no random access, no seeking into the middle of the stream. And the probabilities must be bit-exact on both machines, because an arithmetic coder that receives $P = 0.4999$ on one side and $0.5001$ on the other decodes garbage from that symbol onward; floating-point reductions on two different GPUs do not agree in the last bit, so practical LLM compressors quantize the model's probabilities to integers before they touch the coder.
+The price is what the context mixing's algorithm card lists as weaknesses, and every one of them follows from the ladder and the mixer. The decoder must run the identical model, so decompression costs a forward pass per token: symmetric and slow. The model's state is the entire context: gigabytes of memory, no random access, no seeking into the middle of the stream. And the probabilities must be bit-exact on both machines, because an arithmetic coder that receives $P = 0.4999$ on one side and $0.5001$ on the other decodes garbage from that symbol onward; floating-point reductions on two different GPUs do not agree in the last bit, so practical LLM compressors quantize the model's probabilities to integers before they touch the coder.
 
 {{< lab id="neural_prior" >}}
 
@@ -141,4 +141,4 @@ The same socket appears in miniature inside every video decoder. CABAC, the entr
 
 **Solomonoff induction**, in one sentence: weight every computable hypothesis by $2^{-(\text{its length in bits})}$, and predict by the weighted mixture; it is the uncomputable limit of a context mixer whose models are all possible programs, and the Hutter Prize is its budget-constrained cousin.
 
-**In the game:** the [Mentalist](/compressionfight/#fighter=cm) is this family, [Oracle Prime](/compressionfight/#fighter=neural_prior) its learned extreme, and the [Fencer](/compressionfight/#fighter=arith) the partner neither can work without. They headline the Library heist, where ratio is everything and nobody is in a hurry.
+**In the game:** the [context mixing](/compressionfight/#fighter=cm) is this family, [learned probability model](/compressionfight/#fighter=neural_prior) its learned extreme, and the [arithmetic coding](/compressionfight/#fighter=arith) the partner neither can work without. They headline the Maximum-ratio text archive task, where ratio is everything and nobody is in a hurry.

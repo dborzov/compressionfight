@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Arithmetic coding and ANS: fractional bits · Choose Your Codec</title>
+<meta name="description" content="How a whole message becomes one number so that a symbol can cost 0.03 bits, why that is what makes adaptive and context modeling possible, and how ANS packs the same information into a single integer that pops like a stack.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/" class="on" aria-current="page">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Entropy coding</span><span>/</span><span>Fractional-bit coders</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Entropy coding · Fractional-bit coders</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/arithmetic-and-ans.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Arithmetic coding and ANS: fractional bits</h1>
+    <p class="summary">How a whole message becomes one number so that a symbol can cost 0.03 bits, why that is what makes adaptive and context modeling possible, and how ANS packs the same information into a single integer that pops like a stack.</p>
+    <div class="meta">15 min read</div>
+  </header>
+  
+  <div class="prose"><h2 id="a-symbol-that-costs-less-than-a-bit">A symbol that costs less than a bit</h2>
+<p>The <a href="../prefix-codes/">prefix codes</a>
+ article ended on a wall. A source that sends A ninety percent of the time has an entropy of 0.47 bits per symbol, and the best prefix code pays 1.0, because a codeword cannot be shorter than one bit. The desert weather station from the <a href="../modeling-and-coding/">first article</a>
+ hit the same wall at 0.62 versus 1.15. Grouping symbols into pairs and triples chips at the wall but never removes it, and the tables grow exponentially while you chip.</p>
+<p>So here is the question, and it should sound slightly absurd: <em>how can a symbol cost 0.03 bits?</em> A bit is the smallest thing there is. You cannot write three hundredths of a zero into a file. Whatever the answer is, it cannot be &ldquo;a shorter codeword&rdquo;. It has to be a different idea of what a codeword is.</p>
+<p>The idea was in the air at MIT in the early 1960s; Peter Elias is usually credited with the observation, though he never published it, and Shannon&rsquo;s 1948 paper contains a version of it as a proof device. It became an algorithm at IBM in 1976, in a paper by Jorma Rissanen and a Stanford thesis by Richard Pasco, and a practical one in Rissanen and Langdon&rsquo;s 1979 paper that gave it its name: arithmetic coding. The name is apt. The message is not a sequence of codewords at all. It is one number.</p>
+<h2 id="one-number-for-the-whole-message">One number for the whole message</h2>
+<p>Take the smallest example that shows the mechanism. Three symbols, $P(A) = 1/2$, $P(B) = 1/4$, $P(C) = 1/4$, and the message ABAC. Lay the unit interval $[0, 1)$ on a table and give each symbol a slice proportional to its probability, in a fixed order: A owns $[0, 0.5)$, B owns $[0.5, 0.75)$, C owns $[0.75, 1)$.</p>
+<p>To code the first symbol, A, keep A&rsquo;s slice and throw the rest away. The interval is now $[0, 0.5)$. To code the next symbol, B, treat the current interval as if it were the whole table: subdivide $[0, 0.5)$ in the same proportions, so A gets $[0, 0.25)$, B gets $[0.25, 0.375)$, C gets $[0.375, 0.5)$, and keep B&rsquo;s. Then A again: keep the first half of $[0.25, 0.375)$, which is $[0.25, 0.3125)$. Then C: the last quarter of that, $[0.296875, 0.3125)$.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">model</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&#34;A&#34;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="s2">&#34;B&#34;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">),</span> <span class="s2">&#34;C&#34;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)}</span>   <span class="c1"># [low, high) share of each symbol</span>
+</span></span><span class="line"><span class="cl"><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="s2">&#34;ABAC&#34;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">width</span> <span class="o">=</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span>
+</span></span><span class="line"><span class="cl">    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">lo</span> <span class="o">+</span> <span class="n">width</span> <span class="o">*</span> <span class="n">model</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">lo</span> <span class="o">+</span> <span class="n">width</span> <span class="o">*</span> <span class="n">model</span><span class="p">[</span><span class="n">s</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;after </span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">: [</span><span class="si">{</span><span class="n">lo</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">hi</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">)  width </span><span class="si">{</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> = 1/</span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">))</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;bits = -log2(width) = </span><span class="si">{</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after A: [0.000000, 0.500000)  width 0.500000 = 1/2</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after B: [0.250000, 0.375000)  width 0.125000 = 1/8</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after A: [0.250000, 0.312500)  width 0.062500 = 1/16</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after C: [0.296875, 0.312500)  width 0.015625 = 1/64</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># bits = -log2(width) = 6.0</span>
+</span></span></code></pre></div><figure class="fig"><a href="/compressionfight/map/img/arithmetic-and-ans/interval_zoom.png"><img src="/compressionfight/map/img/arithmetic-and-ans/interval_zoom.png" alt="Five rows of intervals, each zooming into the slice of the symbol coded" loading="lazy"></a><figcaption>ABAC as one number. Each symbol keeps its slice of the current interval and the next symbol subdivides that slice. The final interval has width 1/64; the six-bit fraction 0.010011 lies inside it, and six bits is exactly 1 + 2 + 1 + 2.</figcaption></figure>
+
+<p>The message is now any number inside $[0.296875, 0.3125)$. The decoder, holding the same model, finds that number in A&rsquo;s slice of $[0,1)$, so the first symbol was A; zooms into A&rsquo;s slice and finds the number in B&rsquo;s part of it; and so on, until it has read four symbols and stops (the length is sent, or a terminating symbol is). We have replaced &ldquo;a codeword per symbol&rdquo; with &ldquo;a region per message&rdquo;. How many bits does it take to name a point in that region? A binary fraction with $b$ digits after the point can land on any multiple of $2^{-b}$, and the interval has width $1/64$, so some six-digit fraction must fall inside it: $0.010011_2 = 19/64 = 0.296875$ does. Six bits for ABAC.</p>
+<p>Now the thing to notice, the one the whole article hangs on. The width of the final interval is the product of the probabilities of the symbols: $\tfrac12 \cdot \tfrac14 \cdot \tfrac12 \cdot \tfrac14 = 1/64$. The number of bits needed is $-\log_2$ of that width, and the logarithm of a product is a sum:</p>
+$$\text{bits} = -\log_2 \prod_i p_i = \sum_i -\log_2 p_i = 1 + 2 + 1 + 2 = 6.$$<p>Each symbol narrowed the interval by its probability, so each symbol contributed exactly $-\log_2 p$ to the length of the final number. Nothing in that argument needed $-\log_2 p$ to be an integer. If $P(A)$ were 0.9, coding an A would narrow the interval by a factor of 0.9, which lengthens the final fraction by $-\log_2 0.9 = 0.152$ bits. Code nine A&rsquo;s and the interval shrinks by $0.9^9$, costing 1.37 bits for all nine together. <strong>The cost is additive and fractional because the message is one number, and lengths of numbers add when their widths multiply.</strong> The one-bit tax does not exist here; there is no codeword to be at least one bit long. The desert station gets its 0.62.</p>
+<p>Try AAAA with the same model: four halvings, $[0, 1/16)$, four bits, which is what a prefix code would also pay. Arithmetic coding never does worse than $-\log_2 p$ per symbol plus a couple of bits for the whole message; it simply stops rounding up.</p>
+<div class="map-lab" data-fighter="arith"><p class="lab-fail">Interactive lab (arith) needs JavaScript.</p></div>
+
+<figure class="fig"><a href="/compressionfight/map/img/arithmetic-and-ans/bits_vs_p.png"><img src="/compressionfight/map/img/arithmetic-and-ans/bits_vs_p.png" alt="Bits charged versus probability for arithmetic coding against the one-bit floor, and average bits on a binary source" loading="lazy"></a><figcaption>Left: the price of a likely symbol, minus log2 p, versus the one bit a prefix code must charge. Right: averaged over a two-symbol source, Huffman pays 2.1 times the entropy at P(A) = 0.9 and 12 times at 0.99.</figcaption></figure>
+
+<h2 id="the-model-may-change-its-mind-every-symbol">The model may change its mind every symbol</h2>
+<p>The second thing to notice is quieter and matters more. Look at the loop again. At each step, the encoder takes the current interval and subdivides it according to a model. Nothing in the mechanism requires the model to be the same at every step. It only requires that the decoder, which replays the same steps, use the same model at the same step. And the decoder, by the time it reaches step $k$, has decoded symbols $1$ through $k-1$. So the model at step $k$ may be any function whatsoever of the symbols so far.</p>
+<p>This is the property that changed what compression is. A prefix code is a table built before coding starts, and swapping tables per symbol is impractical (you would ship a tree per symbol). An arithmetic coder consumes a probability distribution per symbol as naturally as it consumes a symbol, so a model may adapt: count frequencies as they arrive, condition on the previous two bytes, run a neural network. The <a href="../context-models/">context models</a>
+ article is entirely about models of this kind, and every one of them plugs straight into the loop above. PPM, CABAC, PAQ and &ldquo;a language model plus an arithmetic coder&rdquo; are all the same two lines of code with a different function supplying <code>model</code>. The prediction stage in the game has a socket, and this is the socket.</p>
+<h2 id="finite-precision-in-words">Finite precision, in words</h2>
+<p>The toy above used Python floats and would die after a few dozen symbols, when the interval width underflows. Real coders keep the interval as two integers, <code>low</code> and <code>range</code>, in 32 or 64 bits, and renormalize: whenever the top bits of <code>low</code> and <code>low + range</code> agree, those bits are settled forever, so shift them out to the output and shift the interval up to use the freed precision. The interval is thereby kept from collapsing, at the cost of a small, bounded rounding loss per symbol. There is one nuisance: a later carry can propagate into bits already emitted (the interval straddles a boundary like 0.0111… / 0.1000…), and every implementation has a scheme for holding those bits back until the straddle resolves. The <strong>range coder</strong>, Martin&rsquo;s 1979 variant, does the same thing renormalizing a byte at a time instead of a bit, which is faster and is what LZMA and most &ldquo;range coders&rdquo; you meet actually are. Arithmetic coder and range coder are one algorithm with two bookkeeping styles.</p>
+<p>A second simplification runs the other way. If the alphabet is binary, the &ldquo;subdivide&rdquo; step is one multiply (or, with the probability quantized to a few bits, one table lookup), and the symbol&rsquo;s slice is just &ldquo;the bigger part or the smaller part&rdquo;. <strong>Binary arithmetic coders</strong> of this kind run inside H.264 and HEVC as CABAC, and inside JPEG 2000 and JBIG2 as the MQ coder. Every multi-valued syntax element is first <em>binarized</em> into a string of decisions, each decision gets a context (a small adaptive probability chosen by what neighbouring blocks did), and the binary coder charges $-\log_2 p$ for each. CABAC&rsquo;s range update is a 64-state × 4-bucket lookup table and no multiplier at all, which is what it took to put adaptive arithmetic coding into a 200 mW hardware decoder.</p>
+<h2 id="the-thicket">The thicket</h2>
+<p>Here the story leaves mathematics for twenty years. Arithmetic coding in practical form was patented by IBM, and related patents followed from Mitsubishi, AT&amp;T and others, around the Q-coder and its relatives. The JPEG standard of 1992 includes an arithmetic-coded mode (the QM-coder) that produces files several percent smaller than the baseline Huffman mode; almost no encoder has ever emitted it and almost no decoder supports it, because implementing it meant a licence. When Julian Seward wrote bzip2 in 1996 he deliberately replaced the arithmetic coder of his earlier bzip with Huffman coding to stay clear of the patents, and bzip2&rsquo;s ratio was capped by that choice from the day it shipped. For two decades, the best entropy coder known was one that free software could not use, and prefix codes stayed in every format that mattered. The patents have all expired now, but they shaped the installed base, and the installed base is what formats are made of.</p>
+<p>The constraint also drove a technical question that turned out to have a good answer: arithmetic coding pays a multiply and a renormalization per symbol and is strictly serial; Huffman decoding is a table lookup. Even without the patents, could you have the ratio of one at the speed of the other?</p>
+<h2 id="ans-the-same-information-one-integer">ANS: the same information, one integer</h2>
+<p>In a series of papers between 2007 and 2014, Jarek Duda answered yes with a construction he called asymmetric numeral systems, and he put it in the public domain. It starts from a reframing. Arithmetic coding keeps a <em>sub-interval</em> and narrows it. ANS keeps a <em>single natural number</em> $x$, the state, and grows it. Coding a symbol of probability $p$ should multiply the state by about $1/p$, so that $\log_2 x$ grows by $-\log_2 p$; after the whole message, $\log_2 x$ is the number of bits the message cost, and the bits of $x$ are the output.</p>
+<p>Here is the cheapest form, <strong>rANS</strong>. Choose a denominator $M$ and integer frequencies $f_s$ summing to $M$, so $P(s) = f_s / M$; also the cumulative frequencies $c_s$. Take $M = 4$, $f_A = 3$, $f_B = 1$, $c_A = 0$, $c_B = 3$. To push a symbol $s$ onto a state $x$:</p>
+$$x' = \left\lfloor \frac{x}{f_s} \right\rfloor \cdot M + c_s + (x \bmod f_s).$$<p>Read it as: divide $x$ into $f_s$-sized chunks, spread the chunk count across $M$ (that is the $\times M / f_s \approx 1/p$ growth), and store the leftover $x \bmod f_s$ together with the symbol&rsquo;s offset $c_s$ in the low digit. The low digit, $x' \bmod M$, lands in $[c_s, c_s + f_s)$, which is $s$&rsquo;s slice of $M$. So the state&rsquo;s last base-$M$ digit tells the decoder which symbol was pushed last, and everything else in $x'$ reconstructs the previous $x$.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">M</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">cum</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="p">{</span><span class="s2">&#34;A&#34;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&#34;B&#34;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="p">{</span><span class="s2">&#34;A&#34;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&#34;B&#34;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="mi">4</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="s2">&#34;AAB&#34;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">x_new</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">//</span> <span class="n">f</span><span class="p">[</span><span class="n">s</span><span class="p">])</span> <span class="o">*</span> <span class="n">M</span> <span class="o">+</span> <span class="n">cum</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span> <span class="o">%</span> <span class="n">f</span><span class="p">[</span><span class="n">s</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;push </span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">: x </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">x_new</span><span class="si">}</span><span class="s2">   log2 grew by </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">x_new</span> <span class="o">/</span> <span class="n">x</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> (ideal </span><span class="si">{</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">/</span> <span class="n">M</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">x</span> <span class="o">=</span> <span class="n">x_new</span>
+</span></span><span class="line"><span class="cl"><span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl"><span class="k">while</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">4</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">slot</span> <span class="o">=</span> <span class="n">x</span> <span class="o">%</span> <span class="n">M</span>
+</span></span><span class="line"><span class="cl">    <span class="n">s</span> <span class="o">=</span> <span class="s2">&#34;A&#34;</span> <span class="k">if</span> <span class="n">slot</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="s2">&#34;B&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">x</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">//</span> <span class="n">M</span><span class="p">)</span> <span class="o">+</span> <span class="n">slot</span> <span class="o">-</span> <span class="n">cum</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;pop </span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">: x -&gt; </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;decoded (reversed):&#34;</span><span class="p">,</span> <span class="s2">&#34;&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># push A: x 4 -&gt; 5   log2 grew by 0.322 (ideal 0.415)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># push A: x 5 -&gt; 6   log2 grew by 0.263 (ideal 0.415)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># push B: x 6 -&gt; 27   log2 grew by 2.170 (ideal 2.000)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># pop B: x -&gt; 6</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># pop A: x -&gt; 5</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># pop A: x -&gt; 4</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># decoded (reversed): BAA</span>
+</span></span></code></pre></div><p>Encoding A, A, B from $x = 4$ gives $4 \to 5 \to 6 \to 27$. The state grew from $\log_2 4 = 2$ to $\log_2 27 = 4.75$ bits, 2.75 bits for three symbols, against the ideal $0.415 + 0.415 + 2 = 2.83$; with a state this tiny the rounding is visible, and in real use the state is 32 or 64 bits and the per-symbol loss is thousandths of a bit. Decoding reads $27 \bmod 4 = 3$, which is in B&rsquo;s slice $[3, 4)$, so the last symbol was B, and inverts the formula to get back to 6; then $6 \bmod 4 = 2$ is in A&rsquo;s slice, back to 5; then 4. <strong>The symbols come out in reverse.</strong> That is not a bug to fix; it is the price of the construction. The state is a stack: the last symbol pushed is the first popped. Encoders therefore run through the block backwards, so that the decoder reads it forwards, which means ANS wants its data in blocks and sits awkwardly with a model that must adapt in decoding order. Static-per-block tables suit it perfectly, and that is where it lives.</p>
+<div class="map-lab" data-fighter="ans"><p class="lab-fail">Interactive lab (ans) needs JavaScript.</p></div>
+
+<p>Two refinements turn the toy into the fastest entropy coder in deployment. First, renormalization, as before: keep $x$ inside a window like $[2^{31}, 2^{63})$ by shifting whole bytes or 32-bit words out before each push and back in before each pop; the state never overflows and output comes in word-sized chunks. Second, in <strong>tANS</strong> (Duda&rsquo;s tabled variant; Yann Collet&rsquo;s FSE in zstd is the famous implementation), the state is kept small, say in $[L, 2L)$ with $L = 4096$, and the push function for every (state, symbol) pair is precomputed into a table. Encoding and decoding become &ldquo;look up the next state, emit some bits&rdquo;, with no division and no multiplication, which is Huffman&rsquo;s cost. The compression is arithmetic coding&rsquo;s, within a few hundredths of a bit of the entropy. The trade-off between the two coders that had stood since 1976 simply disappeared.</p>
+<p>rANS keeps the multiply but gains something tANS cannot: because the state update depends only on the state and the symbol, two or more independent states can be interleaved, symbol by symbol, in one stream, and a decoder can advance all of them in parallel in SIMD lanes. Fabian Giesen&rsquo;s interleaved rANS from 2014 is why the entropy stage of a modern codec can run at gigabytes per second on a CPU and why CacheGen can decode KV-cache streams on a GPU. tANS is the choice when there is one stream and a small alphabet per table (zstd&rsquo;s literal lengths, match lengths and offsets; Apple&rsquo;s LZFSE); rANS is the choice when there are many symbols per table or many lanes to fill (JPEG XL, Draco&rsquo;s 3D meshes, the CRAM genomics format). AV1, for comparison, kept a multi-symbol adaptive range coder, because it wanted per-symbol adaptation more than it wanted lanes.</p>
+<h2 id="where-each-one-is-used-and-why">Where each one is used, and why</h2>
+<p>Lay the three families on the job axes from the <a href="../anatomy-of-a-job/">anatomy of a job</a>
+ article. A prefix code is the cheapest decoder and the only one that is stateless enough to resynchronize cheaply; it stays where symbols are nearly uniform after a front end (DEFLATE after LZ77, JPEG after run-length). An adaptive arithmetic or range coder is where the model must change every symbol and the decoder may be serial: context modeling, CABAC, LZMA&rsquo;s literal coder, PAQ, learned codecs, an LLM on each end. ANS is where the distribution is static per block and throughput matters: zstd, JPEG XL, the entropy stage of any new format designed after 2015. The ratio differences among the three on well-modeled data are small. The differences in speed, parallelism and what kind of model they can be attached to are the whole story, and they are differences in what the job allows.</p>
+<h2 id="connections">Connections</h2>
+<p><strong>A bijection between messages and numbers.</strong> Arithmetic coding is the same construction as enumerative coding (Cover, 1973): order all possible messages lexicographically by their probability intervals, and the code for a message is its index among them. Every message of a given length maps to a disjoint sub-interval of $[0, 1)$ and the sub-intervals tile it exactly, which is the Kraft equality from the <a href="../prefix-codes/">prefix codes</a>
+ article with real-valued lengths. The coder is a bijection between strings and reals in which likely strings get short reals.</p>
+<p><strong>Compounding.</strong> The interval width after $n$ symbols is $\prod p_i$, and the bits are $\sum -\log_2 p_i$. That is the same arithmetic as a Kelly gambler&rsquo;s wealth after $n$ rounds, which multiplies by a factor each round and whose logarithm therefore adds. A coder narrowing an interval and a gambler compounding a bankroll are the same process read in opposite directions, which is why log-loss shows up in both and why a prediction market&rsquo;s prices are a probability model you could compress with.</p>
+<p><strong>Exactness at both ends.</strong> The decoder must reproduce the encoder&rsquo;s model bit for bit at every step; the moment it does not, every later symbol is wrong. For a counting model this is trivial. For a neural network it is not: floating-point summation order differs between GPUs, between kernels, between batch sizes, and a probability that differs in the last ulp can move a symbol across a slice boundary. That is why LLM-based compressors quantize the model&rsquo;s output probabilities to integers before coding, and why &ldquo;symmetric&rdquo; in an algorithm card means more than &ldquo;same cost&rdquo;: it means <em>identical</em>.</p>
+<p><strong>In the game:</strong> the <a href="/compressionfight/#fighter=arith">arithmetic coding</a>
+ and the <a href="/compressionfight/#fighter=ans">ANS</a>
+ are this family. The arithmetic coding is ideal in the Streaming video task (CABAC), the Maximum-ratio text archive task (PAQ) and the KV cache over a network task (CacheGen); the ANS in the Small JSON messages task (zstd&rsquo;s FSE), and both are accepted substitutes for the Huffman coding almost everywhere else.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=arith" title="arith"><img src="/compressionfight/img/fighters/arith.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>arith</span></a></li><li><a href="/compressionfight/#fighter=ans" title="ans"><img src="/compressionfight/img/fighters/ans.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>ans</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes: whole bits</a></li><li><a href="/compressionfight/map/zoo/context-models/">Context models: predicting the next symbol</a></li><li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/prefix-codes/"><small>&larr; Previous</small>Prefix codes: whole bits</a>
+    <a class="next" href="/compressionfight/map/zoo/lz-family/"><small>Next &rarr;</small>Say it again: the LZ family</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#a-symbol-that-costs-less-than-a-bit">A symbol that costs less than a bit</a></li>
+    <li><a href="#one-number-for-the-whole-message">One number for the whole message</a></li>
+    <li><a href="#the-model-may-change-its-mind-every-symbol">The model may change its mind every symbol</a></li>
+    <li><a href="#finite-precision-in-words">Finite precision, in words</a></li>
+    <li><a href="#the-thicket">The thicket</a></li>
+    <li><a href="#ans-the-same-information-one-integer">ANS: the same information, one integer</a></li>
+    <li><a href="#where-each-one-is-used-and-why">Where each one is used, and why</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

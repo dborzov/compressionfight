@@ -8,12 +8,14 @@ from collections import Counter
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 
-BG, FG, MUTED = "#0b0714", "#e8e2f0", "#8b83a0"
-PURPLE, GREEN, YELLOW, RED, BLUE = "#b38cff", "#5ee8a0", "#ffd166", "#ff6b8a", "#6ec3ff"
+BG, FG, MUTED = "#f3eadb", "#2a211b", "#5a4a3d"
+PURPLE, GREEN, YELLOW, RED, BLUE = "#6b4a7a", "#6f8f4e", "#b8892e", "#b05a4c", "#246b66"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG, "text.color": FG,
                      "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG, "axes.edgecolor": MUTED,
-                     "grid.color": "#2a2140", "font.size": 16, "font.family": "DejaVu Sans"})
+                     "grid.color": "#b89f78", "font.size": 16, "font.family": "DejaVu Sans"})
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "img", "context-models", "escape_ladder.png")
 
 text = "the_theme_of_the_thesis"
@@ -59,7 +61,7 @@ for i, (o, ctx, what, bits, seen) in enumerate(rungs):
     y = -i * 1.4
     col = GREEN if what.startswith("hit") else (YELLOW if o >= 0 else RED)
     label = f"order {o}" + (f'  after "{ctx.replace("_", "␣")}"' if o > 0 else ("  (no context)" if o == 0 else "  (fallback)"))
-    ax.add_patch(plt.Rectangle((0, y - 0.45), 5.0, 0.9, color="#2a2140", ec=MUTED, lw=1.5))
+    ax.add_patch(plt.Rectangle((0, y - 0.45), 5.0, 0.9, color="#e0d2b6", ec=MUTED, lw=1.5))
     ax.text(0.15, y, label, va="center", fontsize=16, color=FG)
     ax.text(5.3, y + 0.18, what, va="center", fontsize=15, color=col)
     ax.text(5.3, y - 0.22, f"seen here: {seen}", va="center", fontsize=13, color=MUTED)

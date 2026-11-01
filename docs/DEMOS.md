@@ -1,16 +1,16 @@
-# Special Move Training — per-fighter worked examples (`js/demos.js`)
+# Labs — per-algorithm worked examples (`js/demos.js`)
 
 Contract: `CYC.Demos.render(container: HTMLElement, fighterId: string)` renders one interactive mini-lab into the
 container (clearing it first) and returns nothing. `CYC.Demos.has(fighterId) -> boolean`. Each lab is one
 concrete, numeric, data-specific example: the user sees actual numbers go in and actual numbers come out,
 optionally with one slider/toggle. No lab may lie: every displayed number is computed live from the stated
-input by the stated formula. Keep each lab to roughly 180–360 px tall; it sits inside the fighter detail card.
+input by the stated formula. Keep each lab to roughly 180–360 px tall; it sits inside the algorithm detail card.
 
 Shared primitives to build once and reuse (plain DOM + canvas, styled via existing CSS variables; the UI
-agent's stylesheet defines `--role-color` on the container, pixel fonts, dark theme):
+agent's stylesheet defines `--role-color` on the container, the body font, light Art Nouveau tokens from docs/DESIGN.md):
 - `numStrip(rows: {label, values: (number|string)[], hi?: boolean[]}[])` — aligned rows of numbers, highlighted cells.
 - `matrix(values: number[][], opts {heat?: boolean, zeroDim?: boolean})` — small grid with the numbers written in.
-- `map(canvas, {points, centroids?, assign?, arrows?, axes?})` — 2D scatter "city map", coordinates in -1..1.
+- `map(canvas, {points, centroids?, assign?, arrows?, axes?})` — 2D scatter map, coordinates in -1..1.
 - `tree(canvas, huffmanTree)` — binary tree with 0/1 edge labels and leaf symbols.
 - `intervals(canvas, steps: {lo, hi, label}[])` — successive zoomed number lines.
 - `curve(canvas, fn, domain, marks)` — function plot with marked points.
@@ -43,7 +43,7 @@ agent's stylesheet defines `--role-color` on the container, pixel fonts, dark th
 - **uniform** — vector `[3.7, −1.2, 0.4, 8.9, −5.5, 2.1]`. ⟲ slider Δ 0.25..4. Rows: x, q = round(x/Δ) (round half away from zero, so −5.5/1 → −6), x̂ = q·Δ, error. Show bits per value = ceil(log2(number of distinct q levels in range ±9)), MSE, and the high-resolution theory Δ²/12 beside it. Note: doubling Δ saves ≈1 bit per value and quadruples the error.
 - **qmatrix** — the JPEG luma table at quality 50 (standard Annex K values) as a heat matrix with numbers; the Wikipedia example DCT block coefficients (`[-415.38,-30.19,-61.20,27.24,56.13,-20.10,-2.39,0.46], [4.47,-21.86,-60.76,10.25,13.15,-7.09,-8.54,4.88], ...` use the full 8×8 from the Wikipedia JPEG article). Divide and round → quantized block; count zeros (44 of 64 at quality 50; DC = −26 as on Wikipedia). ⟲ slider quality scale 0.5×..3× of the table. Note: coarse where the eye is blind (bottom-right).
 - **companding** — μ-law curve `F(x)=sgn(x)·ln(1+255|x|)/ln(256)` plotted. ⟲ slider input amplitude 0.001..1: 8-bit μ-law code, reconstruction, relative error; next to it, 8-bit uniform's relative error for the same input. Note: at amplitude 0.01 the worst-case error is 39% of the signal for 8-bit uniform (Δ/2 = 0.0039) vs ≈2.2% for μ-law; for x = 0.01 exactly the actual errors are 21.9% vs 0.10%. Show both actual and worst-case.
-- **vq** — "city map": 60 seeded 2D points in 3 clusters. ⟲ slider K 2..8: run k-means (10 iterations, seeded init), draw safehouse centroids and assignments, show bits per point = log2 K, total squared distortion, codebook size K×2 floats. Note: codebook = side information.
+- **vq** — 2D point map: 60 seeded 2D points in 3 clusters. ⟲ slider K 2..8: run k-means (10 iterations, seeded init), draw centroids and assignments, show bits per point = log2 K, total squared distortion, codebook size K×2 floats. Note: codebook = side information.
 - **rvq** — same points. Stage 1: K=4 centroids. Stage 2: k-means on the residuals, K=4; draw residual arrows for a few points. ⟲ toggle stages 1/2/3: show distortion and bits (2 bits per stage) and the effective number of reconstruction points (4, 16, 64) vs centroids stored (4, 8, 12).
 - **pq** — 4-dim vector `[0.9, 0.1, −0.3, 0.8]` split into `[0.9,0.1]` and `[−0.3,0.8]`. Two small maps, each with a fixed 4-entry codebook (give the centroids), nearest index per half → code `(i, j)`, 2+2 bits, reconstruction and error. Note: 4×4 = 16 effective centroids from 8 stored; distance to a query is a sum of two table lookups.
 - **blockint** — block of 8 values `[0.012, −0.031, 0.004, 0.550, 0.020, −0.008, 0.015, −0.027]` (one outlier). absmax scale `s = max|x|/7`, `q = round(x/s)` clamped to [−8,7], x̂ = q·s. Show that 7 of 8 become 0 or ±1 and the relative error of the small values. ⟲ toggle "rotate / isolate outlier": replace the outlier with a Hadamard-spread version (divide the 0.55 across all 8 as ±0.19 added to each) and redo; show the error drop. Bits: 8×16 = 128 → 8×4 + 16 = 48.
@@ -71,12 +71,12 @@ agent's stylesheet defines `--role-color` on the container, pixel fonts, dark th
 functions on `CYC.Demos.calc.*` and test those): Huffman CLRS lengths and mean 2.24; arithmetic `ABAC` width 1/64;
 rANS encode-then-decode of `AAB` round-trips; Rice `37,k=3` → 8 bits; LZW `ABABABA` → `[65,66,256,258]`; Haar
 first level averages `[11,15,99,95]`; LZ77 toy finds a match of length ≥ 8 in the lz77 lab text; μ-law 8-bit relative
-error at 0.01 < 5%; k-means on the city map with K=3 reaches distortion below K=1 by ≥ 5×.
+error at 0.01 < 5%; k-means on the point map with K=3 reaches distortion below K=1 by ≥ 5×.
 
 
 ---
 
-# Level 5 labs (KV cache fighters)
+# Level 5 labs (KV cache algorithms)
 
 Same contract and primitives. Ids must match `CYC.FIGHTERS` exactly.
 
@@ -93,7 +93,7 @@ Same contract and primitives. Ids must match `CYC.FIGHTERS` exactly.
 - **waterline** — 8 coordinate variances σ² = [64,32,16,8,4,2,1,0.5]. ⟲ slider water level θ 0.25..64 (log). Per coordinate: bits R_i = max(0, ½·log₂(σ²_i/θ)), distortion D_i = min(σ²_i, θ). Totals: ΣR and ΣD. Beside it: equal allocation at the same total bits, R = ΣR/8 each, distortion Σ σ²_i·2^(−2R). Bars of σ² with the water level drawn across. Note: KVTC solves this by dynamic programming per PCA coordinate.
 - **fp4** — E2M1 grid: ±{0, 0.5, 1, 1.5, 2, 3, 4, 6}; draw on a number line (non-uniform spacing). Block of 16 values (give them: mostly in ±0.05 with one at 0.42). NVFP4: scale s = max|x|/6 (keep as float; note the real scale is FP8 E4M3), q = nearest grid point to x/s, x̂ = q·s. Compare int4 absmax on the same block (levels −8..7, s = max|x|/7). Rows: x, NVFP4 x̂, int4 x̂, errors; bits both 4.5 per element (16×4+8)/16 vs (32×4+16)/32. Note: a floating grid has finer steps near zero, like a tiny μ-law.
 - **escape** — the blockint lab's 8 values `[0.012, −0.031, 0.004, 0.550, 0.020, −0.008, 0.015, −0.027]`. Without escape: 3-bit absmax over all 8 (s = 0.55/3): show how the 7 small ones collapse. With escape: the 0.550 goes to a side list at 16 bits + 3-bit index; the remaining 7 quantize with s = 0.031/3. Bits per element: 3 vs 3 + (16+3)/8 ≈ 5.4 here (note: 1% outliers in a real tensor → ≈3.3). ⟲ toggle.
-- **evict** — 16 tokens with attention weights w (give a normalized list where token 0 = 0.30, tokens 12-15 sum to 0.30, the rest small). ⟲ slider k (tokens kept) 2..16: keep the top-k by w, show mass kept Σw_kept, memory kept k/16, and the page view: 2 pages of 8 with freed pages highlighted (a page frees only if all 8 of its tokens are evicted). Note: the score is the Con Artist's job; the pages are the system's.
+- **evict** — 16 tokens with attention weights w (give a normalized list where token 0 = 0.30, tokens 12-15 sum to 0.30, the rest small). ⟲ slider k (tokens kept) 2..16: keep the top-k by w, show mass kept Σw_kept, memory kept k/16, and the page view: 2 pages of 8 with freed pages highlighted (a page frees only if all 8 of its tokens are evicted). Note: the score is the perceptual-model stage's job; the pages are the system's.
 
 ### perceptual
 - **sinkguard** — 32 positions with attention weights for one query: w₀ = 0.35 (sink), w₂₈..₃₁ = 0.075 each (0.30 total), the remaining 27 share 0.35 (give the numbers as a bar chart). Simulated 2-bit quantization error e_i = 0.25 for every quantized position. Weighted error Σ w_i·e_i: everything quantized → 0.25; exempt positions 0 and 28..31 → 0.35 × 0.25 = 0.0875. ⟲ toggle exemption. Note: KIVI keeps the last 128 in fp16; KVQuant the sink.

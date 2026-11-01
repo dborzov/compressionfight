@@ -2,9 +2,10 @@
 <nav id="sidebar" class="side" aria-label="Map taxonomy">
   <a class="side-home{{ if .IsHome }} on{{ end }}" href="{{ "" | relURL }}">The Map</a>
   <a class="side-home{{ if eq .Kind "page" }}{{ if eq .Section "" }} on{{ end }}{{ end }}" href="{{ "primer/" | relURL }}">Primer</a>
+  {{ $names := dict "The Packer" "Entropy coding" "The Oracle" "Prediction" "The Lens" "Transform" "The Butcher" "Quantization" "The Con Artist" "Perceptual model" "The Inside Man" "Shared prior" "Jobs" "Tasks" }}
   {{ range hugo.Data.map.sections }}
   <div class="side-sec">
-    <div class="side-h">{{ .name }}{{ with .sub }}<small>{{ . }}</small>{{ end }}</div>
+    <div class="side-h">{{ index $names .name | default .name }}{{ with .sub }}<small>{{ . | replaceRE "chairs" "stages" }}</small>{{ end }}</div>
     <ul>
     {{ range .items }}
       {{ $p := site.GetPage (printf "/zoo/%s" .slug) }}

@@ -9,15 +9,15 @@ sections:
         title: "The anatomy of a job"
       - slug: rate-and-distortion
         title: "Rate and distortion"
-  - name: "The Packer"
-    sub: "entropy coders"
+  - name: "Entropy coding (symbols + probabilities \u2192 bits; always the last stage)"
+    sub: ""
     items:
       - slug: prefix-codes
         title: "Prefix codes"
       - slug: arithmetic-and-ans
         title: "Fractional-bit coders"
-  - name: "The Oracle"
-    sub: "prediction and modeling"
+  - name: "Prediction and modeling (expose structure; lower the entropy; produce no bits)"
+    sub: ""
     items:
       - slug: lz-family
         title: "Dictionary matchers: the LZ family"
@@ -27,8 +27,8 @@ sections:
         title: "Statistical context models"
       - slug: motion-compensation
         title: "Temporal prediction: motion compensation"
-  - name: "The Lens"
-    sub: "transforms and rearrangements"
+  - name: "Transforms and rearrangements (save nothing alone; set up the other stages)"
+    sub: ""
     items:
       - slug: block-transforms
         title: "Frequency transforms"
@@ -40,8 +40,8 @@ sections:
         title: "Sorting transforms"
       - slug: learned-transforms
         title: "Learned transforms"
-  - name: "The Butcher"
-    sub: "quantizers"
+  - name: "Quantization (the only lossy stage)"
+    sub: ""
     items:
       - slug: scalar-quantization
         title: "Scalar quantizers"
@@ -49,20 +49,20 @@ sections:
         title: "Vector quantizers"
       - slug: block-float-formats
         title: "Block-scaled integer and float formats"
-  - name: "The Con Artist"
-    sub: "consumer models"
+  - name: "Perceptual and consumer models (what will the reader not notice?)"
+    sub: ""
     items:
       - slug: perceptual-models
         title: "Human perceptual models"
       - slug: attention-as-audience
         title: "A transformer as the audience"
-  - name: "The Inside Man"
-    sub: "shared priors and side information"
+  - name: "Shared priors and side information (what the decoder already holds)"
+    sub: ""
     items:
       - slug: side-information
         title: "Side information"
-  - name: "Jobs"
-    sub: "the systems that pick the chairs"
+  - name: "Tasks"
+    sub: "the systems that pick the stages"
     items:
       - slug: kv-cache-vaults
         title: "The five vaults of the KV cache"

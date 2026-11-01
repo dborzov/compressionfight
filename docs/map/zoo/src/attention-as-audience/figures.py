@@ -8,13 +8,15 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 from matplotlib.patches import Rectangle
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "img", "attention-as-audience")
 os.makedirs(OUT, exist_ok=True)
 
-BG, FG, GRID, DIM = "#0b0714", "#ece7f5", "#2a2140", "#7d7392"
-C_PERC, C_QUANT, C_PRIOR, C_TRANS, C_PRED, C_ENT = "#ffe23d", "#ff6a3d", "#ffc14d", "#38d6ff", "#4dff7c", "#d05cff"
+BG, FG, GRID, DIM = "#f3eadb", "#2a211b", "#b89f78", "#5a4a3d"
+C_PERC, C_QUANT, C_PRIOR, C_TRANS, C_PRED, C_ENT = "#b8892e", "#b05a4c", "#9c6b3f", "#246b66", "#6f8f4e", "#6b4a7a"
 plt.rcParams.update({
     "figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
     "axes.edgecolor": GRID, "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
@@ -89,11 +91,11 @@ def draw_pages(ax, n_pages, page, alive, title, order=None):
         y = n_pages - 1 - p
         page_alive = alive[p * page:(p + 1) * page].any()
         ax.add_patch(Rectangle((-0.15, y - 0.15), cols + 0.3, 0.8, fill=True,
-                               facecolor="#15102a" if page_alive else BG,
+                               facecolor="#ebdfc8" if page_alive else BG,
                                edgecolor=C_QUANT if page_alive else GRID, lw=2.2, ls="-" if page_alive else "--"))
         for s in range(page):
             i = p * page + s
-            c = C_PERC if (alive[i] and i == 0 and order is None) else (C_TRANS if alive[i] else "#241c3a")
+            c = C_PERC if (alive[i] and i == 0 and order is None) else (C_TRANS if alive[i] else "#e0d2b6")
             ax.add_patch(Rectangle((s, y), 0.72, 0.5, facecolor=c, edgecolor=BG))
             if alive[i] and order is not None and n_pages <= 2:
                 ax.text(s + 0.36, y + 0.25, str(order[i]), ha="center", va="center", fontsize=9, color=BG, fontweight="bold")

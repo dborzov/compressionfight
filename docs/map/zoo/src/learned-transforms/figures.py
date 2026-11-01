@@ -6,14 +6,16 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-BG, FG, DIM = "#0b0714", "#ece6f5", "#8a7fa3"
-ACC1, ACC2, ACC3, ACC4, ACC5 = "#ffb454", "#5ad1ff", "#ff6b9d", "#9df27a", "#c3a6ff"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
+ACC1, ACC2, ACC3, ACC4, ACC5 = "#b8892e", "#246b66", "#b05a4c", "#6f8f4e", "#6b4a7a"
 plt.rcParams.update({
     "figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
     "text.color": FG, "axes.labelcolor": FG, "xtick.color": DIM, "ytick.color": DIM,
-    "axes.edgecolor": DIM, "grid.color": "#2a2240", "font.size": 13,
+    "axes.edgecolor": DIM, "grid.color": "#b89f78", "font.size": 13,
     "axes.titlesize": 15, "axes.titleweight": "bold",
 })
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -44,7 +46,7 @@ def arrow(x0, y0, x1, y1, label=None, color=FG, dy=-0.55):
 
 
 yb = 3.3; hb = 2.2
-box(0.2, yb, 2.2, hb, "waveform frame", "320 samples × 16 bit\n= 5,120 bits", "#d9d2e9")
+box(0.2, yb, 2.2, hb, "waveform frame", "320 samples × 16 bit\n= 5,120 bits", "#e0d2b6")
 arrow(2.4, yb + hb / 2, 3.1, yb + hb / 2)
 box(3.1, yb, 2.8, hb, "encoder (NEURON)", "causal conv stack,\nstride 320 → 1 frame\n8-dim latent z", ACC2)
 arrow(5.9, yb + hb / 2, 6.9, yb + hb / 2, "z ∈ ℝ⁸")
@@ -52,9 +54,9 @@ box(6.9, yb, 2.8, hb, "quantizer (RVQ)", "residual VQ, 8 stages\n× 1,024 entrie
 arrow(9.7, yb + hb / 2, 10.7, yb + hb / 2, "80 bits\n64 : 1")
 box(10.7, yb, 2.8, hb, "decoder (BRAINJAR)", "conv stack, ≈ 20 MB\nof weights = the prior\nover 'what speech is'", ACC5)
 arrow(13.5, yb + hb / 2, 14.2, yb + hb / 2)
-box(14.2, yb, 1.6, hb, "x̂", "plausible\n320 samples", "#d9d2e9")
+box(14.2, yb, 1.6, hb, "x̂", "plausible\n320 samples", "#e0d2b6")
 # losses
-ax.add_patch(FancyBboxPatch((3.0, 0.5), 7.2, 1.7, boxstyle="round,pad=0.05", fc="#1c1430", ec=ACC3, lw=1.2))
+ax.add_patch(FancyBboxPatch((3.0, 0.5), 7.2, 1.7, boxstyle="round,pad=0.05", fc="#ebdfc8", ec=ACC3, lw=1.2))
 ax.text(6.6, 1.85, "training loss, back-propagated through all three boxes at once", ha="center", fontsize=12.5, color=ACC3, fontweight="bold")
 ax.text(6.6, 1.05, "reconstruction  (multi-scale spectral / waveform)   +   adversarial  (FORGER: discriminators say 'real or decoded?')\n"
                    "+   feature-matching   +   VQ commitment  (keep z near the codebooks)", ha="center", fontsize=10.5, color=FG, linespacing=1.5)
@@ -62,7 +64,7 @@ arrow(6.6, 2.2, 4.5, yb - 0.05, color=ACC3)
 arrow(6.6, 2.2, 8.3, yb - 0.05, color=ACC3)
 arrow(6.6, 2.2, 12.1, yb - 0.05, color=ACC3)
 # codebooks shared
-ax.add_patch(FancyBboxPatch((6.6, 6.0), 7.2, 1.1, boxstyle="round,pad=0.05", fc="#1c1430", ec=ACC4, lw=1.2))
+ax.add_patch(FancyBboxPatch((6.6, 6.0), 7.2, 1.1, boxstyle="round,pad=0.05", fc="#ebdfc8", ec=ACC4, lw=1.2))
 ax.text(10.2, 6.55, "shipped once to both ends (KEYMASTER + BRAINJAR): 8 codebooks × 1,024 × 8 floats, and the decoder weights",
         ha="center", fontsize=11, color=ACC4)
 arrow(8.3, 6.0, 8.3, yb + hb + 0.05, color=ACC4)

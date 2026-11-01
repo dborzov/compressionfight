@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Scalar quantization: placing the grid · Choose Your Codec</title>
+<meta name="description" content="Rounding is easy; where should the grid be fine and where coarse? Lloyd-Max&#39;s answer for a fixed number of levels, why an entropy coder makes the uniform grid almost unbeatable, μ-law&#39;s logarithmic ear, JPEG&#39;s table of sixty-four step sizes, and the outlier that ruins everyone&#39;s grid.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/" class="on" aria-current="page">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Quantization</span><span>/</span><span>Scalar quantizers</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Quantization · Scalar quantizers</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/scalar-quantization.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Scalar quantization: placing the grid</h1>
+    <p class="summary">Rounding is easy; where should the grid be fine and where coarse? Lloyd-Max&#39;s answer for a fixed number of levels, why an entropy coder makes the uniform grid almost unbeatable, μ-law&#39;s logarithmic ear, JPEG&#39;s table of sixty-four step sizes, and the outlier that ruins everyone&#39;s grid.</p>
+    <div class="meta">16 min read</div>
+  </header>
+  
+  <div class="prose"><h2 id="shoe-sizes">Shoe sizes</h2>
+<p>Feet grow continuously. Shoes come in sizes. Somewhere, somebody decided that the sizes would be 9, 9.5, 10 and so on, and that decision, repeated across the whole population, determines how much every person&rsquo;s feet hurt. Make the steps coarser and the factory stocks fewer sizes but the average foot is squeezed harder. Make them finer and the warehouse fills with half-sizes nobody buys. That is the rate-distortion trade from the <a href="../rate-and-distortion/">previous article</a>
+, and it has a known price: every halving of the step costs a bit and buys 6 dB.</p>
+<p>But there is a second question hiding inside the first, and it is the one this article is about. Feet are not spread evenly across sizes. Most adults cluster around a few sizes and almost nobody is a 15. Should the sizes be evenly spaced at all? Or should they crowd together where the feet are and spread out where they are not? If you could place eight sizes anywhere on the number line, where would you put them?</p>
+<blockquote><p><em>Rounding is easy; where should the grid be fine and where coarse?</em></p>
+</blockquote><p>Three generations of engineers answered this for three different reasons, and their answers, the Lloyd-Max levels, the μ-law curve, the JPEG table, and the outlier escape, are what fill the scalar quantizer&rsquo;s stage.</p>
+<h2 id="lloyds-lunch-problem">Lloyd&rsquo;s lunch problem</h2>
+<p>Stuart Lloyd worked at Bell Laboratories in the 1950s, when the company was turning telephone speech into pulse-code modulation: sample the voltage 8,000 times a second, round each sample to one of a fixed number of levels, send the level&rsquo;s index. The number of levels was fixed by the hardware, 128 or 256, and there was no entropy coder in the picture; each sample cost exactly seven or eight bits regardless of which level it hit. Under that constraint the only freedom left is <em>where the levels sit</em>, and Lloyd&rsquo;s 1957 internal memo (it was not formally published until 1982; Joel Max found the same answer independently in 1960) asked the exact question above. Imagine him with a plotted histogram of speech samples on the desk: a tall spike at zero, long thin tails. A uniform grid wastes half its levels out in the tails where almost nothing lands.</p>
+<p>Here is the problem for a bell-shaped source with eight levels, three bits. First, the best <em>uniform</em> grid, found by sweeping the step; then Lloyd&rsquo;s iteration started from that grid:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">g</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">240_001</span><span class="p">);</span> <span class="n">pdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">g</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">);</span> <span class="n">pdf</span> <span class="o">/=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>   <span class="c1"># unit Gaussian</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">mse</span><span class="p">(</span><span class="n">levels</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">g</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="n">levels</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:])</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pdf</span> <span class="o">*</span> <span class="p">(</span><span class="n">g</span> <span class="o">-</span> <span class="n">levels</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 3 bits = 8 levels. Best *uniform* grid: sweep the step.</span>
+</span></span><span class="line"><span class="cl"><span class="n">steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mi">901</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">unif</span> <span class="o">=</span> <span class="p">[</span><span class="n">mse</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span> <span class="o">-</span> <span class="mf">3.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="n">s_best</span> <span class="o">=</span> <span class="n">steps</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">unif</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;uniform 8 levels: best step=</span><span class="si">{</span><span class="n">s_best</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  MSE=</span><span class="si">{</span><span class="nb">min</span><span class="p">(</span><span class="n">unif</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Lloyd: start from that uniform grid, alternate (nearest level) / (conditional mean)</span>
+</span></span><span class="line"><span class="cl"><span class="n">lv</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span> <span class="o">-</span> <span class="mf">3.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">s_best</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">60</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">g</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="n">lv</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:])</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">lv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pdf</span><span class="p">[</span><span class="n">idx</span> <span class="o">==</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="n">g</span><span class="p">[</span><span class="n">idx</span> <span class="o">==</span> <span class="n">k</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pdf</span><span class="p">[</span><span class="n">idx</span> <span class="o">==</span> <span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">)])</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">it</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">59</span><span class="p">):</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;iter </span><span class="si">{</span><span class="n">it</span><span class="o">+</span><span class="mi">1</span><span class="si">:</span><span class="s2">2d</span><span class="si">}</span><span class="s2">: levels=</span><span class="si">{</span><span class="n">lv</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2"> (±)  MSE=</span><span class="si">{</span><span class="n">mse</span><span class="p">(</span><span class="n">lv</span><span class="p">)</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Lloyd-Max gain over the best uniform grid: </span><span class="si">{</span><span class="mi">10</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">unif</span><span class="p">)</span><span class="o">/</span><span class="n">mse</span><span class="p">(</span><span class="n">lv</span><span class="p">))</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> dB&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>uniform 8 levels: best step=0.586  MSE=0.03744
+iter  1: levels=[0.2847, 0.8542, 1.424, 2.1607] (±)  MSE=0.03549
+iter  5: levels=[0.2614, 0.798, 1.3957, 2.1986] (±)  MSE=0.03473
+iter 60: levels=[0.2452, 0.7561, 1.3441, 2.1521] (±)  MSE=0.03455
+Lloyd-Max gain over the best uniform grid: 0.35 dB
+</code></pre><p>The iteration has two steps, and each is the obvious thing. Given the levels, every sample should go to its <em>nearest</em> level (so the decision boundaries sit halfway between neighbours). Given the boundaries, every level should sit at the <em>centroid</em>, the conditional mean, of the samples in its bin (because the mean minimises squared error within the bin). Alternate until nothing moves. The levels crowd inward: the innermost pair ends at ±0.245, the outermost at ±2.152, so the gaps grow from 0.49 near zero to 0.81 in the tails. That is the <strong>Lloyd-Max quantizer</strong>: the set of levels $\{y_k\}$ and boundaries $\{b_k\}$ satisfying the two <strong>necessary conditions</strong> $b_k = (y_k + y_{k+1})/2$ and $y_k = \mathbb{E}[X \mid b_{k-1} < X \le b_k]$. The algorithm is a coordinate descent on the MSE and converges to a local minimum, which for a single bump like the Gaussian is the global one. The same two conditions, in $d$ dimensions, are k-means, and the <a href="../vector-quantization/">vector quantization article</a>
+ is Lloyd&rsquo;s algorithm with the dimension turned up.</p>
+<figure class="fig"><a href="/compressionfight/map/img/scalar-quantization/lloyd_max.png"><img src="/compressionfight/map/img/scalar-quantization/lloyd_max.png" alt="Two panels over a Gaussian density: the best uniform 8-level grid with step 0.586 and MSE 0.03744, and the Lloyd-Max levels ±0.245, ±0.756, ±1.344, ±2.152 with MSE 0.03455" loading="lazy"></a><figcaption>Eight levels for a unit Gaussian. The uniform grid (top) spends two of its eight levels beyond ±2, where 4.6% of the probability lives. Lloyd-Max (bottom) pulls them in; the gain is 0.35 dB, modest, and that modesty is the first clue.</figcaption></figure>
+
+<p>Now notice the size of the prize. All that iteration bought 0.35 dB, a twentieth of a bit&rsquo;s worth. The reason is instructive, and it sets up the surprise that follows: the uniform grid was already spending its levels roughly where the density was, because a uniform grid on a density that is not too wild is not far from optimal. Lloyd-Max matters most at <em>very</em> low rates, one or two bits, and for <em>very</em> peaked densities. At eight levels on a bell curve the grid was most of the way there.</p>
+<h2 id="the-surprise-with-an-entropy-coder-uniform-is-nearly-the-best-scalar-scheme">The surprise: with an entropy coder, uniform is nearly the best scalar scheme</h2>
+<p>Lloyd&rsquo;s constraint was that every level costs the same number of bits. Drop it. Put an entropy coder behind the quantizer, so that a level hit often costs few bits and a level hit rarely costs many. Now ask Lloyd&rsquo;s question again: where should the levels go?</p>
+<p>The answer, due to Gish and Pierce in 1968, is the single most useful fact in this stage and the first thing to take from the article. At high rate, the best scalar quantizer followed by an ideal entropy coder is the <em>uniform</em> one, and it sits 0.254 bits per sample above Shannon&rsquo;s $R(D)$ floor for any smooth source. The <a href="../rate-and-distortion/">rate and distortion article</a>
+ measured that gap on Gaussian samples and found 0.256. Lloyd-Max&rsquo;s crowded levels help a fixed-rate coder because they lower the error without changing the bit cost; with an entropy coder, crowding the levels where the density is high just makes the common levels <em>more</em> common and the rare ones rarer, and the entropy coder was already charging for that. The two effects cancel to within a rounding error, and what is left is the quarter bit that no scalar scheme can recover.</p>
+<p>So the design freedom of a scalar quantizer behind an entropy coder is not where the levels go. It is two other things: the <strong>step size per coordinate</strong>, which is the bit allocation of the previous article, and the <strong>dead zone</strong>, the width of the bin around zero. Both are worth money and both are cheap to implement. Zeros are the most common symbol after any transform, an entropy coder charges a fraction of a bit for them, and widening the zero bin trades a little distortion for a lot of rate; on a Laplacian coefficient the previous article found a 10% distortion gain at equal rate from H.264&rsquo;s rounding offset of one third. Everything in the rest of this article is either a different $\Delta$ for a different coordinate, or a way of fixing what happens when a single coordinate&rsquo;s $\Delta$ is set by a value that does not belong. (The six toy values with a Δ slider are the Uniform quantizer lab, embedded in the <a href="../rate-and-distortion/">rate and distortion article</a>
+; drag it there and watch the levels halve and the error quadruple.)</p>
+<h2 id="1960s-the-logarithmic-ear">1960s: the logarithmic ear</h2>
+<p>Telephony in the 1960s could not afford an entropy coder either, and it had a worse problem than Lloyd&rsquo;s. The criterion was not mean squared error. A listener hears <em>relative</em> error: a rounding error of 0.004 on a sample of amplitude 1 is inaudible; the same 0.004 on a whisper of amplitude 0.01 is a 40% distortion and sounds like gravel. A uniform grid treats both samples the same because its step is the same everywhere. What you want is a step that grows with the signal, so that the error is always a fixed <em>fraction</em> of the sample. That is a grid whose spacing is logarithmic.</p>
+<p>The implementation is one of the field&rsquo;s oldest tricks and still runs on every landline: <strong>companding</strong>, compress-then-expand. Push the sample through a curve that stretches small values and squashes large ones, quantize the result <em>uniformly</em>, and apply the inverse curve on decode. The North American curve, with $\mu = 255$, is</p>
+$$
+F(x) = \operatorname{sgn}(x)\,\frac{\ln(1 + \mu|x|)}{\ln(1+\mu)}, \qquad F^{-1}(y) = \operatorname{sgn}(y)\,\frac{(1+\mu)^{|y|} - 1}{\mu}.
+$$<p>Take a quiet sample, $x = 0.01$, and compare 8-bit uniform against 8-bit μ-law coded the way G.711 does it, a sign bit plus seven magnitude bits:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">mu</span> <span class="o">=</span> <span class="mf">255.0</span>
+</span></span><span class="line"><span class="cl"><span class="n">F</span>    <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">mu</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>       <span class="c1"># compress</span>
+</span></span><span class="line"><span class="cl"><span class="n">Finv</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">expm1</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">mu</span><span class="p">)))</span> <span class="o">/</span> <span class="n">mu</span>       <span class="c1"># expand</span>
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="mf">0.01</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 8-bit uniform: 256 levels on [-1, 1), Δ = 1/128</span>
+</span></span><span class="line"><span class="cl"><span class="n">d</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">128</span><span class="p">;</span> <span class="n">xu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">d</span><span class="p">)</span> <span class="o">*</span> <span class="n">d</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 8-bit μ-law: sign + 7 magnitude bits, 127 steps in the compressed domain</span>
+</span></span><span class="line"><span class="cl"><span class="n">code</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">F</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="mi">127</span><span class="p">);</span> <span class="n">xm</span> <span class="o">=</span> <span class="n">Finv</span><span class="p">(</span><span class="n">code</span> <span class="o">/</span> <span class="mi">127</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;uniform: code=</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">x</span><span class="o">/</span><span class="n">d</span><span class="p">))</span><span class="si">}</span><span class="s2">  x̂=</span><span class="si">{</span><span class="n">xu</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">  rel err=</span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">xu</span><span class="o">-</span><span class="n">x</span><span class="p">)</span><span class="o">/</span><span class="n">x</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">  worst at this x=</span><span class="si">{</span><span class="p">(</span><span class="n">d</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">x</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;μ-law:   code=</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="si">}</span><span class="s2">  x̂=</span><span class="si">{</span><span class="n">xm</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">  rel err=</span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">xm</span><span class="o">-</span><span class="n">x</span><span class="p">)</span><span class="o">/</span><span class="n">x</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">  worst (any x≫1/μ)=</span><span class="si">{</span><span class="mi">256</span><span class="o">**</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">254</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;compressed-domain value F(0.01)=</span><span class="si">{</span><span class="n">F</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">: a 1% input uses </span><span class="si">{</span><span class="n">F</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2"> of the code range&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>uniform: code=1  x̂=0.007812  rel err=21.9%  worst at this x=39.1%
+μ-law:   code=29  x̂=0.009990  rel err=0.10%  worst (any x≫1/μ)=2.2%
+compressed-domain value F(0.01)=0.2285: a 1% input uses 23% of the code range
+</code></pre><p>The uniform coder has exactly one code, 1, for anything between 0.0039 and 0.0117; the whisper at 0.01 comes back as 0.0078, 22% off, and in the worst case 39%. μ-law has twenty-nine codes below 0.01, lands within 0.10%, and its worst case for any sample well above $1/\mu$ is a flat 2.2%, because consecutive reconstruction levels differ by a constant <em>ratio</em> of $256^{1/127}$. The price is paid on loud samples, where μ-law&rsquo;s step is coarser than uniform&rsquo;s, and the ear does not notice. Eight bits of μ-law are commonly said to sound like thirteen bits of linear PCM, and that is what the phone company shipped: 64 kbit/s per call, with a quantizer shaped like an ear.</p>
+<figure class="fig"><a href="/compressionfight/map/img/scalar-quantization/mulaw.png"><img src="/compressionfight/map/img/scalar-quantization/mulaw.png" alt="Left: the μ-law curve with the uniform grid in the compressed domain projected back onto the input axis, showing fine steps near zero; right: relative error against amplitude on log axes for 8-bit uniform (rising toward 100% for quiet samples) and 8-bit μ-law (flat under 2.2%)" loading="lazy"></a><figcaption>Bend the ruler. Equal steps along the compressed axis become fine steps near zero on the input axis; the 1% sample at x = 0.01 lands at F = 0.228, with a fifth of the code range beneath it. Right: relative error over three decades of amplitude. Uniform&rsquo;s error grows without bound as the signal gets quiet; μ-law&rsquo;s is bounded by 2.2% everywhere above 1/μ.</figcaption></figure>
+
+<div class="map-lab" data-fighter="companding"><p class="lab-fail">Interactive lab (companding) needs JavaScript.</p></div>
+
+<p>State it generally. A <strong>companded quantizer</strong> is a uniform quantizer composed with a monotone <strong>compressor</strong> $F$ and its inverse; equivalently, a non-uniform quantizer whose local step size at $x$ is $\Delta / F'(x)$. Choose $F$ to be logarithmic and the step is proportional to $|x|$, which makes the <em>relative</em> error constant: the second thing to take from this article is that non-uniform levels are not about squeezing out a last 0.35 dB of MSE but about matching the grid either to the data&rsquo;s density (Lloyd-Max) or to the consumer&rsquo;s error criterion (μ-law). MP3 does the same with a power law, raising coefficient magnitudes to the 0.75 before rounding so that the quantization noise follows the signal&rsquo;s loudness. And the trick outlived telephony: the NF4 format used to fine-tune large language models on one GPU chooses its sixteen levels as quantiles of a Gaussian, so that each 4-bit code is equally likely under a bell-shaped weight distribution. It is Lloyd&rsquo;s insight for a 2023 consumer, a loss curve instead of an ear.</p>
+<h2 id="1990-sixty-four-step-sizes">1990: sixty-four step sizes</h2>
+<p>Now jump to a committee room in 1990. The JPEG group has an 8×8 DCT in front of its quantizer, so instead of one coordinate there are sixty-four, each a different spatial frequency. The entropy coder exists this time (Huffman, with a run-length stage for zeros), so Gish and Pierce say: uniform levels, and spend your effort on the step per coordinate. Which step? The eye&rsquo;s contrast sensitivity falls steeply with spatial frequency, so an error in a high-frequency coefficient is far less visible than the same error in a low one. The answer is a table: a $\Delta(u,v)$ for every coefficient position, fine at the top left where the DC and the gentle gradients live, coarse at the bottom right.</p>
+<p>Here is the standard luma table at quality 50 applied to the block that the Wikipedia JPEG article uses as its worked example (an 8×8 patch of a photograph):</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">block</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">52</span><span class="p">,</span><span class="mi">55</span><span class="p">,</span><span class="mi">61</span><span class="p">,</span><span class="mi">66</span><span class="p">,</span><span class="mi">70</span><span class="p">,</span><span class="mi">61</span><span class="p">,</span><span class="mi">64</span><span class="p">,</span><span class="mi">73</span><span class="p">],[</span><span class="mi">63</span><span class="p">,</span><span class="mi">59</span><span class="p">,</span><span class="mi">55</span><span class="p">,</span><span class="mi">90</span><span class="p">,</span><span class="mi">109</span><span class="p">,</span><span class="mi">85</span><span class="p">,</span><span class="mi">69</span><span class="p">,</span><span class="mi">72</span><span class="p">],[</span><span class="mi">62</span><span class="p">,</span><span class="mi">59</span><span class="p">,</span><span class="mi">68</span><span class="p">,</span><span class="mi">113</span><span class="p">,</span><span class="mi">144</span><span class="p">,</span><span class="mi">104</span><span class="p">,</span><span class="mi">66</span><span class="p">,</span><span class="mi">73</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">                  <span class="p">[</span><span class="mi">63</span><span class="p">,</span><span class="mi">58</span><span class="p">,</span><span class="mi">71</span><span class="p">,</span><span class="mi">122</span><span class="p">,</span><span class="mi">154</span><span class="p">,</span><span class="mi">106</span><span class="p">,</span><span class="mi">70</span><span class="p">,</span><span class="mi">69</span><span class="p">],[</span><span class="mi">67</span><span class="p">,</span><span class="mi">61</span><span class="p">,</span><span class="mi">68</span><span class="p">,</span><span class="mi">104</span><span class="p">,</span><span class="mi">126</span><span class="p">,</span><span class="mi">88</span><span class="p">,</span><span class="mi">68</span><span class="p">,</span><span class="mi">70</span><span class="p">],[</span><span class="mi">79</span><span class="p">,</span><span class="mi">65</span><span class="p">,</span><span class="mi">60</span><span class="p">,</span><span class="mi">70</span><span class="p">,</span><span class="mi">77</span><span class="p">,</span><span class="mi">68</span><span class="p">,</span><span class="mi">58</span><span class="p">,</span><span class="mi">75</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">                  <span class="p">[</span><span class="mi">85</span><span class="p">,</span><span class="mi">71</span><span class="p">,</span><span class="mi">64</span><span class="p">,</span><span class="mi">59</span><span class="p">,</span><span class="mi">55</span><span class="p">,</span><span class="mi">61</span><span class="p">,</span><span class="mi">65</span><span class="p">,</span><span class="mi">83</span><span class="p">],[</span><span class="mi">87</span><span class="p">,</span><span class="mi">79</span><span class="p">,</span><span class="mi">69</span><span class="p">,</span><span class="mi">68</span><span class="p">,</span><span class="mi">65</span><span class="p">,</span><span class="mi">76</span><span class="p">,</span><span class="mi">78</span><span class="p">,</span><span class="mi">94</span><span class="p">]],</span> <span class="nb">float</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">16</span><span class="p">,</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">16</span><span class="p">,</span><span class="mi">24</span><span class="p">,</span><span class="mi">40</span><span class="p">,</span><span class="mi">51</span><span class="p">,</span><span class="mi">61</span><span class="p">],[</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">14</span><span class="p">,</span><span class="mi">19</span><span class="p">,</span><span class="mi">26</span><span class="p">,</span><span class="mi">58</span><span class="p">,</span><span class="mi">60</span><span class="p">,</span><span class="mi">55</span><span class="p">],[</span><span class="mi">14</span><span class="p">,</span><span class="mi">13</span><span class="p">,</span><span class="mi">16</span><span class="p">,</span><span class="mi">24</span><span class="p">,</span><span class="mi">40</span><span class="p">,</span><span class="mi">57</span><span class="p">,</span><span class="mi">69</span><span class="p">,</span><span class="mi">56</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">              <span class="p">[</span><span class="mi">14</span><span class="p">,</span><span class="mi">17</span><span class="p">,</span><span class="mi">22</span><span class="p">,</span><span class="mi">29</span><span class="p">,</span><span class="mi">51</span><span class="p">,</span><span class="mi">87</span><span class="p">,</span><span class="mi">80</span><span class="p">,</span><span class="mi">62</span><span class="p">],[</span><span class="mi">18</span><span class="p">,</span><span class="mi">22</span><span class="p">,</span><span class="mi">37</span><span class="p">,</span><span class="mi">56</span><span class="p">,</span><span class="mi">68</span><span class="p">,</span><span class="mi">109</span><span class="p">,</span><span class="mi">103</span><span class="p">,</span><span class="mi">77</span><span class="p">],[</span><span class="mi">24</span><span class="p">,</span><span class="mi">35</span><span class="p">,</span><span class="mi">55</span><span class="p">,</span><span class="mi">64</span><span class="p">,</span><span class="mi">81</span><span class="p">,</span><span class="mi">104</span><span class="p">,</span><span class="mi">113</span><span class="p">,</span><span class="mi">92</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">              <span class="p">[</span><span class="mi">49</span><span class="p">,</span><span class="mi">64</span><span class="p">,</span><span class="mi">78</span><span class="p">,</span><span class="mi">87</span><span class="p">,</span><span class="mi">103</span><span class="p">,</span><span class="mi">121</span><span class="p">,</span><span class="mi">120</span><span class="p">,</span><span class="mi">101</span><span class="p">],[</span><span class="mi">72</span><span class="p">,</span><span class="mi">92</span><span class="p">,</span><span class="mi">95</span><span class="p">,</span><span class="mi">98</span><span class="p">,</span><span class="mi">112</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">103</span><span class="p">,</span><span class="mi">99</span><span class="p">]])</span>   <span class="c1"># JPEG luma table, quality 50</span>
+</span></span><span class="line"><span class="cl"><span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">8</span><span class="p">);</span> <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">n</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">16</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">8</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">C</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>                                  <span class="c1"># orthonormal DCT-II matrix</span>
+</span></span><span class="line"><span class="cl"><span class="n">coef</span> <span class="o">=</span> <span class="n">C</span> <span class="o">@</span> <span class="p">(</span><span class="n">block</span> <span class="o">-</span> <span class="mi">128</span><span class="p">)</span> <span class="o">@</span> <span class="n">C</span><span class="o">.</span><span class="n">T</span>
+</span></span><span class="line"><span class="cl"><span class="n">q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">coef</span> <span class="o">/</span> <span class="n">Q</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;DC coefficient&#34;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">coef</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span> <span class="s2">&#34;-&gt;&#34;</span><span class="p">,</span> <span class="n">q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]);</span> <span class="nb">print</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;zeros:&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">q</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span> <span class="s2">&#34;of 64;  nonzero in the first 3 rows:&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">q</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">rec</span> <span class="o">=</span> <span class="n">C</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="p">(</span><span class="n">q</span> <span class="o">*</span> <span class="n">Q</span><span class="p">)</span> <span class="o">@</span> <span class="n">C</span> <span class="o">+</span> <span class="mi">128</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;pixel RMS error after dequantizing:&#34;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">rec</span> <span class="o">-</span> <span class="n">block</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)),</span> <span class="mi">2</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>DC coefficient -415.37 -&gt; -26
+[[-26  -3  -6   2   2  -1   0   0]
+ [  0  -2  -4   1   1   0   0   0]
+ [ -3   1   5  -1  -1   0   0   0]
+ [ -3   1   2  -1   0   0   0   0]
+ [  1   0   0   0   0   0   0   0]
+ [  0   0   0   0   0   0   0   0]
+ [  0   0   0   0   0   0   0   0]
+ [  0   0   0   0   0   0   0   0]]
+zeros: 44 of 64;  nonzero in the first 3 rows: 15
+pixel RMS error after dequantizing: 5.98
+</code></pre><p>Forty-four of the sixty-four coefficients are exactly zero, and they sit in one contiguous triangle at the high-frequency corner, which is why JPEG scans the block in a zigzag from top left to bottom right: the zeros become one long run ended by a single end-of-block symbol. The twenty survivors carry the picture; the pixel error after reconstruction is about six grey levels out of 255, invisible at normal viewing distance. The zero triangle is the dead zone and the bit allocation working together: a step of 100 on a coefficient whose typical magnitude is 3 rounds it to zero essentially always, which is reverse water-filling&rsquo;s &ldquo;drowned&rdquo; coordinate, implemented as a table entry.</p>
+<figure class="fig"><a href="/compressionfight/map/img/scalar-quantization/jpeg_table.png"><img src="/compressionfight/map/img/scalar-quantization/jpeg_table.png" alt="Three 8×8 grids: the JPEG luma quantization table as a heat map growing from 16 at top left to over 100 at bottom right, the toy block&#39;s DCT coefficients with energy concentrated top left, and the quantized block with 44 zeros in the lower-right triangle" loading="lazy"></a><figcaption>Left: the table, one Δ per frequency, coarse where the eye is blind. Middle: the toy block&rsquo;s coefficients, nearly all of the energy in the top-left corner. Right: coefficient divided by step and rounded, 44 zeros of 64.</figcaption></figure>
+
+<div class="map-lab" data-fighter="qmatrix"><p class="lab-fail">Interactive lab (qmatrix) needs JavaScript.</p></div>
+
+<p>The <strong>quality slider</strong> is the whole table times one number: for quality $q < 50$ the scale factor is $5000/q$ percent, for $q \ge 50$ it is $200 - 2q$ percent, and every entry is multiplied by it (clamped to 1–255). One knob, sixty-four steps, all walking their 6 dB per bit lines together. The relative shape of the table is the perceptual-model stage&rsquo;s contribution, a contrast-sensitivity curve compiled into integers, and the <a href="../perceptual-models/">perceptual models article</a>
+ explains where the numbers came from.</p>
+<p>The general form of what JPEG does by hand is <strong>bit allocation across coordinates</strong>: given variances $\sigma_i^2$ after a transform, choose the step per coordinate so that total distortion is minimised at the bit budget. The previous article derived the answer, reverse water-filling, $R_i = \max(0, \tfrac12\log_2(\sigma_i^2/\theta))$. Here it is on the eight coordinate variances the game&rsquo;s Water-filling allocation lab uses:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])</span>            <span class="c1"># variances of 8 transform coordinates</span>
+</span></span><span class="line"><span class="cl"><span class="n">theta</span> <span class="o">=</span> <span class="mf">2.0</span>                                               <span class="c1"># the water level</span>
+</span></span><span class="line"><span class="cl"><span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">var</span> <span class="o">/</span> <span class="n">theta</span><span class="p">))</span>             <span class="c1"># bits per coordinate</span>
+</span></span><span class="line"><span class="cl"><span class="n">D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>                                <span class="c1"># distortion per coordinate</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;bits   :&#34;</span><span class="p">,</span> <span class="n">R</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="s2">&#34; total&#34;</span><span class="p">,</span> <span class="n">R</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;distort:&#34;</span><span class="p">,</span> <span class="n">D</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="s2">&#34; total&#34;</span><span class="p">,</span> <span class="n">D</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl"><span class="n">R_eq</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mi">8</span>                                        <span class="c1"># same total, spread evenly</span>
+</span></span><span class="line"><span class="cl"><span class="n">D_eq</span> <span class="o">=</span> <span class="n">var</span> <span class="o">*</span> <span class="mf">2.0</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">R_eq</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;equal allocation: </span><span class="si">{</span><span class="n">R_eq</span><span class="si">}</span><span class="s2"> bits each, total distortion </span><span class="si">{</span><span class="n">D_eq</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">  &#34;</span>
+</span></span><span class="line"><span class="cl">      <span class="sa">f</span><span class="s2">&#34;(</span><span class="si">{</span><span class="mi">10</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">D_eq</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="n">D</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> dB worse)&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>bits   : [2.5, 2.0, 1.5, 1.0, 0.5, 0.0, 0.0, 0.0]  total 7.5
+distort: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.0, 0.5]  total 13.5
+equal allocation: 0.9375 bits each, total distortion 34.76  (4.11 dB worse)
+</code></pre><p>JPEG&rsquo;s table was tuned by eye in 1990. In 2026, KVTC does the identical allocation for a transformer&rsquo;s key-value cache by running a dynamic program over PCA coordinates, with a 16-bit scale per group, and the result reads like the output above: a few coordinates at many bits, a long tail at zero. Same stage, same mathematics, thirty-six years and a different consumer apart.</p>
+<h2 id="2023-the-outlier-that-sets-the-scale">2023: the outlier that sets the scale</h2>
+<p>The last answer to &ldquo;where should the grid be fine&rdquo; comes from a problem that neither Lloyd nor the JPEG committee had, and that anyone who has quantized a transformer&rsquo;s weights or activations has met on the first afternoon. The grid is <em>symmetric and bounded</em>: a 3-bit integer grid has levels $-3 \ldots 3$, and to use it you divide every value by a scale $s$ chosen so that the largest value fits. The scale is therefore set by the largest value. One outlier decides the step for everybody.</p>
+<p>Here are eight values from the game&rsquo;s Outlier escape lab, seven of them small and one of them 0.55, quantized on a 3-bit grid two ways: with the scale set over all eight, and with the outlier pulled out and kept at full precision in a side list:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.012</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.031</span><span class="p">,</span> <span class="mf">0.004</span><span class="p">,</span> <span class="mf">0.550</span><span class="p">,</span> <span class="mf">0.020</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.008</span><span class="p">,</span> <span class="mf">0.015</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.027</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">int3</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>                       <span class="c1"># symmetric 3-bit grid: integers -3..3, step s</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">v</span> <span class="o">/</span> <span class="n">s</span><span class="p">),</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span>
+</span></span><span class="line"><span class="cl"><span class="n">s_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="mi">3</span>           <span class="c1"># absmax over all 8</span>
+</span></span><span class="line"><span class="cl"><span class="n">xh_all</span> <span class="o">=</span> <span class="n">int3</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">s_all</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.5</span>                <span class="c1"># escape: the outlier leaves the grid</span>
+</span></span><span class="line"><span class="cl"><span class="n">s_esc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="mi">3</span>
+</span></span><span class="line"><span class="cl"><span class="n">xh_esc</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">();</span> <span class="n">xh_esc</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">int3</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">s_esc</span><span class="p">)</span>      <span class="c1"># outlier kept at full precision</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;no escape : step=</span><span class="si">{</span><span class="n">s_all</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  x̂=</span><span class="si">{</span><span class="n">xh_all</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">            MSE=</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">xh_all</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">  bits/elem=3&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;escape    : step=</span><span class="si">{</span><span class="n">s_esc</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  x̂=</span><span class="si">{</span><span class="n">xh_esc</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">            MSE=</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">xh_esc</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">  &#34;</span>
+</span></span><span class="line"><span class="cl">      <span class="sa">f</span><span class="s2">&#34;bits/elem=</span><span class="si">{</span><span class="mi">3</span> <span class="o">+</span> <span class="p">(</span><span class="mi">16</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span> <span class="o">/</span> <span class="mi">8</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">  (7 on the grid + one fp16 value + a 3-bit index)&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;step ratio </span><span class="si">{</span><span class="n">s_all</span><span class="o">/</span><span class="n">s_esc</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">×, MSE ratio </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">xh_all</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">xh_esc</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">×&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>no escape : step=0.1833  x̂=[0.0, -0.0, 0.0, 0.55, 0.0, -0.0, 0.0, -0.0]
+            MSE=3.17e-04  bits/elem=3
+escape    : step=0.0103  x̂=[0.01, -0.031, 0.0, 0.55, 0.021, -0.01, 0.01, -0.031]
+            MSE=7.81e-06  bits/elem=5.38  (7 on the grid + one fp16 value + a 3-bit index)
+step ratio 17.7×, MSE ratio 41×
+</code></pre><p>With the outlier on the grid, the step is 0.18 and the other seven values, none bigger than 0.031, all round to zero: the quantizer reconstructs one number correctly and erases the rest. Pull the 0.55 out and the step drops eighteen-fold; the seven survivors come back within a few thousandths, and the error falls forty-one times. The side list is not free: a 16-bit value and a 3-bit index for one of eight elements adds 2.4 bits per element here. In a real tensor where the outliers are 1% rather than 12%, the same arithmetic gives $3 + 0.01 \times (16 + \text{index})$, about 3.3 bits per element, which is the number KVQuant reports for its dense-and-sparse decomposition.</p>
+<div class="map-lab" data-fighter="escape"><p class="lab-fail">Interactive lab (escape) needs JavaScript.</p></div>
+
+<p>This is the third thing to take away, and it is as much about systems as about mathematics. <strong>Outliers set the scale.</strong> A value of 30 among values of 1 forces a step of 4 on everything, and no amount of cleverness in level placement will recover what a step of 4 destroys. The cures are a family, and the map has an article for each: make the block smaller so that an outlier only ruins its own neighbours (<a href="../block-float-formats/">block float formats</a>
+, where the block of 32 with its own scale is exactly this); let the outliers escape to a side list, which is this algorithm, and which JPEG and H.264 did decades earlier with escape codes for oversized coefficients; rotate the data first so that the outlier&rsquo;s energy is smeared across all coordinates and no single one is huge (<a href="../rotations-and-rank/">rotations and rank</a>
+); or, in video and in GPTQ, choose the rounding of each value with its downstream effect in mind rather than by nearest level. That last idea, <strong>rate-distortion-optimised rounding</strong>, deserves its one paragraph: a video encoder will round a coefficient <em>down</em> to zero when the bits saved are worth more than the distortion added at the current operating point, and GPTQ rounds each weight while compensating the error in the weights not yet rounded, using the Hessian of the layer&rsquo;s output to decide what &ldquo;compensate&rdquo; means. Both are the dead zone&rsquo;s logic generalised: the quantizer is allowed to be wrong on purpose where being wrong is cheap.</p>
+<h2 id="connections">Connections</h2>
+<p>An <strong>analogue-to-digital converter</strong> is this article in silicon, and its data sheet states the 6 dB per bit law as the formula for a full-scale sine wave, $\text{SNR} = 6.02N + 1.76$ dB; the 1.76 is the ratio between a sine&rsquo;s power and that of the uniform rounding error, nothing more.</p>
+<p><strong>Dithering</strong>, adding a small random signal before quantizing, looks like vandalism and is a quantizer-design decision: it decorrelates the error from the signal, turning the harmonic distortion of coarse steps into a flat hiss, which the ear prefers and which also lets the average of many quantized samples recover sub-step precision.</p>
+<p><strong>Histogram equalisation</strong> in image processing maps pixel values through their own cumulative distribution so that the result is uniform. That is a compressor $F$ chosen to be the data&rsquo;s CDF, and quantizing the equalised image uniformly is Lloyd&rsquo;s idea in the limit of many levels: every bin gets the same probability mass. NF4&rsquo;s quantile levels are the same construction for a Gaussian.</p>
+<h2 id="in-the-game">In the game</h2>
+<p>The quantization stage holds all five of this article&rsquo;s algorithms: <a href="/compressionfight/#fighter=uniform">Uniform quantizer</a>
+ is the uniform step, <a href="/compressionfight/#fighter=companding">μ-law companding</a>
+ is μ-law and MP3&rsquo;s power law, <a href="/compressionfight/#fighter=qmatrix">Quantization matrix</a>
+ is JPEG&rsquo;s table, <a href="/compressionfight/#fighter=waterline">Water-filling allocation</a>
+ is bit allocation by water level, and <a href="/compressionfight/#fighter=escape">Outlier escape</a>
+ is the outlier side list. They appear in the Photographs task, the Music distribution task, the Streaming video task, the KV cache cold storage task and the KV cache at 1–2 bits task, and the synergy &lsquo;Quantization matrix + zigzag RLE + Huffman&rsquo; is the forty-four zeros above turned into a pipeline.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=uniform" title="uniform"><img src="/compressionfight/img/fighters/uniform.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>uniform</span></a></li><li><a href="/compressionfight/#fighter=companding" title="companding"><img src="/compressionfight/img/fighters/companding.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>companding</span></a></li><li><a href="/compressionfight/#fighter=qmatrix" title="qmatrix"><img src="/compressionfight/img/fighters/qmatrix.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>qmatrix</span></a></li><li><a href="/compressionfight/#fighter=waterline" title="waterline"><img src="/compressionfight/img/fighters/waterline.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>waterline</span></a></li><li><a href="/compressionfight/#fighter=escape" title="escape"><img src="/compressionfight/img/fighters/escape.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>escape</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion: the one irreversible stage</a></li><li><a href="/compressionfight/map/zoo/block-transforms/">Block transforms: which directions matter</a></li><li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled formats: int4 and NVFP4</a></li><li><a href="/compressionfight/map/zoo/perceptual-models/">Perceptual models: what the consumer cannot notice</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/learned-transforms/"><small>&larr; Previous</small>Learned transforms: autoencoders as codecs</a>
+    <a class="next" href="/compressionfight/map/zoo/vector-quantization/"><small>Next &rarr;</small>Vector quantization: the codebook</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#shoe-sizes">Shoe sizes</a></li>
+    <li><a href="#lloyds-lunch-problem">Lloyd&rsquo;s lunch problem</a></li>
+    <li><a href="#the-surprise-with-an-entropy-coder-uniform-is-nearly-the-best-scalar-scheme">The surprise: with an entropy coder, uniform is nearly the best scalar scheme</a></li>
+    <li><a href="#1960s-the-logarithmic-ear">1960s: the logarithmic ear</a></li>
+    <li><a href="#1990-sixty-four-step-sizes">1990: sixty-four step sizes</a></li>
+    <li><a href="#2023-the-outlier-that-sets-the-scale">2023: the outlier that sets the scale</a></li>
+    <li><a href="#connections">Connections</a></li>
+    <li><a href="#in-the-game">In the game</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

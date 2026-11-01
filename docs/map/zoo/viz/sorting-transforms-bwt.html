@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BWT explorer</title>
 <style>
-  :root { --bg: #0b0714; --ink: #e8e4f0; --muted: #9b93aa; --grid: #2a2238; --f: #3b8fd6; --l: #c4812a; --ok: #2fa06e; --mtf: #b85fb0; }
+  :root { --bg: #f3eadb; --ink: #2a211b; --muted: #5a4a3d; --grid: #b89f78; --f: #246b66; --l: #b8892e; --ok: #b05a4c; --mtf: #6b4a7a; }
   html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 "DejaVu Sans", system-ui, sans-serif; }
   .wrap { padding: 12px 16px; max-width: 1100px; margin: 0 auto; }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-  input { background: #140f21; color: var(--ink); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 10px; font: 16px "DejaVu Sans Mono", monospace; width: 22em; }
-  button { background: #1a1328; color: var(--ink); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  input { background: #ebdfc8; color: var(--ink); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 10px; font: 16px "DejaVu Sans Mono", monospace; width: 22em; }
+  button { background: #ebdfc8; color: var(--ink); border: 1px solid var(--grid); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
   button:hover { border-color: var(--muted); }
   .muted { color: var(--muted); }
   .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
@@ -41,7 +41,7 @@
 </div>
 <script>
 (function () {
-  const BG = "#0b0714", INK = "#e8e4f0", MUTED = "#9b93aa", GRID = "#2a2238", F = "#3b8fd6", L = "#c4812a", OK = "#2fa06e", MTF = "#b85fb0";
+  const BG = "#f3eadb", INK = "#2a211b", MUTED = "#5a4a3d", GRID = "#b89f78", F = "#246b66", L = "#b8892e", OK = "#b05a4c", MTF = "#6b4a7a";
   const inp = document.getElementById("s"), cv = document.getElementById("c"), ctx = cv.getContext("2d"), out = document.getElementById("o");
   let hover = -1, state = null;
 

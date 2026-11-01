@@ -1,15 +1,15 @@
 {{ define "main" }}
 {{ $g := partial "gameroot.html" . }}
 {{ $isArticle := eq .Section "zoo" }}
-{{ $chairs := dict "foundations" "Foundations" "entropy" "The Packer" "predict" "The Oracle" "transform" "The Lens" "quantize" "The Butcher" "perceptual" "The Con Artist" "prior" "The Inside Man" "jobs" "Jobs" }}
+{{ $chairs := dict "foundations" "Foundations" "entropy" "Entropy coding" "predict" "Prediction" "transform" "Transform" "quantize" "Quantization" "perceptual" "Perceptual model" "prior" "Shared prior" "jobs" "Tasks" }}
 <div class="cols">
 <article class="article">
   {{ if $isArticle }}
-  <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ "" | relURL }}">The Map</a><span>/</span>{{ with .Params.chair }}<span>{{ index $chairs . | default . }}</span>{{ end }}{{ with .Params.family }}<span>/</span><span>{{ . }}</span>{{ end }}</nav>
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="{{ "" | relURL }}">The Map</a><span>/</span>{{ with .Params.chair }}<span>{{ index $chairs . | default . }}</span>{{ end }}{{ with .Params.family }}{{ if ne (lower .) (lower (index $chairs $.Params.chair | default "")) }}<span>/</span><span>{{ . }}</span>{{ end }}{{ end }}</nav>
   <header class="art-head">
-    <div class="eyebrow">{{ with .Params.chair }}{{ index $chairs . | default . }}{{ end }}{{ with .Params.family }} · {{ . }}{{ end }}</div>
-    {{ $hero := printf "img/hero/%s.png" (.File.ContentBaseName) }}
-    {{ if fileExists (printf "static/%s" $hero) }}<img class="hero" src="{{ $hero | relURL }}" width="768" height="288" alt="" decoding="async">{{ end }}
+    <div class="eyebrow">{{ with .Params.chair }}{{ index $chairs . | default . }}{{ end }}{{ with .Params.family }}{{ if ne (lower .) (lower (index $chairs $.Params.chair | default "")) }} · {{ . }}{{ end }}{{ end }}</div>
+    {{ $hero := printf "img/hero/%s.jpg" (.File.ContentBaseName) }}
+    <img class="hero" src="{{ $hero | relURL }}" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
     <h1 class="title">{{ .Title }}</h1>
     {{ with .Params.summary }}<p class="summary">{{ . }}</p>{{ end }}
     <div class="meta">{{ .Params.reading_time | default .ReadingTime }} min read</div>

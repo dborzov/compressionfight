@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <title>Choose Your Codec: The Map</title>
 <meta name="description" content="A systematic taxonomy of the compression toolkit, organised by the role each algorithm plays in a codec pipeline, with an introduction article for every family.">
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
@@ -19,8 +19,8 @@
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="top">
-  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">MENU</button>
-  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game"><span class="a">CHOOSE</span><span class="b">YOUR</span><span class="c">CODEC</span></a>
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
   <nav class="topnav" aria-label="Site">
     <a href="https://www.borzov.ca/compressionfight/map/" aria-current="page">Map</a>
     <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
@@ -34,124 +34,147 @@
   <a class="side-home on" href="/compressionfight/map/">The Map</a>
   <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
   
+  
   <div class="side-sec">
     <div class="side-h">Foundations</div>
     <ul>
     
       
-      <li class="soon">Modeling and coding: bits are surprise</li>
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
     
       
-      <li class="soon">The anatomy of a job</li>
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
     
       
-      <li class="soon">Rate and distortion</li>
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Packer<small>entropy coders</small></div>
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
     <ul>
     
       
-      <li class="soon">Prefix codes</li>
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
     
       
-      <li class="soon">Fractional-bit coders</li>
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Oracle<small>prediction and modeling</small></div>
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
     <ul>
     
       
-      <li class="soon">Dictionary matchers: the LZ family</li>
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
     
       
-      <li class="soon">Linear and spatial predictors</li>
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
     
       
-      <li class="soon">Statistical context models</li>
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
     
       
-      <li class="soon">Temporal prediction: motion compensation</li>
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Lens<small>transforms and rearrangements</small></div>
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
     <ul>
     
       
-      <li class="soon">Frequency transforms</li>
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
     
       
-      <li class="soon">Rotations, projections and rank</li>
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
     
       
-      <li class="soon">Channel and layout transforms</li>
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
     
       
-      <li class="soon">Sorting transforms</li>
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
     
       
-      <li class="soon">Learned transforms</li>
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Butcher<small>quantizers</small></div>
+    <div class="side-h">Quantization (the only lossy stage)</div>
     <ul>
     
       
-      <li class="soon">Scalar quantizers</li>
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
     
       
-      <li class="soon">Vector quantizers</li>
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
     
       
-      <li class="soon">Block-scaled integer and float formats</li>
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Con Artist<small>consumer models</small></div>
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
     <ul>
     
       
-      <li class="soon">Human perceptual models</li>
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
     
       
-      <li class="soon">A transformer as the audience</li>
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Inside Man<small>shared priors and side information</small></div>
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
     <ul>
     
       
-      <li class="soon">Side information</li>
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">Jobs<small>the systems that pick the chairs</small></div>
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
     <ul>
     
       
-      <li class="soon">The five vaults of the KV cache</li>
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
     
       
-      <li class="soon">Codecs as pipelines: worked dissections</li>
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
     
     </ul>
   </div>
@@ -163,14 +186,14 @@
 <article class="article home">
   <div class="eyebrow">Choose Your Codec · field guide</div>
   <div class="prose"><h1 id="the-map-a-taxonomy-of-the-compression-toolkit">The Map: a taxonomy of the compression toolkit</h1>
-<p>Every practical codec is a pipeline of the same chairs: a <strong>transform</strong> that rearranges the data, a <strong>predictor</strong> that
+<p>Every practical codec is a pipeline of the same stages: a <strong>transform</strong> that rearranges the data, a <strong>predictor</strong> that
 guesses what comes next, a <strong>quantizer</strong> that throws away what the consumer will not miss (the only lossy stage), an
 <strong>entropy coder</strong> that cashes predictability in for bits, a <strong>perceptual model</strong> that defines &ldquo;will not miss&rdquo;, and a
 <strong>shared prior</strong> the decoder already holds before the first byte arrives. The <a href="primer/">primer</a>
  explains why. This
-page lists what can sit in each chair, grouped into families and sub-families, and links to an introduction article for
-each family. In the game, every fighter card links back here.</p>
-<p>Read in order if you are new: the three <strong>Foundations</strong> articles first, then any chair.</p>
+page lists what can fill each stage, grouped into families and sub-families, and links to an introduction article for
+each family. In the game, every algorithm card links back here.</p>
+<p>Read in order if you are new: the three <strong>Foundations</strong> articles first, then any stage.</p>
 <h2 id="foundations">Foundations</h2>
 <ul>
 <li><a href="zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a>
@@ -180,7 +203,7 @@ each family. In the game, every fighter card links back here.</p>
 <li><a href="zoo/rate-and-distortion/">Rate and distortion</a>
  — the one irreversible chair, the R(D) curve, Δ²/12, 6 dB per bit, reverse water-filling, and the consumer model that decides what counts as error.</li>
 </ul>
-<h2 id="the-packer-entropy-coders-symbols--probabilities--bits-always-the-last-stage">The Packer: entropy coders (symbols + probabilities → bits; always the last stage)</h2>
+<h2 id="entropy-coding-symbols--probabilities--bits-always-the-last-stage">Entropy coding (symbols + probabilities → bits; always the last stage)</h2>
 <ul>
 <li><strong>Prefix codes</strong> (whole bits per symbol) — <a href="zoo/prefix-codes/">article</a>
 
@@ -188,7 +211,7 @@ each family. In the game, every fighter card links back here.</p>
 <li>Huffman coding (static, two-pass semi-static with transmitted tables, canonical Huffman)</li>
 <li>Golomb-Rice codes (one parameter, optimal for geometric residuals: FLAC, JPEG-LS)</li>
 <li>Run-length encoding and zigzag scans (manufacturing a single symbol out of a run of zeros: JPEG, fax)</li>
-<li>Fixed-length codes (the deliberate empty chair: random access, SIMD, GPU kernels)</li>
+<li>Fixed-length codes (the deliberate empty stage: random access, SIMD, GPU kernels)</li>
 </ul>
 </li>
 <li><strong>Fractional-bit coders</strong> (reach the entropy bound) — <a href="zoo/arithmetic-and-ans/">article</a>
@@ -202,7 +225,7 @@ each family. In the game, every fighter card links back here.</p>
 <li><strong>Adaptivity</strong> as a property: static tables, semi-static headers, fully adaptive models (cross-cuts both families; see <a href="zoo/side-information/">side information</a>
 )</li>
 </ul>
-<h2 id="the-oracle-prediction-and-modeling-expose-structure-lower-the-entropy-produce-no-bits">The Oracle: prediction and modeling (expose structure; lower the entropy; produce no bits)</h2>
+<h2 id="prediction-and-modeling-expose-structure-lower-the-entropy-produce-no-bits">Prediction and modeling (expose structure; lower the entropy; produce no bits)</h2>
 <ul>
 <li><strong>Dictionary matchers: the LZ family</strong> — <a href="zoo/lz-family/">article</a>
 
@@ -239,7 +262,7 @@ each family. In the game, every fighter card links back here.</p>
 </ul>
 </li>
 </ul>
-<h2 id="the-lens-transforms-and-rearrangements-save-nothing-alone-set-up-the-other-chairs">The Lens: transforms and rearrangements (save nothing alone; set up the other chairs)</h2>
+<h2 id="transforms-and-rearrangements-save-nothing-alone-set-up-the-other-stages">Transforms and rearrangements (save nothing alone; set up the other stages)</h2>
 <ul>
 <li><strong>Frequency transforms</strong> — <a href="zoo/block-transforms/">article</a>
 
@@ -281,7 +304,7 @@ each family. In the game, every fighter card links back here.</p>
 </ul>
 </li>
 </ul>
-<h2 id="the-butcher-quantizers-the-only-lossy-chair">The Butcher: quantizers (the only lossy chair)</h2>
+<h2 id="quantization-the-only-lossy-stage">Quantization (the only lossy stage)</h2>
 <ul>
 <li><strong>Scalar quantizers</strong> — <a href="zoo/scalar-quantization/">article</a>
 
@@ -311,7 +334,7 @@ each family. In the game, every fighter card links back here.</p>
 <li><strong>Token selection and eviction</strong> (see <a href="zoo/attention-as-audience/">attention as the audience</a>
 )</li>
 </ul>
-<h2 id="the-con-artist-consumer-models-what-will-the-reader-not-notice">The Con Artist: consumer models (what will the reader not notice?)</h2>
+<h2 id="perceptual-and-consumer-models-what-will-the-reader-not-notice">Perceptual and consumer models (what will the reader not notice?)</h2>
 <ul>
 <li><strong>Human perceptual models</strong> — <a href="zoo/perceptual-models/">article</a>
 
@@ -330,7 +353,7 @@ each family. In the game, every fighter card links back here.</p>
 </ul>
 </li>
 </ul>
-<h2 id="the-inside-man-shared-priors-and-side-information-what-the-decoder-already-holds">The Inside Man: shared priors and side information (what the decoder already holds)</h2>
+<h2 id="shared-priors-and-side-information-what-the-decoder-already-holds">Shared priors and side information (what the decoder already holds)</h2>
 <ul>
 <li><strong>Side information</strong> — <a href="zoo/side-information/">article</a>
 
@@ -343,7 +366,7 @@ each family. In the game, every fighter card links back here.</p>
 </ul>
 </li>
 </ul>
-<h2 id="jobs-the-systems-that-pick-the-chairs">Jobs: the systems that pick the chairs</h2>
+<h2 id="tasks-the-systems-that-pick-the-stages">Tasks: the systems that pick the stages</h2>
 <ul>
 <li><a href="zoo/kv-cache-vaults/">The five vaults of the KV cache</a>
  — one tensor, five jobs: resident in HBM, offloaded over PCIe, parked in cold storage, streamed over a network, or evicted; and the model-level shrinks (GQA, MLA) that happened before any codec.</li>
@@ -355,7 +378,7 @@ each family. In the game, every fighter card links back here.</p>
 
   </main>
 </div>
-<footer class="foot">Choose Your Codec · <a href="/compressionfight/">play the game</a> · compression, taught by playing</footer>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
@@ -379,10 +402,10 @@ each family. In the game, every fighter card links back here.</p>
   window.addEventListener('load', function () { math(); });
   
   document.querySelectorAll('.highlight').forEach(function (h) {
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'COPY';
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
     b.addEventListener('click', function () {
       var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
-      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'COPIED'; setTimeout(function () { b.textContent = 'COPY'; }, 1500); });
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
     });
     h.appendChild(b);
   });
@@ -396,7 +419,7 @@ each family. In the game, every fighter card links back here.</p>
       try {
         var f = window.CYC && CYC.byId && CYC.byId[id];
         var t = document.createElement('div'); t.className = 'lab-title';
-        t.textContent = 'SPECIAL MOVE LAB' + (f ? ' · ' + f.name : '');
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
         el.textContent = ''; el.appendChild(t);
         var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
         if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);

@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Codecs as pipelines: twelve worked dissections · Choose Your Codec</title>
+<meta name="description" content="Can you read a codec spec as a pipeline? DEFLATE, PNG, bzip2, JPEG, JPEG 2000 and WebP, FLAC, MP3, Opus, SoundStream, H.264, zstd, GGUF and Faiss PQ, each taken apart stage by stage, with the one design decision that only makes sense given its task and the one number worth remembering.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/" class="on" aria-current="page">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Tasks</span><span>/</span><span>Jobs</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Tasks · Jobs</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/codec-dissections.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Codecs as pipelines: twelve worked dissections</h1>
+    <p class="summary">Can you read a codec spec as a pipeline? DEFLATE, PNG, bzip2, JPEG, JPEG 2000 and WebP, FLAC, MP3, Opus, SoundStream, H.264, zstd, GGUF and Faiss PQ, each taken apart stage by stage, with the one design decision that only makes sense given its task and the one number worth remembering.</p>
+    <div class="meta">18 min read</div>
+  </header>
+  
+  <div class="prose"><h2 id="how-to-read-a-spec">How to read a spec</h2>
+<p>A codec specification is a long document, and the trick to reading one quickly is to know that it can only say a small number of things. The <a href="../../primer/">primer</a>
+ laid out the composition rules, and they are worth having in front of you before the first dissection, because every one of the twelve below is an instance of them. <strong>The entropy coder is always last</strong>, since its output is incompressible by construction. <strong>Lossy stages come first</strong>, transform then quantize, because what survives must be decided before it is packed. <strong>No two stages may eat the same redundancy</strong>, or the second one starves. <strong>Every structural convenience</strong>, a block, a keyframe, an independent packet, a reset of the model, <strong>is bought with ratio</strong>, and where the dial sits is dictated by the job rather than by the data. Everything else in a spec is bit-field layout.</p>
+<p>So a codec reads as a pipeline sheet: a job stated on the <a href="../anatomy-of-a-job/">five axes</a>
+, then the stages in pipeline order with a named algorithm in each, and usually one decision that looks eccentric until you check it against the job, at which point it becomes the only decision possible. The strips below are generated from the game&rsquo;s own pipelines, boxes coloured by stage: cyan for the transform stage, green for the prediction stage, orange for the quantization stage, purple for the entropy-coding stage; the yellow perceptual-model stage steers the quantizer from outside the data path, and the gold shared-prior stage is what the decoder holds before the first byte arrives.</p>
+<h2 id="deflate-zip-gzip-pngs-back-end-1993">DEFLATE (zip, gzip, PNG&rsquo;s back end, 1993)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/deflate.png"><img src="/compressionfight/map/img/codec-dissections/deflate.png" alt="Pipeline strip: data, LZ77 match (prediction stage), Huffman (entropy-coding stage), bits; no side stages" loading="lazy"></a><figcaption>DEFLATE: one matcher, one coder, nothing installed on the receiver.</figcaption></figure>
+
+<p><strong>The job:</strong> arbitrary files, lossless, for strangers who must be able to open them anywhere, forever; mildly asymmetric, since the encoder may search harder than the decoder works. <strong>The stages:</strong> the prediction stage is LZ77 over a 32 KB window, emitting literals and (distance, length) pairs; the entropy-coding stage is Huffman coding, with two separate trees per block, one for literals and lengths and one for distances, because the two streams have different statistics. No transform stage, no quantization stage, no perceptual-model stage. <strong>The decision that only makes sense given the job:</strong> the shared-prior stage is empty on purpose. The Huffman trees travel in the block header, so a 1993 file decodes on a 2043 machine with no table lookup, no dictionary ID and nothing to version. It costs tens of bytes per block, which on a tiny payload is why DEFLATE can make a 300-byte JSON bigger. <strong>The number:</strong> 32 KB, the window size, a memory decision of the early 1990s that still bounds how far back gzip can look. Read <a href="../lz-family/">the LZ family</a>
+ and <a href="../prefix-codes/">prefix codes</a>
+; play <a href="/compressionfight/#heist=archive">the General-purpose file archive task</a>
+.</p>
+<h2 id="png-1996">PNG (1996)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/png.png"><img src="/compressionfight/map/img/codec-dissections/png.png" alt="Pipeline strip: data, spatial prediction (prediction stage), LZ77 (prediction stage), Huffman (entropy-coding stage), bits" loading="lazy"></a><figcaption>PNG: a row predictor in front of DEFLATE.</figcaption></figure>
+
+<p><strong>The job:</strong> screenshots, logos, diagrams, lossless, decodable in every browser. <strong>The stages:</strong> the prediction stage holds two algorithms in sequence, Spatial prediction, a per-row filter chosen from None, Sub, Up, Average and Paeth, then LZ77; the entropy-coding stage is Huffman coding. The whole back end is literally DEFLATE. <strong>The decision that only makes sense given the job:</strong> the filter exists because composition rule four says DEFLATE alone would starve. A photograph&rsquo;s redundancy is smoothness, not exact repeats, and LZ77 cannot see that pixel 201 follows pixel 200; a predictor converts smoothness into near-zero residuals, which Huffman then eats, and on flat graphics the residuals become zero runs that LZ77 matches wholesale. Two eaters, two redundancies, correct order. <strong>The number:</strong> five filters, chosen per row, with one byte per row to say which, a menu rather than a fitted predictor because the decoder must be trivial. The format was designed in 1996 to replace GIF after the LZW patent became enforceable. Read <a href="../linear-prediction/">linear prediction</a>
+; play <a href="/compressionfight/#heist=pixelart">the Lossless images task</a>
+.</p>
+<h2 id="bzip2-1996">bzip2 (1996)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/bzip2.png"><img src="/compressionfight/map/img/codec-dissections/bzip2.png" alt="Pipeline strip: data, BWT plus move-to-front (transform stage), zigzag and RLE (entropy-coding stage), Huffman (entropy-coding stage), bits" loading="lazy"></a><figcaption>bzip2: a transform in a lossless codec, then the entropy-coding stages.</figcaption></figure>
+
+<p><strong>The job:</strong> text archives, lossless, ratio over speed, memory in the megabytes, no streaming required. <strong>The stages:</strong> the transform stage is Burrows-Wheeler (BWT), the Burrows-Wheeler transform over a block of up to 900 KB, followed by move-to-front; the entropy-coding stage is Run-length coding then Huffman coding. No prediction stage at all, which is the strange part. <strong>The decision that only makes sense given the job:</strong> the BWT sorts the block&rsquo;s rotations so that letters sharing a context land next to each other, which is a <em>locality</em> an entropy coder cannot see; MTF turns locality into small numbers, RLE turns the runs of zeros into pairs, and only then does Huffman see skew. Three stages feeding each other&rsquo;s appetite, the context-model ratio of the 1990s obtained without an adaptive arithmetic coder, which was patented. The cost is the block: nothing can be decoded until the whole 900 KB is sorted, so no streaming and no seeking inside a block. <strong>The number:</strong> 900 KB, the largest block size, and the reason bzip2 wants a few megabytes of memory where gzip wants a few hundred kilobytes. Read <a href="../sorting-transforms/">sorting transforms</a>
+; play <a href="/compressionfight/#heist=library">the Maximum-ratio text archive task</a>
+.</p>
+<h2 id="jpeg-1992">JPEG (1992)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/jpeg.png"><img src="/compressionfight/map/img/codec-dissections/jpeg.png" alt="Pipeline strip: data, YCbCr (transform stage), block DCT (transform stage), quant table (quantization stage), zigzag and RLE (entropy-coding stage), Huffman (entropy-coding stage), bits; chroma 4:2:0 steers the quantizer, standard tables held by the decoder" loading="lazy"></a><figcaption>JPEG: every stage at the table, in the canonical lossy order.</figcaption></figure>
+
+<p><strong>The job:</strong> photographs, lossy at about 10:1 with no visible damage, symmetric and cheap on both sides, independent 8×8 blocks so that a corrupt byte ruins one block rather than the file. <strong>The stages, in order:</strong> YCbCr / mid-side converts RGB to YCbCr; Chroma subsampling discards three of every four chroma samples; DCT takes an 8×8 DCT per block; Quantization matrix divides each of the 64 coefficients by its own step from a table and rounds; Run-length coding zigzags the block and run-length codes the zero tail; Huffman coding codes the (run, size) pairs; Standard tables supplies the default tables so a camera need not write its own. <strong>The decision that only makes sense given the job:</strong> the arithmetic-coding mode. It is in the standard and would save bits, and nobody uses it, because in 1992 it was patented and the job says &ldquo;decodable on anything with a CPU, forever&rdquo;. <strong>The number:</strong> at quality 50 the luma table has a step of 16 for the DC term and roughly 100 at the highest frequencies, and on the standard worked-example block <a href="../scalar-quantization/">44 of 64 coefficients become zero</a>
+, which is what the zigzag and run-length stage exists to exploit. Read <a href="../block-transforms/">block transforms</a>
+, <a href="../scalar-quantization/">scalar quantization</a>
+ and <a href="../perceptual-models/">perceptual models</a>
+; play <a href="/compressionfight/#heist=gallery">the Photographs task</a>
+.</p>
+<h2 id="jpeg-2000-2000-and-webp-lossy-2010">JPEG 2000 (2000) and WebP lossy (2010)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/jpeg2000_webp.png"><img src="/compressionfight/map/img/codec-dissections/jpeg2000_webp.png" alt="Two pipeline strips: JPEG 2000 with YCbCr, wavelet, uniform quantizer, arithmetic coder; WebP lossy with YCbCr, spatial intra prediction, block DCT, uniform quantizer, arithmetic coder; both with chroma 4:2:0 steering" loading="lazy"></a><figcaption>Two attempts to replace JPEG: a different transform stage, and a video codec&rsquo;s intra frame.</figcaption></figure>
+
+<p><strong>The job:</strong> the same as JPEG&rsquo;s, with the budget moved: thirty years of cheaper encoders and the same demand for bits. <strong>JPEG 2000&rsquo;s stages:</strong> YCbCr / mid-side, then Wavelet (DWT), a wavelet over the whole image instead of a DCT over blocks; Uniform quantizer, a uniform quantizer per sub-band; Arithmetic coding, a bit-plane arithmetic coder (EBCOT). No blocks, so no blocking artifacts, and the low-pass band is a free thumbnail, which is progressive decoding. <strong>WebP&rsquo;s stages:</strong> YCbCr / mid-side, then Spatial prediction, directional intra prediction from already-decoded neighbours; DCT at 4×4; Uniform quantizer; Arithmetic coding, a binary arithmetic coder. WebP lossy is a single intra frame of the VP8 video codec. <strong>The decision that only makes sense given the job:</strong> JPEG 2000 is about 20% better than JPEG and lost anyway, because the job&rsquo;s compute-envelope line says &ldquo;decoder everywhere&rdquo;, and a format that needs whole-image memory, a far slower transform and licensed decoders could not satisfy it. WebP, HEIC and AVIF won what JPEG 2000 could not by borrowing a decoder that was already in every phone for video. <strong>The number:</strong> AVIF reaches about half of JPEG&rsquo;s bits at equal quality by the same route, a still image as one intra frame. Read <a href="../block-transforms/">block transforms</a>
+ and <a href="../arithmetic-and-ans/">arithmetic coding and ANS</a>
+; play <a href="/compressionfight/#heist=webphoto">the Modern web images task</a>
+.</p>
+<h2 id="flac-2001">FLAC (2001)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/flac.png"><img src="/compressionfight/map/img/codec-dissections/flac.png" alt="Pipeline strip: data, mid/side (transform stage), LPC (prediction stage), Golomb-Rice (entropy-coding stage), bits" loading="lazy"></a><figcaption>FLAC: decorrelate, predict, code the residual. No table to transmit.</figcaption></figure>
+
+<p><strong>The job:</strong> a music library, bit-exact, seekable to any second, decoded on a 2005 portable player with an integer-only CPU on a battery. <strong>The stages:</strong> YCbCr / mid-side turns left and right into mid and side; Linear prediction (LPC) fits a linear predictor of order up to 32 per block and sends the quantized coefficients; Golomb-Rice codes the residual, with a parameter $k$ chosen per partition. No quantization stage, no perceptual-model stage, no shared-prior stage. <strong>The decision that only makes sense given the job:</strong> the entropy-coding stage is a one-parameter code with no table. A prediction residual is nearly Laplacian, Golomb-Rice is the optimal prefix code for a geometric distribution, and choosing $k$ from the mean residual costs a few bits per partition instead of a Huffman tree per block. The decoder is a handful of integer shifts, which is what a 2005 player can afford, and the encoder&rsquo;s extra effort, trying several predictor orders and keeping the best, is spent once. <strong>The number:</strong> about 58% of CD size, with blocks of around 4,096 samples (93 ms) and a seek table so that any block decodes alone. Read <a href="../linear-prediction/">linear prediction</a>
+ and <a href="../prefix-codes/">prefix codes</a>
+; play <a href="/compressionfight/#heist=studio">the Lossless audio task</a>
+.</p>
+<h2 id="mp3-1993">MP3 (1993)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/mp3.png"><img src="/compressionfight/map/img/codec-dissections/mp3.png" alt="Pipeline strip: data, MDCT (transform stage), power-law quantizer (quantization stage), Huffman (entropy-coding stage), bits; psychoacoustic masking steers the quantizer, standard tables held by the decoder" loading="lazy"></a><figcaption>MP3: a long transform, a model of the ear, a Huffman coder reading from 32 standard tables.</figcaption></figure>
+
+<p><strong>The job:</strong> fit a CD into a 1998 portable at 128 kbit/s, encoded once overnight on a desktop, decoded in real time on a 60 MHz chip; latency irrelevant. <strong>The stages:</strong> MDCT, a hybrid filterbank ending in an MDCT with 50% overlap; Psychoacoustic model, a psychoacoustic model that runs an FFT beside the transform and computes, per band, how much noise a louder neighbour will hide; μ-law companding, a power-law quantizer (magnitudes raised to 0.75 before rounding) with per-band scale factors that put the noise where the model says it is inaudible; Huffman coding, with tables picked from a fixed set; Standard tables, the 32 standard Huffman tables of which the frame names one. <strong>The decision that only makes sense given the job:</strong> the perceptual-model stage runs only in the encoder. The decoder never sees the masking model; it reads scale factors and a table index and inverts a transform. All of the hearing science is spent where compute is free and amortised over every player ever sold. <strong>The number:</strong> 1,152 samples per frame, 26 ms at 44.1 kHz, a window length chosen because latency did not matter and frequency resolution did; and 11:1, from 1,411 to 128 kbit/s, nearly all of it irrelevance rather than redundancy. Read <a href="../block-transforms/">block transforms</a>
+ and <a href="../perceptual-models/">perceptual models</a>
+; play <a href="/compressionfight/#heist=walkman">the Music distribution task</a>
+.</p>
+<h2 id="opus-2012">Opus (2012)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/opus.png"><img src="/compressionfight/map/img/codec-dissections/opus.png" alt="Pipeline strip: data, LPC (prediction stage), MDCT (transform stage), VQ / PVQ (quantization stage), arithmetic range coder (entropy-coding stage), bits; standard tables held by the decoder" loading="lazy"></a><figcaption>Opus: a speech predictor and a short transform under one range coder.</figcaption></figure>
+
+<p><strong>The job:</strong> a two-way conversation over a lossy link, under 150 ms mouth to ear, encoded and decoded on a battery-powered phone at both ends, bitrate renegotiable every packet. <strong>The stages:</strong> Linear prediction (LPC), the SILK layer, a linear-prediction speech coder; MDCT, the CELT layer, an MDCT with frames of 2.5 to 20 ms; Vector quantization, an algebraic pyramid vector quantizer whose codebook is defined by a formula in the specification rather than trained; Arithmetic coding, a range coder; Standard tables, the tables and that codebook formula. <strong>The decision that only makes sense given the job:</strong> every feature that is not in MP3. Per-packet independence, so a lost packet does not corrupt the next; packet-loss concealment; in-band forward error correction, a coarse copy of the previous frame tucked into each packet; frame sizes down to 2.5 ms. Not one of these improves ratio. Each buys survival on the access-pattern axis, and the <a href="../anatomy-of-a-job/">latency ledger</a>
+ shows why a 26 ms frame could not have been used. <strong>The number:</strong> 26.5 ms of algorithmic delay at the default 20 ms frame, and a bitrate range of 6 to 510 kbit/s under a single decoder. Read <a href="../linear-prediction/">linear prediction</a>
+ and <a href="../vector-quantization/">vector quantization</a>
+; play <a href="/compressionfight/#heist=phonecall">the Real-time speech task</a>
+.</p>
+<h2 id="soundstream-and-encodec-2021">SoundStream and EnCodec (2021)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/soundstream.png"><img src="/compressionfight/map/img/codec-dissections/soundstream.png" alt="Pipeline strip: data, conv encoder (transform stage), residual VQ (quantization stage), no entropy-coding stage (dashed box: fixed-rate tokens), bits; adversarial loss steers, decoder weights and codebooks held by the decoder" loading="lazy"></a><figcaption>A neural codec: the same three lossy roles as JPEG, two of them replaced by networks, and the entropy-coding stage empty.</figcaption></figure>
+
+<p><strong>The job:</strong> Opus&rsquo;s job pushed to 3–6 kbit/s, with both phones carrying an NPU and megabytes of pre-installed weights. <strong>The stages:</strong> Learned encoder, a causal convolutional encoder that maps a waveform frame to a dense latent; Residual VQ, residual vector quantization, a stack of codebooks each quantizing the error of the one before; Adversarial loss, an adversarial loss that trains the decoder to produce plausible rather than sample-accurate audio; Learned decoder and VQ codebook, the decoder weights and the codebooks, shipped in the model checkpoint. No prediction stage, and the entropy-coding stage is empty by default: tokens arrive at a fixed rate. EnCodec adds an optional small transformer with an arithmetic coder for another quarter to forty percent. <strong>The decision that only makes sense given the job:</strong> the fidelity contract changed. An MSE-trained decoder produces the blurry average of all plausible outputs; the discriminator forces one sharp plausible output, so the codec can sound clean at 3 kbit/s by inventing detail that is wrong in waveform terms and right to the ear. That is acceptable for a conversation and unacceptable for a courtroom recording. <strong>The number:</strong> 8 codebooks of 1,024 entries at 75 frames per second is 6 kbit/s, and dropping the last codebooks under congestion still decodes, coarser; 64:1 before any entropy coding. Read <a href="../learned-transforms/">learned transforms</a>
+, <a href="../vector-quantization/">vector quantization</a>
+ and <a href="../side-information/">side information</a>
+; play <a href="/compressionfight/#heist=phonecall">the Real-time speech task</a>
+.</p>
+<h2 id="h264--avc-2003">H.264 / AVC (2003)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/h264.png"><img src="/compressionfight/map/img/codec-dissections/h264.png" alt="Pipeline strip: data, YCbCr (transform stage), motion compensation (prediction stage), spatial intra prediction (prediction stage), block DCT (transform stage), uniform quantizer with dead zone (quantization stage), arithmetic coder CABAC (entropy-coding stage), bits; chroma 4:2:0 steers, standard tables held" loading="lazy"></a><figcaption>The hybrid video codec: prediction, then transform coding of what prediction missed, then a context-adaptive arithmetic coder.</figcaption></figure>
+
+<p><strong>The job:</strong> stream a film to a billion devices; the encoder is a datacenter that may spend hours per title, the decoder is a 200 mW hardware block that must never drop a frame; seek to any chapter; one or two percent of bitrate is worth millions in delivery. <strong>The stages:</strong> YCbCr / mid-side and Chroma subsampling, YCbCr 4:2:0; Motion compensation, motion-compensated prediction from reference frames with sub-pixel vectors; Spatial prediction, directional intra prediction for blocks that moved nowhere useful; DCT, a 4×4 or 8×8 integer DCT of the residual; Uniform quantizer, a dead-zone uniform quantizer whose rounding is chosen by rate-distortion optimisation; Arithmetic coding, CABAC, a binary arithmetic coder with dozens of neighbour-aware contexts; Standard tables, the standard&rsquo;s tables and context initialisations. <strong>The decision that only makes sense given the job:</strong> the most expensive entropy coder in the toolkit, hardened into silicon. An adaptive arithmetic coder is serial and multiplies per bit, which is a poor fit for a cheap decoder, except that the job says decode-forever-everywhere and bandwidth is the product, so the one-time cost of a hardware CABAC block is repaid on every stream. The same logic sends the motion search, the single most expensive thing in video, to the encoder, which runs once. <strong>The number:</strong> the keyframe interval, about two seconds for streaming, which is the ratio-versus-seek dial; and the generational bargain, 30–50% fewer bits per generation for 5–10× encoder complexity, decoder unchanged. Read <a href="../motion-compensation/">motion compensation</a>
+ and <a href="../arithmetic-and-ans/">arithmetic coding and ANS</a>
+; play <a href="/compressionfight/#heist=primetime">the Streaming video task</a>
+.</p>
+<h2 id="zstd-2016">zstd (2016)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/zstd.png"><img src="/compressionfight/map/img/codec-dissections/zstd.png" alt="Pipeline strip: data, LZ77 (prediction stage), FSE/tANS (entropy-coding stage), Huffman (entropy-coding stage), bits; trained dictionary held by the decoder" loading="lazy"></a><figcaption>zstd: DEFLATE&rsquo;s architecture with every part upgraded, and a dictionary slot.</figcaption></figure>
+
+<p><strong>The job:</strong> DEFLATE&rsquo;s job plus the message-queue job: millions of 300-byte records per second, each compressed and decompressed on its own, lossless, at gigabytes per second, with both ends under one team&rsquo;s control. <strong>The stages:</strong> LZ77, with a window of up to 128 MB and a parse effort selectable over 22 levels; ANS, FSE, a table-driven ANS coder for match lengths and offsets; Huffman coding, a fast Huffman for the literal bytes; Trained dictionary, an optional dictionary trained on a sample of the data and identified by an ID in the frame header. <strong>The decision that only makes sense given the job:</strong> the dictionary. LZ77 is useless on a 300-byte message because there is no history; a 100 KB dictionary built by the COVER algorithm from a sample of messages is history both sides already hold, and it makes the cross-message redundancy, the same keys and enums in every record, visible to a per-message codec. It is the lossless cousin of a VQ codebook, with the same operational hazard: lose dictionary number seven and the data is gone. <strong>The number:</strong> 3× faster decode and 10–15% smaller than DEFLATE on the same recipe, and typically 3–5× smaller than gzip on small JSON with a trained dictionary. Read <a href="../lz-family/">the LZ family</a>
+, <a href="../arithmetic-and-ans/">arithmetic coding and ANS</a>
+ and <a href="../side-information/">side information</a>
+; play <a href="/compressionfight/#heist=logpipe">the Small JSON messages task</a>
+.</p>
+<h2 id="gguf-q4_k_m-2023-and-faiss-ivf-opq-pq-2017">GGUF Q4_K_M (2023) and Faiss IVF-OPQ-PQ (2017)</h2>
+<figure class="fig"><a href="/compressionfight/map/img/codec-dissections/gguf_faiss.png"><img src="/compressionfight/map/img/codec-dissections/gguf_faiss.png" alt="Two pipeline strips: GGUF with int4 blocks plus scales (quantization stage) and no entropy-coding stage (dashed: kernel decodes); Faiss with PCA/OPQ rotation (transform stage), product quantizer (quantization stage), no entropy-coding stage (dashed: fixed-length codes), codebooks held by the decoder" loading="lazy"></a><figcaption>Two ML-era formats where the best entropy coder is no entropy coder.</figcaption></figure>
+
+<p><strong>The jobs:</strong> ship a 70-billion-parameter model to laptops, where the decoder is the matrix-multiply kernel itself and must dequantize any block, in parallel, at memory bandwidth; and fit a billion 768-dimensional embeddings in RAM and answer nearest-neighbour queries in milliseconds without ever decompressing. <strong>GGUF&rsquo;s stages:</strong> Block int4 alone. Super-blocks of 256 weights, each with 8 sub-blocks of 32, four-bit integers with six-bit scales and minimums. No transform stage, no prediction stage, no entropy-coding stage. <strong>Faiss&rsquo;s stages:</strong> PCA / Hadamard rotation, an OPQ rotation so that sub-vectors carry similar variance; Product quantization, a product quantizer that chops each vector into 96 sub-vectors and codes each with its own 256-entry codebook; VQ codebook, those codebooks stored in the index file; and, again, no entropy-coding stage. <strong>The decision that only makes sense given the job:</strong> the empty entropy-coding stage, in both. A GPU thread cannot decode a Huffman code, and a query scanning millions of codes needs each one at a fixed offset so that distances can be computed from precomputed lookup tables on the codes themselves. Research formats that entropy-code weights exist; they decompress to int4 before the kernel runs. The half bit of skew left in the integers is the price of random access, paid knowingly, the same trade the <a href="../anatomy-of-a-job/">anatomy of a job</a>
+ describes. <strong>The numbers:</strong> about 4.5 bits per weight for Q4_K_M, with a perplexity cost around 0.1; and 96 bytes per 768-dimensional vector, 32:1, with $256^{96}$ effective centroids from $96 \times 256$ stored ones. Read <a href="../block-float-formats/">block float formats</a>
+, <a href="../vector-quantization/">vector quantization</a>
+ and <a href="../rotations-and-rank/">rotations and rank</a>
+; play <a href="/compressionfight/#heist=weightsvault">the LLM weights on a laptop task</a>
+ and <a href="/compressionfight/#heist=vectorvault">the Billion-scale vector search task</a>
+.</p>
+<h2 id="what-the-twelve-have-in-common">What the twelve have in common</h2>
+<p>Line the strips up and the composition rules stop being rules and become the only possible shapes. Every strip that has an entropy-coding stage has it last. Every strip with a quantization stage has the quantization stage before the entropy-coding stage and after the transform stage. No strip has two matchers, or a matcher behind a transform that already removed what the matcher would find. And the three strips with an empty entropy-coding stage, SoundStream, GGUF and Faiss, are the three jobs whose access-pattern line forbids variable-length codes: fixed-rate tokens for a congested link, a kernel that addresses any block, a scan that computes on the codes. The eccentric decision in each dissection, the self-describing header, the row filter, the 900 KB block, the unused arithmetic mode, the lost wavelet, the tableless Rice code, the encoder-only ear, the packet-loss machinery, the forged detail, the silicon arithmetic coder, the dictionary ID, the pass-through, was in every case the job&rsquo;s constraint sheet showing through the algorithm. Learn to write the sheet first, as the <a href="../anatomy-of-a-job/">anatomy of a job</a>
+ teaches, and most of each strip can be drawn before the spec is opened; the <a href="../kv-cache-vaults/">KV cache walkthrough</a>
+ is the same exercise run on one tensor five times.</p>
+<h2 id="in-the-game">In the game</h2>
+<p>These twelve are the pre-filled pipelines in Exploration mode, and each one is the reveal at the end of its task: the General-purpose file archive task, the Lossless images task, the Maximum-ratio text archive task, the Photographs task, the Modern web images task, the Lossless audio task, the Music distribution task, the Real-time speech task, the Streaming video task, the Small JSON messages task, the LLM weights on a laptop task and the Billion-scale vector search task. Fill the stages yourself first, then open the strip and see which algorithm the job had already chosen for you.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=lz77" title="lz77"><img src="/compressionfight/img/fighters/lz77.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>lz77</span></a></li><li><a href="/compressionfight/#fighter=huffman" title="huffman"><img src="/compressionfight/img/fighters/huffman.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>huffman</span></a></li><li><a href="/compressionfight/#fighter=spatial" title="spatial"><img src="/compressionfight/img/fighters/spatial.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>spatial</span></a></li><li><a href="/compressionfight/#fighter=bwt" title="bwt"><img src="/compressionfight/img/fighters/bwt.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>bwt</span></a></li><li><a href="/compressionfight/#fighter=rle" title="rle"><img src="/compressionfight/img/fighters/rle.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>rle</span></a></li><li><a href="/compressionfight/#fighter=prism" title="prism"><img src="/compressionfight/img/fighters/prism.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>prism</span></a></li><li><a href="/compressionfight/#fighter=dct" title="dct"><img src="/compressionfight/img/fighters/dct.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>dct</span></a></li><li><a href="/compressionfight/#fighter=chroma" title="chroma"><img src="/compressionfight/img/fighters/chroma.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>chroma</span></a></li><li><a href="/compressionfight/#fighter=qmatrix" title="qmatrix"><img src="/compressionfight/img/fighters/qmatrix.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>qmatrix</span></a></li><li><a href="/compressionfight/#fighter=tables" title="tables"><img src="/compressionfight/img/fighters/tables.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>tables</span></a></li><li><a href="/compressionfight/#fighter=dwt" title="dwt"><img src="/compressionfight/img/fighters/dwt.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>dwt</span></a></li><li><a href="/compressionfight/#fighter=arith" title="arith"><img src="/compressionfight/img/fighters/arith.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>arith</span></a></li><li><a href="/compressionfight/#fighter=uniform" title="uniform"><img src="/compressionfight/img/fighters/uniform.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>uniform</span></a></li><li><a href="/compressionfight/#fighter=lpc" title="lpc"><img src="/compressionfight/img/fighters/lpc.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>lpc</span></a></li><li><a href="/compressionfight/#fighter=rice" title="rice"><img src="/compressionfight/img/fighters/rice.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>rice</span></a></li><li><a href="/compressionfight/#fighter=mdct" title="mdct"><img src="/compressionfight/img/fighters/mdct.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>mdct</span></a></li><li><a href="/compressionfight/#fighter=psychoacoustic" title="psychoacoustic"><img src="/compressionfight/img/fighters/psychoacoustic.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>psychoacoustic</span></a></li><li><a href="/compressionfight/#fighter=companding" title="companding"><img src="/compressionfight/img/fighters/companding.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>companding</span></a></li><li><a href="/compressionfight/#fighter=vq" title="vq"><img src="/compressionfight/img/fighters/vq.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>vq</span></a></li><li><a href="/compressionfight/#fighter=neural_enc" title="neural_enc"><img src="/compressionfight/img/fighters/neural_enc.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>neural_enc</span></a></li><li><a href="/compressionfight/#fighter=rvq" title="rvq"><img src="/compressionfight/img/fighters/rvq.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>rvq</span></a></li><li><a href="/compressionfight/#fighter=gan" title="gan"><img src="/compressionfight/img/fighters/gan.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>gan</span></a></li><li><a href="/compressionfight/#fighter=decoder_net" title="decoder_net"><img src="/compressionfight/img/fighters/decoder_net.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>decoder_net</span></a></li><li><a href="/compressionfight/#fighter=codebook" title="codebook"><img src="/compressionfight/img/fighters/codebook.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>codebook</span></a></li><li><a href="/compressionfight/#fighter=motion" title="motion"><img src="/compressionfight/img/fighters/motion.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>motion</span></a></li><li><a href="/compressionfight/#fighter=ans" title="ans"><img src="/compressionfight/img/fighters/ans.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>ans</span></a></li><li><a href="/compressionfight/#fighter=dictionary" title="dictionary"><img src="/compressionfight/img/fighters/dictionary.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>dictionary</span></a></li><li><a href="/compressionfight/#fighter=blockint" title="blockint"><img src="/compressionfight/img/fighters/blockint.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>blockint</span></a></li><li><a href="/compressionfight/#fighter=pca" title="pca"><img src="/compressionfight/img/fighters/pca.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>pca</span></a></li><li><a href="/compressionfight/#fighter=pq" title="pq"><img src="/compressionfight/img/fighters/pq.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>pq</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a compression task: the five axes</a></li><li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li><li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion: the one irreversible stage</a></li><li><a href="/compressionfight/map/zoo/lz-family/">Say it again: the LZ family</a></li><li><a href="/compressionfight/map/zoo/block-transforms/">Block transforms: which directions matter</a></li><li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The KV cache: same bytes, five tasks</a></li><li><a href="/compressionfight/map/zoo/side-information/">Side information: what the decoder knew before the first byte</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/kv-cache-vaults/"><small>&larr; Previous</small>The KV cache: same bytes, five tasks</a>
+    
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#how-to-read-a-spec">How to read a spec</a></li>
+    <li><a href="#deflate-zip-gzip-pngs-back-end-1993">DEFLATE (zip, gzip, PNG&rsquo;s back end, 1993)</a></li>
+    <li><a href="#png-1996">PNG (1996)</a></li>
+    <li><a href="#bzip2-1996">bzip2 (1996)</a></li>
+    <li><a href="#jpeg-1992">JPEG (1992)</a></li>
+    <li><a href="#jpeg-2000-2000-and-webp-lossy-2010">JPEG 2000 (2000) and WebP lossy (2010)</a></li>
+    <li><a href="#flac-2001">FLAC (2001)</a></li>
+    <li><a href="#mp3-1993">MP3 (1993)</a></li>
+    <li><a href="#opus-2012">Opus (2012)</a></li>
+    <li><a href="#soundstream-and-encodec-2021">SoundStream and EnCodec (2021)</a></li>
+    <li><a href="#h264--avc-2003">H.264 / AVC (2003)</a></li>
+    <li><a href="#zstd-2016">zstd (2016)</a></li>
+    <li><a href="#gguf-q4_k_m-2023-and-faiss-ivf-opq-pq-2017">GGUF Q4_K_M (2023) and Faiss IVF-OPQ-PQ (2017)</a></li>
+    <li><a href="#what-the-twelve-have-in-common">What the twelve have in common</a></li>
+    <li><a href="#in-the-game">In the game</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

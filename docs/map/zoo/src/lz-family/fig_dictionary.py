@@ -2,10 +2,12 @@
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 import numpy as np, zlib, json, os, random
 
-BG, INK, MUTED, GRID = "#0b0714", "#e8e4f0", "#9b93aa", "#2a2238"
-C = ["#3b8fd6", "#c4812a", "#2fa06e", "#b85fb0"]
+BG, INK, MUTED, GRID = "#f3eadb", "#2a211b", "#5a4a3d", "#b89f78"
+C = ["#246b66", "#b8892e", "#b05a4c", "#6b4a7a"]
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "text.color": INK, "axes.edgecolor": GRID,
                      "axes.labelcolor": INK, "xtick.color": MUTED, "ytick.color": MUTED, "grid.color": GRID,
                      "font.family": "DejaVu Sans", "font.size": 13})

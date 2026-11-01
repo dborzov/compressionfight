@@ -21,10 +21,10 @@
   window.addEventListener('load', function () { math(); });
   // copy buttons on code blocks
   document.querySelectorAll('.highlight').forEach(function (h) {
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'COPY';
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
     b.addEventListener('click', function () {
       var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
-      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'COPIED'; setTimeout(function () { b.textContent = 'COPY'; }, 1500); });
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
     });
     h.appendChild(b);
   });
@@ -38,7 +38,7 @@
       try {
         var f = window.CYC && CYC.byId && CYC.byId[id];
         var t = document.createElement('div'); t.className = 'lab-title';
-        t.textContent = 'SPECIAL MOVE LAB' + (f ? ' · ' + f.name : '');
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
         el.textContent = ''; el.appendChild(t);
         var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
         if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);

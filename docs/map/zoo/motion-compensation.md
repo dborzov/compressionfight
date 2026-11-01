@@ -1,5 +1,5 @@
 ---
-title: "The tracker: motion compensation"
+title: "Motion compensation: predicting across frames"
 slug: motion-compensation
 chair: predict
 family: "Temporal prediction: motion compensation"
@@ -80,7 +80,7 @@ $$\hat{F}_t(\mathbf{p}) = F_{t-1}(\mathbf{p} - \mathbf{v}), \qquad E_t(\mathbf{p
 
 $$\mathbf{v}^\star = \arg\min_{\mathbf{v} \in \mathcal{S}} \sum_{\mathbf{p} \in B} \left| F_t(\mathbf{p}) - F_{t-1}(\mathbf{p} - \mathbf{v}) \right|,$$
 
-with $\mathcal{S}$ the search range. In H.261 the block was a $16 \times 16$ **macroblock** and the range a few pixels at integer precision. The vector itself is cheap to send; neighbouring blocks tend to move together, so codecs predict each vector from its neighbours' and code only the difference, the predictor's chair applied to its own output.
+with $\mathcal{S}$ the search range. In H.261 the block was a $16 \times 16$ **macroblock** and the range a few pixels at integer precision. The vector itself is cheap to send; neighbouring blocks tend to move together, so codecs predict each vector from its neighbours' and code only the difference, the predictor's stage applied to its own output.
 
 Now look at the asymmetry, because it is the cleanest example of one anywhere on the map. Motion estimation is a *search*. In the toy it is 25 SADs over 64 pixels; in a real encoder it is per block, per reference frame, at sub-pixel precision, with a smart search pattern rather than an exhaustive one, and it is by a wide margin the most expensive thing a video encoder does. Motion compensation is a *copy*: read 64 numbers from an address. The decoder never searches. It never sees the SAD surface. It reads a vector and copies. That is the asymmetry chosen by the job described in [the anatomy of a job](../anatomy-of-a-job/): one encode in a datacenter, a billion decodes on phones and televisions, so every hour spent searching for better vectors is paid once and saved a billion times. The [LZ family](../lz-family/) has the same shape, searching for matches versus copying from a window, and for the same reason; motion compensation is that idea with a two-dimensional window that happens to be the previous picture.
 
@@ -128,7 +128,7 @@ Here is the aha. The GOP length sits on a single axis: *ratio against random acc
 
 ## Aha 3: the miss still has structure
 
-Teodor's vectors got him most of his factor of six. The residual was the rest of the problem, and it is where the motion-compensation chair hands off to the next one.
+Teodor's vectors got him most of his factor of six. The residual was the rest of the problem, and it is where the motion-compensation stage hands off to the next one.
 
 In the toy, the residual was identically zero because the square moved by exactly one pixel and nothing else changed. In a real frame, the residual after compensation is small but it is not noise: lighting shifted a little across a whole block, so the residual has a DC offset; an edge moved by a fraction of a pixel the interpolation did not quite capture, so the residual has a faint edge in it; the camera's sensor noise is spatially white but the block's content is not. Small values with spatial correlation are precisely what a block transform is for. So the residual block goes through a DCT (in H.264, a $4 \times 4$ or $8 \times 8$ integer transform), its coefficients are quantized with a step chosen by rate control, and the quantized coefficients are entropy-coded with CABAC. The *decoder* then reverses that, adds the reconstructed residual to its motion-compensated prediction, runs the deblocking filter, and stores the result as the reference for the next frame.
 
@@ -148,4 +148,4 @@ The configuration split between calls and streaming is the article on [the anato
 
 And the GOP generalises past media entirely. A chain of deltas that must be decoded in order, cut at intervals by self-contained anchors, is the structure of a KV cache streamed by CacheGen, of a git packfile's delta chains (which have a maximum depth for exactly the seek reason), and of every snapshot-and-journal storage design. The engineers in those fields rarely call it a GOP. It is one.
 
-**In the game:** [TRACKER](/compressionfight/#fighter=motion) holds the Oracle's chair in Prime Time (H.264 / AV1), with [NEIGHBOR](/compressionfight/#fighter=spatial) beside it for intra blocks; [ANCHORMAN](/compressionfight/#fighter=anchor_delta) is the same GOP idea in The Courier (CacheGen). The [codec dissection](../codec-dissections/) of H.264 shows the whole hybrid loop as a squad.
+**In the game:** [Motion compensation](/compressionfight/#fighter=motion) holds the prediction stage in the Streaming video task (H.264 / AV1), with [Spatial prediction](/compressionfight/#fighter=spatial) beside it for intra blocks; [Anchor delta coding](/compressionfight/#fighter=anchor_delta) is the same GOP idea in the KV cache over a network task (CacheGen). The [codec dissection](../codec-dissections/) of H.264 shows the whole hybrid loop as a pipeline.

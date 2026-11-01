@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Learned transforms: autoencoders as codecs · Choose Your Codec</title>
+<meta name="description" content="A DCT assumes signals are sums of cosines; a trained encoder, quantizer and decoder learn what speech or faces are, so the wire carries only which one, the decoder holds the prior, and the fidelity contract quietly changes from accurate to plausible.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/" class="on" aria-current="page">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Transform</span><span>/</span><span>Learned transforms</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Transform · Learned transforms</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/learned-transforms.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Learned transforms: autoencoders as codecs</h1>
+    <p class="summary">A DCT assumes signals are sums of cosines; a trained encoder, quantizer and decoder learn what speech or faces are, so the wire carries only which one, the decoder holds the prior, and the fidelity contract quietly changes from accurate to plausible.</p>
+    <div class="meta">14 min read</div>
+  </header>
+  
+  <div class="prose"><h2 id="three-kilobits-per-second">Three kilobits per second</h2>
+<p>Imagine, because this is a story, a researcher in the spring of 2020 whose problem is a phone line that is not a phone line. Her users talk over a mobile link that drops to a few kilobits per second whenever the signal is poor, and her job is to make a voice call survive it. The best general-purpose codec she has, Opus, is excellent down to about 6 kbps and then runs out of things to throw away; she needs intelligible, natural speech at 3 kbps, half of that, with less than a frame of delay. Every number she has learned about audio coding says no. A CD carries 1411 kbps. MP3 is transparent at around 128. She is being asked for a forty-to-one improvement on a codec that was already forty-to-one better than MP3&rsquo;s ancestors.</p>
+<p>So she goes back to first principles and asks why the existing codecs stop where they do. MP3 and Opus&rsquo;s music mode run an MDCT, which is a fixed transform: it assumes the signal is locally a sum of cosines, which is true of any sound, and it tells the quantizer nothing about <em>which</em> sounds. Opus&rsquo;s speech mode runs linear prediction, which assumes the signal is a resonance driven by an excitation, which is true of a vocal tract, and it is the reason Opus beats MP3 on speech at low rates by a wide margin. Each step down in bitrate came from a stronger assumption about what the signal is. Her question, and the question of this article, is the next step: <em>a fixed DCT assumes signals are sums of cosines; what if the transform could learn what speech is?</em></p>
+<h2 id="a-frame-a-latent-a-budget">A frame, a latent, a budget</h2>
+<p>Here is the arithmetic she starts from. One frame of 20 ms of 16 kHz speech is 320 samples of 16 bits.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">frame</span><span class="p">,</span> <span class="n">bits_per_sample</span> <span class="o">=</span> <span class="mi">320</span><span class="p">,</span> <span class="mi">16</span>                 <span class="c1"># 20 ms at 16 kHz</span>
+</span></span><span class="line"><span class="cl"><span class="n">stages</span><span class="p">,</span> <span class="n">entries</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">1024</span>                         <span class="c1"># residual VQ: 8 codebooks of 1024</span>
+</span></span><span class="line"><span class="cl"><span class="n">bits_in</span>  <span class="o">=</span> <span class="n">frame</span> <span class="o">*</span> <span class="n">bits_per_sample</span>
+</span></span><span class="line"><span class="cl"><span class="n">bits_out</span> <span class="o">=</span> <span class="n">stages</span> <span class="o">*</span> <span class="n">entries</span><span class="o">.</span><span class="n">bit_length</span><span class="p">()</span> <span class="o">-</span> <span class="n">stages</span> <span class="c1"># log2(1024) = 10 per stage</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;bits in :&#34;</span><span class="p">,</span> <span class="n">bits_in</span><span class="p">,</span> <span class="s2">&#34;  bits out:&#34;</span><span class="p">,</span> <span class="n">bits_out</span><span class="p">,</span> <span class="s2">&#34;  ratio&#34;</span><span class="p">,</span> <span class="n">bits_in</span> <span class="o">//</span> <span class="n">bits_out</span><span class="p">,</span> <span class="s2">&#34;: 1&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">frames_per_s</span> <span class="o">=</span> <span class="mi">16000</span> <span class="o">/</span> <span class="n">frame</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;wire    :&#34;</span><span class="p">,</span> <span class="n">frames_per_s</span> <span class="o">*</span> <span class="n">bits_out</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="s2">&#34;kbit/s  =&#34;</span><span class="p">,</span> <span class="n">frames_per_s</span> <span class="o">*</span> <span class="n">bits_out</span> <span class="o">/</span> <span class="mi">8</span><span class="p">,</span> <span class="s2">&#34;bytes/s&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;SoundStream at 75 frames/s:&#34;</span><span class="p">,</span> <span class="mi">75</span> <span class="o">*</span> <span class="n">bits_out</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="s2">&#34;kbit/s  =&#34;</span><span class="p">,</span> <span class="mi">75</span> <span class="o">*</span> <span class="n">bits_out</span> <span class="o">/</span> <span class="mi">8</span><span class="p">,</span> <span class="s2">&#34;bytes/s&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">decoder_bytes</span> <span class="o">=</span> <span class="mf">20e6</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;decoder weights / wire rate :&#34;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">decoder_bytes</span> <span class="o">/</span> <span class="p">(</span><span class="mi">75</span> <span class="o">*</span> <span class="n">bits_out</span> <span class="o">/</span> <span class="mi">8</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3600</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="s2">&#34;hours of speech&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;MP3 128 kbit/s vs 6 kbit/s  :&#34;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="mi">128</span> <span class="o">/</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="s2">&#34;x&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>bits in : 5120   bits out: 80   ratio 64 : 1
+wire    : 4.0 kbit/s  = 500.0 bytes/s
+SoundStream at 75 frames/s: 6.0 kbit/s  = 750.0 bytes/s
+decoder weights / wire rate : 7.4 hours of speech
+MP3 128 kbit/s vs 6 kbit/s  : 21.3 x
+</code></pre><p>The plan has three boxes. An <strong>encoder</strong> network squeezes the 320 samples into a short vector, say 8 floats, a <em>latent</em>. A <strong>quantizer</strong> turns the 8 floats into a handful of integers; the one she picks is residual vector quantization, 8 stages each with a 1024-entry codebook, so 8 indices of 10 bits, 80 bits per frame. A <strong>decoder</strong> network takes the 80 bits, looks up the 8 codewords, adds them, and synthesises 320 samples. Five thousand one hundred and twenty bits in, eighty out: 64:1 before any entropy coding, with 4 kbps on the wire at her frame rate, or 6 kbps at the 75 frames per second SoundStream actually uses on 24 kHz audio. Drop to four stages and it is 3 kbps; the stages are ordered coarse to fine, so a congested link can simply stop sending the last ones and the decoder still produces speech, rougher. That bitrate scalability is a gift of the <a href="../vector-quantization/">residual VQ</a>
+ structure and it costs nothing.</p>
+<p>The last two lines are the napkin math that tells you what kind of object this is. The decoder weights are about 20 MB. At 750 bytes per second on the wire, the decoder is as big as seven and a half hours of transmitted speech. And against MP3 at 128 kbps, 6 kbps is a factor of 21. Hold those two numbers together: the ratio is enormous, and the thing that makes it possible is 20 MB that never crosses the wire.</p>
+<figure class="fig"><a href="/compressionfight/map/img/learned-transforms/pipeline.png"><img src="/compressionfight/map/img/learned-transforms/pipeline.png" alt="Block diagram of a neural audio codec: waveform frame, encoder, residual VQ, decoder, with the training loss attached to all three and the codebooks and decoder weights shipped to both ends" loading="lazy"></a><figcaption>The pipeline, with its bit budget. One 320-sample frame becomes 80 bits. The loss at the bottom is back-propagated through the encoder, the quantizer and the decoder at once, which is what makes the three boxes one object.</figcaption></figure>
+
+<h2 id="what-a-trained-transform-is-in-the-smallest-case">What a trained transform is, in the smallest case</h2>
+<p>Before the big networks, the question deserves a small honest example. What does an encoder-decoder pair learn when you train it, and how does that relate to the transforms of the previous two articles? Make the encoder and the decoder as simple as possible: linear maps, two dimensions to one and back, with the same weight vector $w$ in both, trained by gradient descent on the reconstruction error.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">X</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">((</span><span class="mi">500</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.6</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]]);</span> <span class="n">X</span> <span class="o">-=</span> <span class="n">X</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.3</span><span class="p">])</span>                       <span class="c1"># encoder z = X w, decoder x_hat = z w^T (tied)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3000</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">z</span> <span class="o">=</span> <span class="n">X</span> <span class="o">@</span> <span class="n">w</span><span class="p">;</span> <span class="n">E</span> <span class="o">=</span> <span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>           <span class="c1"># reconstruction error</span>
+</span></span><span class="line"><span class="cl">    <span class="n">grad</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="p">(</span><span class="n">E</span> <span class="o">@</span> <span class="n">w</span><span class="p">)</span> <span class="o">+</span> <span class="n">E</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">z</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">w</span> <span class="o">-=</span> <span class="mf">0.02</span> <span class="o">*</span> <span class="n">grad</span>
+</span></span><span class="line"><span class="cl"><span class="n">lam</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cov</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;learned direction :&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">w</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">w</span><span class="p">))</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span> <span class="s2">&#34; |w| =&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;PCA eigenvector   :&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">V</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">V</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;autoencoder MSE   :&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">X</span> <span class="o">@</span> <span class="n">w</span><span class="p">,</span> <span class="n">w</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">5</span><span class="p">),</span> <span class="s2">&#34; lambda_2 =&#34;</span><span class="p">,</span> <span class="n">lam</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>learned direction : [-0.7734 -0.6339]  |w| = 1.0
+PCA eigenvector   : [0.7734 0.6339]
+autoencoder MSE   : 0.15226  lambda_2 = 0.15226
+</code></pre><p>The network started from a random direction and, with nothing but a squared-error loss, found the first principal component of the data, to four decimals, with unit norm, and its reconstruction error is exactly the second eigenvalue. A linear autoencoder trained with MSE <em>is</em> PCA. That is reassuring and deflating at once. Reassuring, because it says the learned transform is the same thing the <a href="../rotations-and-rank/">rotations article</a>
+ called the KLT: the optimal linear decorrelator, now found by gradient descent instead of an eigensolver. Deflating, because PCA was not what she needed. Everything a neural codec does beyond PCA must therefore come from the two things this toy lacks: nonlinearity, and a loss that is not squared error.</p>
+<figure class="fig"><a href="/compressionfight/map/img/learned-transforms/linear_ae.png"><img src="/compressionfight/map/img/learned-transforms/linear_ae.png" alt="A 2-to-1-to-2 linear autoencoder&#39;s weight vector converging onto the PCA eigenvector, and its loss curve landing on the second eigenvalue" loading="lazy"></a><figcaption>A linear autoencoder trained with MSE finds PCA. The learned direction rotates onto the first eigenvector and the loss stops at λ₂, the variance of the axis it dropped.</figcaption></figure>
+
+<p>Nonlinearity is what lets the encoder say things like &ldquo;this frame is a voiced vowel with pitch 140 Hz and this formant pattern&rdquo; instead of &ldquo;this frame has these eight cosine amplitudes&rdquo;. A DCT basis is fixed; a convolutional encoder&rsquo;s basis is whatever the training data made it, and for speech that is phonetic. The quantizer then does not quantize cosine amplitudes, which are nearly Gaussian and need many bits, but a latent that the encoder has been shaped to make quantizable.</p>
+<div class="map-lab" data-fighter="neural_enc"><p class="lab-fail">Interactive lab (neural_enc) needs JavaScript.</p></div>
+
+<h2 id="aha-one-the-pipeline-is-one-object">Aha one: the pipeline is one object</h2>
+<p>Here is the move that separates a learned codec from a DCT with a neural coat of paint, and it is a question of what is held fixed. In JPEG the transform was designed in 1974, the quantization table in 1990, and the Huffman tables separately again; each stage was optimised on its own under assumptions about its neighbours. In the 2020 researcher&rsquo;s codec all three boxes have parameters, and the loss is computed on the <em>output of the decoder</em> and back-propagated through the decoder, through the quantizer, and into the encoder, in one step.</p>
+<p>Think about what that means for each box. The encoder is not rewarded for producing a faithful latent; it is rewarded for producing a latent that, <em>after</em> being snapped to the nearest codewords and <em>after</em> being decoded, sounds right. So it learns to put its outputs where the codebooks are and to spend its 8 dimensions on what the decoder can use. The codebooks are not fitted to a fixed latent distribution, as a Lloyd codebook would be; they move toward wherever the encoder is putting latents, which is moving toward them. And the decoder is not a generic inverse transform; it is trained to reconstruct from <em>these</em> codewords, which gives it the freedom to fill in everything the 80 bits left out with whatever is typical of the training data. The latents are shaped for the codebooks, the codebooks for the decoder, the decoder for the loss. The pipeline is one object, and no stage makes sense without the others.</p>
+<p>The small gradient problem in the middle, that rounding to a codeword has zero derivative almost everywhere, is handled with the straight-through estimator: in the forward pass use the quantized codeword, in the backward pass pretend the quantizer was the identity. A commitment term keeps the encoder&rsquo;s outputs from drifting away from the codebooks that the straight-through trick is pretending do not exist.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">plausible</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span>                  <span class="c1"># two equally likely true outputs</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">guess</span> <span class="ow">in</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;guess </span><span class="si">{</span><span class="n">guess</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2">: expected squared error </span><span class="si">{</span><span class="p">((</span><span class="n">plausible</span> <span class="o">-</span> <span class="n">guess</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.73</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.41</span><span class="p">])</span>                        <span class="c1"># one latent to quantize with 3 stages x 4 entries</span>
+</span></span><span class="line"><span class="cl"><span class="n">books</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">.5</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">.5</span><span class="p">,</span> <span class="mf">.5</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">.5</span><span class="p">,</span> <span class="mf">.5</span><span class="p">]]),</span>
+</span></span><span class="line"><span class="cl">         <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">.25</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">.25</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">.25</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mf">.25</span><span class="p">]]),</span>
+</span></span><span class="line"><span class="cl">         <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">.1</span><span class="p">,</span> <span class="mf">.1</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">.1</span><span class="p">,</span> <span class="mf">.1</span><span class="p">],</span> <span class="p">[</span><span class="mf">.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">.1</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">.1</span><span class="p">]])]</span>
+</span></span><span class="line"><span class="cl"><span class="n">rec</span><span class="p">,</span> <span class="n">codes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">books</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(((</span><span class="n">cb</span> <span class="o">-</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">rec</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span> <span class="n">codes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">));</span> <span class="n">rec</span> <span class="o">=</span> <span class="n">rec</span> <span class="o">+</span> <span class="n">cb</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;code&#34;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="s2">&#34; reconstruction&#34;</span><span class="p">,</span> <span class="n">rec</span><span class="p">,</span> <span class="s2">&#34; residual norm&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">rec</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;sent:&#34;</span><span class="p">,</span> <span class="n">codes</span><span class="p">,</span> <span class="s2">&#34;=&#34;</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&#34;bits for a 2-D vector&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>guess -1.0: expected squared error 2.00
+guess -0.5: expected squared error 1.25
+guess +0.0: expected squared error 1.00
+guess +0.5: expected squared error 1.25
+guess +1.0: expected squared error 2.00
+code 0  reconstruction [ 0.5 -0.5]  residual norm 0.247
+code 0  reconstruction [ 0.75 -0.5 ]  residual norm 0.092
+code 1  reconstruction [ 0.65 -0.4 ]  residual norm 0.081
+sent: [0, 0, 1] = 6 bits for a 2-D vector
+</code></pre><p>The second half of that script is residual VQ in miniature: the first codebook approximates the latent, the second approximates the error of the first, the third the error of that, and the three indices together name a point among $4^3 = 64$ effective centroids although only 12 were stored. SoundStream&rsquo;s 8 stages of 1024 name one of $1024^8 \approx 10^{24}$ points with 8,192 stored vectors. Note the stage that helps least (the third, 0.092 to 0.081): each stage is greedy, which is the price of the scheme. And note the first half of the script, which is the next aha.</p>
+<div class="map-lab" data-fighter="rvq"><p class="lab-fail">Interactive lab (rvq) needs JavaScript.</p></div>
+
+<h2 id="aha-two-mse-is-the-average-and-the-average-is-blurry">Aha two: MSE is the average, and the average is blurry</h2>
+<p>The researcher&rsquo;s first trained model works, in the sense that the loss goes down, and it sounds terrible: muffled, hollow, as if the speaker were under a blanket. Every pixel-level or sample-level learned codec of that period had the same first result, and the reason is in the top five lines of the output above.</p>
+<p>Suppose there are two equally plausible true outputs for what the decoder has been told, $-1$ and $+1$. The 80 bits said &ldquo;a vowel, roughly like this&rdquo;, and the fine structure of the waveform, the exact phase of every harmonic, is one of the things they did not say. A decoder trained with squared error must produce one output, and the output that minimises expected squared error against two equally likely targets is $0$: error 1.00, against 2.00 for guessing either target. The MSE-optimal decoder emits the <em>mean of the plausible outputs</em>. In a waveform the mean of two sine waves with different phases is a smaller sine wave; the mean over many is near silence at that frequency. In an image, the mean of all plausible textures is a smooth blur. MSE training does not produce bad output. It produces the mathematically correct answer to the wrong question: &ldquo;what single waveform is closest on average to all the waveforms this code could have meant?&rdquo;</p>
+<p>Her fix, and the one SoundStream and EnCodec and every neural codec since have used, is to change the question. Add a second network, a <strong>discriminator</strong>, trained to tell decoded audio from real audio, and train the decoder to fool it. The discriminator does not care about squared error; it cares whether the output has the statistics of real speech: real harmonics with a definite phase, real noise in the fricatives, real texture. The only way for the decoder to fool it is to commit to <em>one</em> plausible output rather than averaging them all. The reconstruction loss keeps that output close to the original on coarse structure (SoundStream and EnCodec measure it on multi-scale spectrograms, which are phase-blind on purpose), a feature-matching loss keeps the discriminator&rsquo;s internal activations similar, and the adversarial term supplies the detail. At 3 kbps the result is speech that is clearly the speaker, clearly the words, and in waveform terms not the original signal at all.</p>
+<p>That last clause is the deep part. The fidelity contract changed. A DCT codec at any quality is <em>accurate</em>: its error is bounded and measurable, and you can turn the quality up until the error is below any threshold you name. A GAN-trained decoder at 3 kbps is <em>plausible</em>: the output is a sample from the set of sounds consistent with the 80 bits, chosen to be realistic rather than close. The <a href="../perceptual-models/">perceptual models</a>
+ article treats the discriminator as what it is, a perceptual model nobody had to derive, and the algorithm card calls its failure mode by name: confidently wrong. A phoneme can come out as a different plausible phoneme. A face in a learned image codec can come out with a plausible but different texture of skin. Nothing in the output warns you. For a voice call this is a fine trade; for a court transcript or a medical scan it is not a codec at all.</p>
+<div class="map-lab" data-fighter="decoder_net"><p class="lab-fail">Interactive lab (decoder_net) needs JavaScript.</p></div>
+
+<h2 id="where-the-knowledge-lives">Where the knowledge lives</h2>
+<p>Now the 20 MB. In the taxonomy of <a href="../side-information/">where the prior lives</a>
+, every codec has a model of its data somewhere. A DCT&rsquo;s model is &ldquo;smooth&rdquo;: it is in the standard, costs nothing, applies to everything, and helps a little. An LPC speech codec&rsquo;s model is &ldquo;a resonant tube&rdquo;, in the standard, a few coefficients per frame on the wire. A neural codec&rsquo;s model of speech is the decoder weights: tens of megabytes, trained once, installed at both ends, never transmitted. The wire carries only the index into that knowledge: <em>which</em> speech, not <em>what</em> speech is. The 21× against MP3 is almost entirely the prior.</p>
+<p>The same shape appears wherever a learned transform is used, with the loss and the side information rearranged for the job. Learned image codecs in the line of Ballé&rsquo;s work keep the encoder-quantizer-decoder skeleton but replace the fixed-rate VQ with a scalar quantizer and an <em>entropy coder whose probability model is itself learned</em>: a small second network, the hyperprior, predicts the distribution of each latent from a few transmitted side bits, and the rate term in the training loss is literally $-\log_2 p(\hat y)$, the bits the arithmetic coder will spend. Training then minimises distortion plus $\lambda$ times rate, and $\lambda$ is the quality dial; a different $\lambda$ is a different model. EnCodec takes a half step the same way: an optional small language model over the RVQ tokens feeds an arithmetic coder and buys another 25–40% over the fixed 80 bits per frame, at the cost of an entropy-coding stage that must run at both ends. The VAE inside a latent diffusion model is the same object again under a different name: a learned encoder shrinks a 512×512×3 image to a 64×64×4 latent, 48 times fewer numbers, and the diffusion model never sees pixels. It is a codec whose consumer is another network, which is as pure an example of &ldquo;distortion is defined by the consumer&rdquo; as the <a href="../rate-and-distortion/">rate-distortion</a>
+ article could want.</p>
+<p>And the failure modes follow from the same place. The prior is the training distribution. A speech codec trained on read English handed a cello, or a tonal language, or a speaker with a condition the corpus lacked, has no codeword for it and will produce the nearest plausible thing it does know. The fixed DCT degrades gracefully on everything because it assumes almost nothing; the learned transform is spectacular inside its distribution and strange outside it.</p>
+<figure class="fig"><a href="/compressionfight/map/img/learned-transforms/rd_sketch.png"><img src="/compressionfight/map/img/learned-transforms/rd_sketch.png" alt="Qualitative sketch of perceived quality against bitrate on a log axis for an MP3-like, an Opus-like and a neural speech codec" loading="lazy"></a><figcaption>A qualitative sketch, not measured data: each stronger assumption about what the signal is moves the whole curve to the left. The neural codec&rsquo;s curve starts at a few kbps because the decoder already holds the prior; it also flattens early, because what it reproduces is plausibility, not the waveform.</figcaption></figure>
+
+<h2 id="aha-three-the-same-move-baked-into-the-architecture">Aha three: the same move, baked into the architecture</h2>
+<p>The researcher&rsquo;s codec learned a transform after the fact, for a signal that already existed. There is a version of the same idea in which the transform is decided <em>before</em> the data exists, and it has done more to shrink the KV cache of language models than every codec applied afterwards.</p>
+<p>A standard attention layer with 128 heads of dimension 128 caches, per token per layer, a key and a value for every head: $2 \times 128 \times 128 = 32{,}768$ numbers. Multi-head Latent Attention, in DeepSeek-V2 and its successors, instead caches one 512-dimensional latent $c$ per token, from which the keys and values of all 128 heads are <em>defined</em> to be linear functions, $k_h = W_{UK,h}\, c$ and $v_h = W_{UV,h}\, c$. Plus one 64-dimensional key for RoPE, which cannot pass through a linear bottleneck and is kept separately. That is 576 numbers per token per layer instead of 32,768, 57 times fewer. The up-projections are absorbed into the query and output weights at inference, so the cache is never expanded; attention runs on the latent directly.</p>
+<p>Compare this with the <a href="../rotations-and-rank/">rank-160 SVD</a>
+ that ShadowKV fits to the keys of a prompt after prefill. ShadowKV discovered that keys lie near a subspace and exploited it; MLA <em>decreed</em> that keys and values would lie in a subspace of dimension 512, and trained the model from scratch under that constraint. Because the constraint was present during pretraining, the model learned to make the most of it: DeepSeek reports that MLA is stronger than full multi-head attention, not weaker, at a cache the size of grouped-query attention with 2.25 groups. GQA, sharing one key-value pair among several query heads, is the simpler ancestor of the same move. DeepSeek-V4 extends it along the token axis, caching one entry per 4 or per 128 tokens in most layers, which is the learned-transform version of chunking.</p>
+<p>The trade is as sharp as it is in the audio codec, only moved in time. The cost at inference is zero: no encoder, no decoder, no side information beyond the model itself. The choice after training is also zero: you cannot turn the bottleneck off, change its rank, or apply it to a model that was not trained with it. Everything downstream, every quantizer and selector and offload scheme in the <a href="../kv-cache-vaults/">KV cache article</a>
+, works on what the architects left.</p>
+<div class="map-lab" data-fighter="mla"><p class="lab-fail">Interactive lab (mla) needs JavaScript.</p></div>
+
+<h2 id="connections">Connections</h2>
+<p><strong>Autoencoders and PCA.</strong> The linear case was computed above: a linear autoencoder trained with squared error converges to the span of the top principal components, a result published in 1989, before the deep versions. Every deeper autoencoder can be read as &ldquo;PCA, plus whatever nonlinearity and loss buy you&rdquo;, and for codecs they buy most of the ratio.</p>
+<p><strong>Tokens as the interface.</strong> SoundStream&rsquo;s 8 indices per frame were built as a compression format and became a representation: AudioLM and MusicGen generate audio by predicting those indices with a language model and handing them to the same decoder. A codec whose quantizer outputs discrete symbols is, by construction, a tokenizer, and the decoder is the vocoder.</p>
+<p><strong>The VAE&rsquo;s rate term.</strong> The evidence lower bound of a variational autoencoder is a reconstruction term minus $D_{KL}\big(q(z \mid x)\,\|\,p(z)\big)$. Read through the <a href="../modeling-and-coding/">bits-are-surprise</a>
+ lens, that KL term is the number of bits needed to transmit the latent under the prior $p(z)$, so the ELBO is a rate-distortion objective with $\lambda = 1$. Ballé&rsquo;s hyperprior codecs and the diffusion VAE are both this equation with the rate term made explicit.</p>
+<p><strong>In the game:</strong> Learned encoder (learned encoder), Residual VQ (residual VQ), Adversarial loss (adversarial loss), Learned decoder (the decoder as prior) and Multi-head latent attention (MLA) appear in the Real-time speech task (SoundStream / EnCodec), the Modern web images task (learned image codecs as an accepted pipeline) and the KV compression by architecture task (GQA / MLA / DeepSeek-V4), where the transform stage is the only stage with a budget and it is spent before pretraining.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=neural_enc" title="neural_enc"><img src="/compressionfight/img/fighters/neural_enc.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>neural_enc</span></a></li><li><a href="/compressionfight/#fighter=decoder_net" title="decoder_net"><img src="/compressionfight/img/fighters/decoder_net.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>decoder_net</span></a></li><li><a href="/compressionfight/#fighter=gan" title="gan"><img src="/compressionfight/img/fighters/gan.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>gan</span></a></li><li><a href="/compressionfight/#fighter=mla" title="mla"><img src="/compressionfight/img/fighters/mla.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>mla</span></a></li><li><a href="/compressionfight/#fighter=rvq" title="rvq"><img src="/compressionfight/img/fighters/rvq.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>rvq</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantization: the codebook</a></li><li><a href="/compressionfight/map/zoo/perceptual-models/">Perceptual models: what the consumer cannot notice</a></li><li><a href="/compressionfight/map/zoo/side-information/">Side information: what the decoder knew before the first byte</a></li><li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The KV cache: same bytes, five tasks</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/sorting-transforms/"><small>&larr; Previous</small>Sorting transforms: the Burrows-Wheeler idea</a>
+    <a class="next" href="/compressionfight/map/zoo/scalar-quantization/"><small>Next &rarr;</small>Scalar quantization: placing the grid</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#three-kilobits-per-second">Three kilobits per second</a></li>
+    <li><a href="#a-frame-a-latent-a-budget">A frame, a latent, a budget</a></li>
+    <li><a href="#what-a-trained-transform-is-in-the-smallest-case">What a trained transform is, in the smallest case</a></li>
+    <li><a href="#aha-one-the-pipeline-is-one-object">Aha one: the pipeline is one object</a></li>
+    <li><a href="#aha-two-mse-is-the-average-and-the-average-is-blurry">Aha two: MSE is the average, and the average is blurry</a></li>
+    <li><a href="#where-the-knowledge-lives">Where the knowledge lives</a></li>
+    <li><a href="#aha-three-the-same-move-baked-into-the-architecture">Aha three: the same move, baked into the architecture</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

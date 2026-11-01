@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Motion compensation: predicting across frames · Choose Your Codec</title>
+<meta name="description" content="Consecutive frames are the same picture shifted; the encoder pays to find the shift, the decoder copies for free, and the distance between keyframes is the dial between ratio and seeking.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/" class="on" aria-current="page">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Prediction</span><span>/</span><span>Temporal prediction: motion compensation</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Prediction · Temporal prediction: motion compensation</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/motion-compensation.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Motion compensation: predicting across frames</h1>
+    <p class="summary">Consecutive frames are the same picture shifted; the encoder pays to find the shift, the decoder copies for free, and the distance between keyframes is the dial between ratio and seeking.</p>
+    <div class="meta">14 min read</div>
+  </header>
+  
+  <div class="prose"><h1 id="the-tracker-motion-compensation">The tracker: motion compensation</h1>
+<p><em>Consecutive frames are nearly the same picture, shifted. How do you say &ldquo;shifted&rdquo; in a few bits, and what does it cost you to seek?</em></p>
+<h2 id="the-question">The question</h2>
+<p>Imagine a broadcast engineer in 1988, call him Teodor, in a lab that has been handed a brief by the telephone company: put a moving picture of a person&rsquo;s face down an ISDN line. The line carries 64 kilobits per second. The picture is the smallest format anyone will accept for a videophone, 176 by 144 pixels, with colour at a quarter of that resolution, around 38,000 samples a frame. At ten frames a second he has 6,400 bits per frame, which is about <em>a sixth of a bit per sample</em>. A single raw frame, eight bits a sample, is 300 kilobits and would take nearly five seconds to send.</p>
+<p>Teodor knows the still-image toolbox, because the committee down the hall is finishing what will become JPEG: a block transform, a quantizer tuned to the eye, a Huffman coder; see <a href="../block-transforms/">block transforms</a>
+. Pushed hard, it gets a face down to about a bit per sample before it falls apart. He needs six times better than that, and the eye will not forgive six times coarser quantization. Where could another factor of six possibly come from?</p>
+<p>He looks at two consecutive frames of his test clip. They are almost the same picture. The head has moved, a little, to the right.</p>
+<h2 id="the-difference-and-why-it-is-not-enough">The difference, and why it is not enough</h2>
+<p>The obvious move is the one from <a href="../linear-prediction/">linear prediction</a>
+: predict that frame 2 equals frame 1, and send the miss. Here is a toy to make that precise. An $8 \times 8$ frame, dark except for a bright $3 \times 3$ square, and a second frame in which the square has moved one pixel to the right.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">f1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="nb">int</span><span class="p">);</span> <span class="n">f1</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="mi">200</span>          <span class="c1"># a bright 3x3 square at (row 2, col 2)</span>
+</span></span><span class="line"><span class="cl"><span class="n">f2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="nb">int</span><span class="p">);</span> <span class="n">f2</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="mi">200</span>          <span class="c1"># the same square, one pixel to the right</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">f2</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="mi">7</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;plain difference, nonzero cells:&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">f2</span> <span class="o">-</span> <span class="n">f1</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>[[  0   0   0   0   0   0]
+ [  0   0 200 200 200   0]
+ [  0   0 200 200 200   0]
+ [  0   0 200 200 200   0]
+ [  0   0   0   0   0   0]]
+plain difference, nonzero cells: 6
+</code></pre><p>The frame difference has six nonzero cells: a column of $-200$ where the square <em>was</em> and a column of $+200$ where it <em>is</em>. Nine bright pixels moved one step and the residual has six large values in it, with the full dynamic range of the picture, two-thirds of the content that moved. On Teodor&rsquo;s clip the effect is worse: a head is full of edges, and an edge moved by two pixels produces a residual that is a pair of edges, one negative and one positive, each as sharp as the original. &ldquo;Same as last frame&rdquo; is a poor predictor of anything that moves, and in a video call <em>everything</em> moves, slightly, all the time.</p>
+<p>What is wrong with the prediction is not its magnitude. It is its <em>position</em>. The content of frame 2 is in frame 1, one pixel to the left of where it is needed.</p>
+<h2 id="aha-1-pay-to-find-the-shift-copy-for-free">Aha 1: pay to find the shift, copy for free</h2>
+<p>So let the predictor say <em>where to copy from</em>. For a block of the current frame, search the previous frame over a small range of displacements and find the one whose contents match best. The standard measure of &ldquo;best&rdquo; is the sum of absolute differences, <strong>SAD</strong>: cheap, needs no multiplies, and good enough.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">shifted</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;The reference moved by (dx, dy); pixels that come from outside are 0.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ref</span><span class="p">);</span> <span class="n">H</span><span class="p">,</span> <span class="n">W</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">shape</span>
+</span></span><span class="line"><span class="cl">    <span class="n">ys</span><span class="p">,</span> <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">H</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="n">W</span><span class="p">];</span> <span class="n">sy</span><span class="p">,</span> <span class="n">sx</span> <span class="o">=</span> <span class="n">ys</span> <span class="o">-</span> <span class="n">dy</span><span class="p">,</span> <span class="n">xs</span> <span class="o">-</span> <span class="n">dx</span>
+</span></span><span class="line"><span class="cl">    <span class="n">ok</span> <span class="o">=</span> <span class="p">(</span><span class="n">sy</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sy</span> <span class="o">&lt;</span> <span class="n">H</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sx</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sx</span> <span class="o">&lt;</span> <span class="n">W</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span> <span class="o">=</span> <span class="n">ref</span><span class="p">[</span><span class="n">sy</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">sx</span><span class="p">[</span><span class="n">ok</span><span class="p">]];</span> <span class="k">return</span> <span class="n">out</span>
+</span></span><span class="line"><span class="cl"><span class="n">sad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">f2</span> <span class="o">-</span> <span class="n">shifted</span><span class="p">(</span><span class="n">f1</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">dx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span> <span class="k">for</span> <span class="n">dy</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">sad</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">dy</span><span class="p">,</span> <span class="n">dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="n">sad</span><span class="o">.</span><span class="n">argmin</span><span class="p">(),</span> <span class="n">sad</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;best vector (dx, dy) =&#34;</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">dx</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">dy</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span><span class="p">),</span> <span class="s2">&#34; residual nonzero:&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">f2</span> <span class="o">-</span> <span class="n">shifted</span><span class="p">(</span><span class="n">f1</span><span class="p">,</span> <span class="n">dx</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="n">dy</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>[[3600 3200 2800 2400 2800]
+ [3600 2800 2000 1200 2000]
+ [3600 2400 1200    0 1200]
+ [3600 2800 2000 1200 2000]
+ [3600 3200 2800 2400 2800]]
+best vector (dx, dy) = (1, 0)  residual nonzero: 0
+</code></pre><p>Twenty-five candidate displacements, from $(-2,-2)$ to $(+2,+2)$. The SAD surface has a single zero in it, at $(dx, dy) = (+1, 0)$: shift the reference one pixel right and it <em>is</em> frame 2. The residual is all zeros. Instead of six cells of $\pm 200$, the encoder sends one vector, which with 25 possibilities costs $\log_2 25 \approx 4.6$ bits, and a residual whose every entry is zero, which an entropy coder charges almost nothing for.</p>
+<figure class="fig"><a href="/compressionfight/map/img/motion-compensation/frames.png"><img src="/compressionfight/map/img/motion-compensation/frames.png" alt="The two toy frames, the plain difference with six nonzero cells, the SAD search surface with a zero at (&#43;1,0), and the all-zero motion-compensated residual" loading="lazy"></a><figcaption>The toy in one row: frame 1, frame 2 with the vector drawn, the plain difference, the SAD over all 25 candidates, and the residual after copying with (+1, 0).</figcaption></figure>
+
+<p>Names, now that the toy has made them concrete. The displacement is a <strong>motion vector</strong> $\mathbf{v} = (dx, dy)$, chosen per block. Finding it is <strong>motion estimation</strong>: the search over candidate vectors, which an encoder runs for every block of every frame. Applying it is <strong>motion compensation</strong>: reading the block of the <strong>reference frame</strong> at the displaced position and using it as the prediction. For a block $B$ at position $\mathbf{p}$ in the current frame $F_t$, the prediction and residual are</p>
+$$\hat{F}_t(\mathbf{p}) = F_{t-1}(\mathbf{p} - \mathbf{v}), \qquad E_t(\mathbf{p}) = F_t(\mathbf{p}) - F_{t-1}(\mathbf{p} - \mathbf{v}) \quad \text{for } \mathbf{p} \in B,$$$$\mathbf{v}^\star = \arg\min_{\mathbf{v} \in \mathcal{S}} \sum_{\mathbf{p} \in B} \left| F_t(\mathbf{p}) - F_{t-1}(\mathbf{p} - \mathbf{v}) \right|,$$<p>with $\mathcal{S}$ the search range. In H.261 the block was a $16 \times 16$ <strong>macroblock</strong> and the range a few pixels at integer precision. The vector itself is cheap to send; neighbouring blocks tend to move together, so codecs predict each vector from its neighbours&rsquo; and code only the difference, the predictor&rsquo;s stage applied to its own output.</p>
+<p>Now look at the asymmetry, because it is the cleanest example of one anywhere on the map. Motion estimation is a <em>search</em>. In the toy it is 25 SADs over 64 pixels; in a real encoder it is per block, per reference frame, at sub-pixel precision, with a smart search pattern rather than an exhaustive one, and it is by a wide margin the most expensive thing a video encoder does. Motion compensation is a <em>copy</em>: read 64 numbers from an address. The decoder never searches. It never sees the SAD surface. It reads a vector and copies. That is the asymmetry chosen by the job described in <a href="../anatomy-of-a-job/">the anatomy of a job</a>
+: one encode in a datacenter, a billion decodes on phones and televisions, so every hour spent searching for better vectors is paid once and saved a billion times. The <a href="../lz-family/">LZ family</a>
+ has the same shape, searching for matches versus copying from a window, and for the same reason; motion compensation is that idea with a two-dimensional window that happens to be the previous picture.</p>
+<p>Three refinements make the copy almost always available. Objects do not move by whole pixels, so modern codecs search at <strong>sub-pixel</strong> positions: the reference is interpolated between its samples (H.264 uses a six-tap filter for half-pixel positions and averages for quarter-pixel), and a vector such as $(+1.25, -0.5)$ copies from a picture that never existed as a frame but is a better prediction than any whole-pixel shift. Objects also uncover what was behind them and are hidden by what passes in front, so a block may copy from any of several <strong>reference frames</strong> held in a buffer, not just the previous one; H.264 allows up to sixteen. That buffer is the decoder&rsquo;s memory bill: a 1080p frame at 4:2:0 is $1920 \times 1080 \times 1.5 \approx 3.1$ MB, so four references are 12 MB that a 200 mW decoder chip must keep and read at frame rate, which is why the reference count is capped by the profile and level a device advertises. And because the residual is quantized, the reconstructed reference has coding noise and faint block edges in it; an <strong>in-loop deblocking filter</strong> smooths those <em>inside</em> the prediction loop, so the next frame predicts from the cleaned picture, and encoder and decoder apply the identical filter so the loop stays closed.</p>
+<div class="map-lab" data-fighter="motion"><p class="lab-fail">Interactive lab (motion) needs JavaScript.</p></div>
+
+<h2 id="aha-2-the-gop-is-a-dial-and-everything-with-a-seek-point-turns-it">Aha 2: the GOP is a dial, and everything with a seek point turns it</h2>
+<p>The chain of predictions has a consequence Teodor noticed the first time a bit error hit his line: the picture did not merely glitch, it <em>stayed</em> wrong, the glitch copied forward from frame to frame until he restarted. Every frame was predicted from the last, so an error in one lived in all its descendants. The same chain has a second consequence for anyone who wants to start watching in the middle: there is no frame you can decode without first decoding the one before it, all the way back to the beginning.</p>
+<p>The cure is to break the chain on purpose. Code some frames without any reference, as a still image: an <strong>I-frame</strong> (intra). Predict the others from earlier frames: <strong>P-frames</strong>. The run from one I-frame to the next is a <strong>group of pictures</strong>, a GOP.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">kinds</span> <span class="o">=</span> <span class="s2">&#34;IPPPIPPP&#34;</span>                                       <span class="c1"># frame types in display order</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">needed</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>                                           <span class="c1"># frames to decode before frame k shows</span>
+</span></span><span class="line"><span class="cl">    <span class="n">i</span> <span class="o">=</span> <span class="n">k</span>
+</span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="n">kinds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&#34;I&#34;</span><span class="p">:</span> <span class="n">i</span> <span class="o">-=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">corrupted_by_loss</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>                                <span class="c1"># frames wrong if frame k&#39;s packet is lost</span>
+</span></span><span class="line"><span class="cl">    <span class="n">j</span> <span class="o">=</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">kinds</span><span class="p">)</span> <span class="ow">and</span> <span class="n">kinds</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&#34;I&#34;</span><span class="p">:</span> <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">j</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;seek to frame 3: decode&#34;</span><span class="p">,</span> <span class="n">needed</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;seek to frame 6: decode&#34;</span><span class="p">,</span> <span class="n">needed</span><span class="p">(</span><span class="mi">6</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;lose frame 1: wrong frames&#34;</span><span class="p">,</span> <span class="n">corrupted_by_loss</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;lose frame 5: wrong frames&#34;</span><span class="p">,</span> <span class="n">corrupted_by_loss</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>seek to frame 3: decode [0, 1, 2, 3]
+seek to frame 6: decode [4, 5, 6]
+lose frame 1: wrong frames [1, 2, 3]
+lose frame 5: wrong frames [5, 6, 7]
+</code></pre><p>With a GOP of four, seeking to frame 3 costs decoding four frames, and a lost packet corrupts the picture until the next I-frame, three frames at most. Shorten the GOP and both numbers shrink. But look at what an I-frame costs.</p>
+<figure class="fig"><a href="/compressionfight/map/img/motion-compensation/gop.png"><img src="/compressionfight/map/img/motion-compensation/gop.png" alt="Bars of estimated bits per frame across sixteen frames of a panning texture: I-frames at 21 thousand bits, P-frames at about 7 thousand" loading="lazy"></a><figcaption>A 64×64 texture panning two pixels a frame, coded by a toy codec with a GOP of eight: block matching over ±4 pixels, residual quantized with step 8, bits estimated as the order-0 entropy of what is left plus the uncoded vectors. The I-frames cost three times what the P-frames do.</figcaption></figure>
+
+<p>The figure is a toy codec on a panning texture: $8 \times 8$ blocks, a $\pm 4$ search, a quantizer, and bits estimated from the residual&rsquo;s entropy. Each I-frame costs about 21,000 bits; each P-frame about 6,900. The I-frame pays for the whole picture; the P-frame pays for the motion and the sensor noise. A GOP of eight on this clip averages 8,600 bits a frame; a GOP of two would average 14,000; an I-frame every frame is a stream of JPEGs at 21,000. Real codecs on real footage see a wider gap, because real P-frames are mostly <em>skipped</em> blocks whose vector and residual are both predicted perfectly, and B-frames widen it again.</p>
+<p><strong>B-frames</strong> are the dial turned the other way. A B-frame is predicted from a frame before it <em>and</em> a frame after it in display order, which means the encoder must hold the future frame, code it first, and transmit frames out of order; the decoder reorders them. An object that appears from behind another is in the future frame and not the past one, so bidirectional prediction finds copies that forward-only prediction cannot, and B-frames are the cheapest frames in a stream. The price is <strong>latency</strong>: to code a B-frame you must have already captured the frame after it. A streaming service with seconds of buffer pays that gladly. A video call, with a mouth-to-ear budget of around 150 ms, cannot.</p>
+<p>Here is the aha. The GOP length sits on a single axis: <em>ratio against random access</em>, and the same axis runs through systems that have nothing to do with pictures. A zstd stream is split into frames that each start with an empty window, so a reader can begin at a frame boundary; a FLAC file is cut into blocks of 4,096 samples each with its own predictor, so a player can seek to any second; Parquet files have row groups that decode independently, so a query touches only the groups it needs; GGUF stores weights in blocks of 32 with their own scales, so a GPU thread can dequantize any block without its neighbours; CacheGen codes KV tokens in groups of ten against an anchor, so a CUDA thread can reconstruct any token on its own (<a href="../linear-prediction/">linear prediction</a>
+ ends on exactly that example). Every one of these is an I-frame by another name: a point at which the chain of context is cut, paid for in ratio, so that someone can start there. Where you set the interval is dictated by the job, not by the data. Two seconds between keyframes for streaming video; a keyframe only on demand, with a slow <em>intra refresh</em> that re-codes a stripe of each frame without reference, for a video call that cannot afford the bitrate spike of a whole I-frame and cannot wait for one when a packet is lost. In the strictest low-latency configurations the receiver acknowledges frames and the sender predicts only from frames it knows arrived, so a loss never propagates at all.</p>
+<h2 id="aha-3-the-miss-still-has-structure">Aha 3: the miss still has structure</h2>
+<p>Teodor&rsquo;s vectors got him most of his factor of six. The residual was the rest of the problem, and it is where the motion-compensation stage hands off to the next one.</p>
+<p>In the toy, the residual was identically zero because the square moved by exactly one pixel and nothing else changed. In a real frame, the residual after compensation is small but it is not noise: lighting shifted a little across a whole block, so the residual has a DC offset; an edge moved by a fraction of a pixel the interpolation did not quite capture, so the residual has a faint edge in it; the camera&rsquo;s sensor noise is spatially white but the block&rsquo;s content is not. Small values with spatial correlation are precisely what a block transform is for. So the residual block goes through a DCT (in H.264, a $4 \times 4$ or $8 \times 8$ integer transform), its coefficients are quantized with a step chosen by rate control, and the quantized coefficients are entropy-coded with CABAC. The <em>decoder</em> then reverses that, adds the reconstructed residual to its motion-compensated prediction, runs the deblocking filter, and stores the result as the reference for the next frame.</p>
+<p>That loop, predict from a reference, transform the miss, quantize, entropy code, reconstruct, store, is the <strong>hybrid video codec</strong>, and it is the design of H.261 in 1988. It is also the design of MPEG-1, MPEG-2, H.264, HEVC, VP9, AV1 and VVC. Thirty-five years of video codecs changed the parts: block sizes from fixed $16 \times 16$ to trees of $4 \times 4$ through $128 \times 128$; vector precision from integer to eighth-pixel; one reference to many; nine intra modes to dozens; Huffman to CABAC. The skeleton is Teodor&rsquo;s. Each generation buys thirty to fifty percent of bitrate at equal quality for five to ten times the encoder complexity, and nearly all of that complexity is in the search for better predictions, because the search is the encoder&rsquo;s to spend and the decoder&rsquo;s to ignore.</p>
+<p>Rate control is where the dial of <a href="../rate-and-distortion/">rate and distortion</a>
+ meets this skeleton. The quantizer step is the only lossy knob, and the encoder turns it per block to hit a bitrate (constant bitrate for broadcast, where the channel is fixed) or a quality (CRF for files, where the step is held and the bits land where the content needs them). A budget of 5 Mbit/s for 1080p30 is a 300:1 ratio from the 1.5 Gbit/s raw picture, and the hybrid loop reaches it only because temporal prediction has already removed most of each frame before the transform ever sees it.</p>
+<div class="map-lab" data-fighter="spatial"><p class="lab-fail">Interactive lab (spatial) needs JavaScript.</p></div>
+
+<div class="map-lab" data-fighter="anchor_delta"><p class="lab-fail">Interactive lab (anchor_delta) needs JavaScript.</p></div>
+
+<h2 id="connections">Connections</h2>
+<p>Motion estimation is a special case of <strong>optical flow</strong>, the computer-vision problem of estimating a per-pixel displacement field between two images. Flow methods from 1981 (Horn-Schunck, Lucas-Kanade) solve it densely and with sub-pixel precision; a codec&rsquo;s block matcher solves it coarsely, per block, and with a different objective, since it does not want the <em>true</em> motion but the displacement that yields the cheapest residual, which may copy from a place where the same texture happens to recur. Modern encoders and modern flow networks have been borrowing from each other ever since.</p>
+<p>The configuration split between calls and streaming is the article on <a href="../anatomy-of-a-job/">the anatomy of a job</a>
+ in miniature: the same codec with B-frames and two-second GOPs for Netflix, and with no B-frames, intra refresh, one slice per packet and acknowledgement-driven references for a call. Opus against MP3 is the same story in audio.</p>
+<p>And the GOP generalises past media entirely. A chain of deltas that must be decoded in order, cut at intervals by self-contained anchors, is the structure of a KV cache streamed by CacheGen, of a git packfile&rsquo;s delta chains (which have a maximum depth for exactly the seek reason), and of every snapshot-and-journal storage design. The engineers in those fields rarely call it a GOP. It is one.</p>
+<p><strong>In the game:</strong> <a href="/compressionfight/#fighter=motion">Motion compensation</a>
+ holds the prediction stage in the Streaming video task (H.264 / AV1), with <a href="/compressionfight/#fighter=spatial">Spatial prediction</a>
+ beside it for intra blocks; <a href="/compressionfight/#fighter=anchor_delta">Anchor delta coding</a>
+ is the same GOP idea in the KV cache over a network task (CacheGen). The <a href="../codec-dissections/">codec dissection</a>
+ of H.264 shows the whole hybrid loop as a pipeline.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=motion" title="motion"><img src="/compressionfight/img/fighters/motion.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>motion</span></a></li><li><a href="/compressionfight/#fighter=spatial" title="spatial"><img src="/compressionfight/img/fighters/spatial.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>spatial</span></a></li><li><a href="/compressionfight/#fighter=anchor_delta" title="anchor_delta"><img src="/compressionfight/img/fighters/anchor_delta.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>anchor_delta</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/linear-prediction/">Guess, then send the miss: linear prediction</a></li><li><a href="/compressionfight/map/zoo/block-transforms/">Block transforms: which directions matter</a></li><li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a compression task: the five axes</a></li><li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: twelve worked dissections</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/context-models/"><small>&larr; Previous</small>Context models: predicting the next symbol</a>
+    <a class="next" href="/compressionfight/map/zoo/block-transforms/"><small>Next &rarr;</small>Block transforms: which directions matter</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#the-question">The question</a></li>
+    <li><a href="#the-difference-and-why-it-is-not-enough">The difference, and why it is not enough</a></li>
+    <li><a href="#aha-1-pay-to-find-the-shift-copy-for-free">Aha 1: pay to find the shift, copy for free</a></li>
+    <li><a href="#aha-2-the-gop-is-a-dial-and-everything-with-a-seek-point-turns-it">Aha 2: the GOP is a dial, and everything with a seek point turns it</a></li>
+    <li><a href="#aha-3-the-miss-still-has-structure">Aha 3: the miss still has structure</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

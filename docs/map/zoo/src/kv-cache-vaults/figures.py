@@ -11,13 +11,15 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "img", "kv-cache-vaults")
 os.makedirs(OUT, exist_ok=True)
 
-BG, FG, GRID, DIM = "#0b0714", "#ece7f5", "#2a2140", "#7d7392"
-C_PERC, C_QUANT, C_PRIOR, C_TRANS, C_PRED, C_ENT = "#ffe23d", "#ff6a3d", "#ffc14d", "#38d6ff", "#4dff7c", "#d05cff"
+BG, FG, GRID, DIM = "#f3eadb", "#2a211b", "#b89f78", "#5a4a3d"
+C_PERC, C_QUANT, C_PRIOR, C_TRANS, C_PRED, C_ENT = "#b8892e", "#b05a4c", "#9c6b3f", "#246b66", "#6f8f4e", "#6b4a7a"
 plt.rcParams.update({
     "figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
     "axes.edgecolor": GRID, "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
@@ -98,7 +100,7 @@ def fig_stat_sheets():
     for ax, (title, codec, req, lossless, prior, col, note) in zip(axes, jobs):
         v = [req[k] for k in keys]
         ax.barh(np.arange(6), v, color=col, height=0.62)
-        ax.barh(np.arange(6), [5] * 6, color="#15102a", height=0.62, zorder=0)
+        ax.barh(np.arange(6), [5] * 6, color="#ebdfc8", height=0.62, zorder=0)
         for yi, vi in enumerate(v):
             ax.text(5.1, yi, str(vi), va="center", ha="left", fontsize=10, color=DIM)
         ax.set_xlim(0, 5.6); ax.set_yticks(np.arange(6)); ax.set_yticklabels(names, fontsize=10.5)

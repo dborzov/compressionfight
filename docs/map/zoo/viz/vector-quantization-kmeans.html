@@ -6,15 +6,15 @@
 <title>Lloyd steps</title>
 <style>
   :root { color-scheme: dark; }
-  html, body { margin: 0; background: #0b0714; color: #f0efec; font: 14px/1.4 system-ui, sans-serif; }
+  html, body { margin: 0; background: #f3eadb; color: #2a211b; font: 14px/1.4 system-ui, sans-serif; }
   .wrap { display: flex; flex-direction: column; gap: 8px; padding: 8px; box-sizing: border-box; height: 100vh; }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  button, select { background: #1b1526; color: #f0efec; border: 1px solid #383835; border-radius: 6px; padding: 5px 10px; font: inherit; cursor: pointer; }
-  button:hover { border-color: #898781; }
-  .stat { color: #c3c2b7; }
-  .stat b { color: #f0efec; }
-  canvas { width: 100%; flex: 1; min-height: 0; border-radius: 8px; background: #0b0714; }
-  .hint { color: #898781; font-size: 12px; }
+  button, select { background: #ebdfc8; color: #2a211b; border: 1px solid #b89f78; border-radius: 6px; padding: 5px 10px; font: inherit; cursor: pointer; }
+  button:hover { border-color: #5a4a3d; }
+  .stat { color: #5a4a3d; }
+  .stat b { color: #2a211b; }
+  canvas { width: 100%; flex: 1; min-height: 0; border-radius: 8px; background: #f3eadb; }
+  .hint { color: #5a4a3d; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -43,9 +43,9 @@
 <script>
 (() => {
   const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-  const INK = '#f0efec', MUTED = '#898781', GRID = '#2c2c2a';
-  const COLS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9', '#e66767', '#5fb3d9',
-                '#f0a36b', '#4fc9a0', '#e2b84d', '#ea8ab5', '#b3aaf2', '#f08c8c', '#8fd3f0', '#a9c4ff'];
+  const INK = '#2a211b', MUTED = '#5a4a3d', GRID = '#b89f78';
+  const COLS = ['#246b66', '#b8892e', '#b05a4c', '#6b4a7a', '#6f8f4e', '#9c6b3f', '#3f8f88', '#e2c272',
+                '#a7403a', '#4f7f3f', '#8a6fa0', '#c98f6a', '#7fb3ad', '#d49a8e', '#a9c08a', '#b89f78'];
   let pts = [], cb = [], it = 0, timer = null;
   const rnd = (() => { let s = 12345; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; })();
   const gauss = () => { let u = 0, v = 0; while (u === 0) u = rnd(); while (v === 0) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
@@ -96,7 +96,7 @@
   function draw() {
     const W = cv.clientWidth, H = cv.clientHeight; if (cv.width !== W * devicePixelRatio) { cv.width = W * devicePixelRatio; cv.height = H * devicePixelRatio; }
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    ctx.fillStyle = '#0b0714'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#f3eadb'; ctx.fillRect(0, 0, W, H);
     const R = 3.4, sc = Math.min(W, H) / (2 * R), X = x => W / 2 + x * sc, Y = y => H / 2 - y * sc;
     // Voronoi shading on a coarse grid
     const cell = 6;

@@ -6,13 +6,15 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 
-BG, FG, DIM = "#0b0714", "#ece6f7", "#8a81a3"
-ORANGE, PURPLE, CYAN, GREEN = "#ff6a3d", "#d05cff", "#38d6ff", "#4dff7c"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
+ORANGE, PURPLE, CYAN, GREEN = "#b05a4c", "#6b4a7a", "#246b66", "#6f8f4e"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
                      "axes.edgecolor": DIM, "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
                      "text.color": FG, "font.size": 15, "axes.titlesize": 19, "axes.spines.top": False,
-                     "axes.spines.right": False, "grid.color": "#2a2140", "grid.linestyle": ":"})
+                     "axes.spines.right": False, "grid.color": "#b89f78", "grid.linestyle": ":"})
 
 x = np.array([3.7, -1.2, 0.4, 8.9, -5.5, 2.1])
 var = x.var()                                    # 19.57: a Gaussian with the toy's spread

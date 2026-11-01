@@ -1,5 +1,5 @@
 ---
-title: "Scalar quantization: the grid"
+title: "Scalar quantization: placing the grid"
 slug: scalar-quantization
 chair: quantize
 family: "Scalar quantizers"
@@ -17,7 +17,7 @@ But there is a second question hiding inside the first, and it is the one this a
 
 > *Rounding is easy; where should the grid be fine and where coarse?*
 
-Three generations of engineers answered this for three different reasons, and their answers, the Lloyd-Max levels, the μ-law curve, the JPEG table, and the outlier escape, are what fill the scalar quantizer's chair.
+Three generations of engineers answered this for three different reasons, and their answers, the Lloyd-Max levels, the μ-law curve, the JPEG table, and the outlier escape, are what fill the scalar quantizer's stage.
 
 ## Lloyd's lunch problem
 
@@ -61,9 +61,9 @@ Now notice the size of the prize. All that iteration bought 0.35 dB, a twentieth
 
 Lloyd's constraint was that every level costs the same number of bits. Drop it. Put an entropy coder behind the quantizer, so that a level hit often costs few bits and a level hit rarely costs many. Now ask Lloyd's question again: where should the levels go?
 
-The answer, due to Gish and Pierce in 1968, is the single most useful fact in this chair and the first thing to take from the article. At high rate, the best scalar quantizer followed by an ideal entropy coder is the *uniform* one, and it sits 0.254 bits per sample above Shannon's $R(D)$ floor for any smooth source. The [rate and distortion article](../rate-and-distortion/) measured that gap on Gaussian samples and found 0.256. Lloyd-Max's crowded levels help a fixed-rate coder because they lower the error without changing the bit cost; with an entropy coder, crowding the levels where the density is high just makes the common levels *more* common and the rare ones rarer, and the entropy coder was already charging for that. The two effects cancel to within a rounding error, and what is left is the quarter bit that no scalar scheme can recover.
+The answer, due to Gish and Pierce in 1968, is the single most useful fact in this stage and the first thing to take from the article. At high rate, the best scalar quantizer followed by an ideal entropy coder is the *uniform* one, and it sits 0.254 bits per sample above Shannon's $R(D)$ floor for any smooth source. The [rate and distortion article](../rate-and-distortion/) measured that gap on Gaussian samples and found 0.256. Lloyd-Max's crowded levels help a fixed-rate coder because they lower the error without changing the bit cost; with an entropy coder, crowding the levels where the density is high just makes the common levels *more* common and the rare ones rarer, and the entropy coder was already charging for that. The two effects cancel to within a rounding error, and what is left is the quarter bit that no scalar scheme can recover.
 
-So the design freedom of a scalar quantizer behind an entropy coder is not where the levels go. It is two other things: the **step size per coordinate**, which is the bit allocation of the previous article, and the **dead zone**, the width of the bin around zero. Both are worth money and both are cheap to implement. Zeros are the most common symbol after any transform, an entropy coder charges a fraction of a bit for them, and widening the zero bin trades a little distortion for a lot of rate; on a Laplacian coefficient the previous article found a 10% distortion gain at equal rate from H.264's rounding offset of one third. Everything in the rest of this article is either a different $\Delta$ for a different coordinate, or a way of fixing what happens when a single coordinate's $\Delta$ is set by a value that does not belong. (The six toy values with a Δ slider are the GRID lab, embedded in the [rate and distortion article](../rate-and-distortion/); drag it there and watch the levels halve and the error quadruple.)
+So the design freedom of a scalar quantizer behind an entropy coder is not where the levels go. It is two other things: the **step size per coordinate**, which is the bit allocation of the previous article, and the **dead zone**, the width of the bin around zero. Both are worth money and both are cheap to implement. Zeros are the most common symbol after any transform, an entropy coder charges a fraction of a bit for them, and widening the zero bin trades a little distortion for a lot of rate; on a Laplacian coefficient the previous article found a 10% distortion gain at equal rate from H.264's rounding offset of one third. Everything in the rest of this article is either a different $\Delta$ for a different coordinate, or a way of fixing what happens when a single coordinate's $\Delta$ is set by a value that does not belong. (The six toy values with a Δ slider are the Uniform quantizer lab, embedded in the [rate and distortion article](../rate-and-distortion/); drag it there and watch the levels halve and the error quadruple.)
 
 ## 1960s: the logarithmic ear
 
@@ -148,9 +148,9 @@ Forty-four of the sixty-four coefficients are exactly zero, and they sit in one 
 
 {{< lab id="qmatrix" >}}
 
-The **quality slider** is the whole table times one number: for quality $q < 50$ the scale factor is $5000/q$ percent, for $q \ge 50$ it is $200 - 2q$ percent, and every entry is multiplied by it (clamped to 1–255). One knob, sixty-four steps, all walking their 6 dB per bit lines together. The relative shape of the table is the Con Artist's contribution, a contrast-sensitivity curve compiled into integers, and the [perceptual models article](../perceptual-models/) explains where the numbers came from.
+The **quality slider** is the whole table times one number: for quality $q < 50$ the scale factor is $5000/q$ percent, for $q \ge 50$ it is $200 - 2q$ percent, and every entry is multiplied by it (clamped to 1–255). One knob, sixty-four steps, all walking their 6 dB per bit lines together. The relative shape of the table is the perceptual-model stage's contribution, a contrast-sensitivity curve compiled into integers, and the [perceptual models article](../perceptual-models/) explains where the numbers came from.
 
-The general form of what JPEG does by hand is **bit allocation across coordinates**: given variances $\sigma_i^2$ after a transform, choose the step per coordinate so that total distortion is minimised at the bit budget. The previous article derived the answer, reverse water-filling, $R_i = \max(0, \tfrac12\log_2(\sigma_i^2/\theta))$. Here it is on the eight coordinate variances the game's WATERLINE lab uses:
+The general form of what JPEG does by hand is **bit allocation across coordinates**: given variances $\sigma_i^2$ after a transform, choose the step per coordinate so that total distortion is minimised at the bit budget. The previous article derived the answer, reverse water-filling, $R_i = \max(0, \tfrac12\log_2(\sigma_i^2/\theta))$. Here it is on the eight coordinate variances the game's Water-filling allocation lab uses:
 
 ```python
 import numpy as np
@@ -171,13 +171,13 @@ distort: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.0, 0.5]  total 13.5
 equal allocation: 0.9375 bits each, total distortion 34.76  (4.11 dB worse)
 ```
 
-JPEG's table was tuned by eye in 1990. In 2026, KVTC does the identical allocation for a transformer's key-value cache by running a dynamic program over PCA coordinates, with a 16-bit scale per group, and the result reads like the output above: a few coordinates at many bits, a long tail at zero. Same chair, same mathematics, thirty-six years and a different consumer apart.
+JPEG's table was tuned by eye in 1990. In 2026, KVTC does the identical allocation for a transformer's key-value cache by running a dynamic program over PCA coordinates, with a 16-bit scale per group, and the result reads like the output above: a few coordinates at many bits, a long tail at zero. Same stage, same mathematics, thirty-six years and a different consumer apart.
 
 ## 2023: the outlier that sets the scale
 
 The last answer to "where should the grid be fine" comes from a problem that neither Lloyd nor the JPEG committee had, and that anyone who has quantized a transformer's weights or activations has met on the first afternoon. The grid is *symmetric and bounded*: a 3-bit integer grid has levels $-3 \ldots 3$, and to use it you divide every value by a scale $s$ chosen so that the largest value fits. The scale is therefore set by the largest value. One outlier decides the step for everybody.
 
-Here are eight values from the game's ESCAPE HATCH lab, seven of them small and one of them 0.55, quantized on a 3-bit grid two ways: with the scale set over all eight, and with the outlier pulled out and kept at full precision in a side list:
+Here are eight values from the game's Outlier escape lab, seven of them small and one of them 0.55, quantized on a 3-bit grid two ways: with the scale set over all eight, and with the outlier pulled out and kept at full precision in a side list:
 
 ```python
 import numpy as np
@@ -206,7 +206,7 @@ With the outlier on the grid, the step is 0.18 and the other seven values, none 
 
 {{< lab id="escape" >}}
 
-This is the third thing to take away, and it is as much about systems as about mathematics. **Outliers set the scale.** A value of 30 among values of 1 forces a step of 4 on everything, and no amount of cleverness in level placement will recover what a step of 4 destroys. The cures are a family, and the map has an article for each: make the block smaller so that an outlier only ruins its own neighbours ([block float formats](../block-float-formats/), where the block of 32 with its own scale is exactly this); let the outliers escape to a side list, which is this fighter, and which JPEG and H.264 did decades earlier with escape codes for oversized coefficients; rotate the data first so that the outlier's energy is smeared across all coordinates and no single one is huge ([rotations and rank](../rotations-and-rank/)); or, in video and in GPTQ, choose the rounding of each value with its downstream effect in mind rather than by nearest level. That last idea, **rate-distortion-optimised rounding**, deserves its one paragraph: a video encoder will round a coefficient *down* to zero when the bits saved are worth more than the distortion added at the current operating point, and GPTQ rounds each weight while compensating the error in the weights not yet rounded, using the Hessian of the layer's output to decide what "compensate" means. Both are the dead zone's logic generalised: the quantizer is allowed to be wrong on purpose where being wrong is cheap.
+This is the third thing to take away, and it is as much about systems as about mathematics. **Outliers set the scale.** A value of 30 among values of 1 forces a step of 4 on everything, and no amount of cleverness in level placement will recover what a step of 4 destroys. The cures are a family, and the map has an article for each: make the block smaller so that an outlier only ruins its own neighbours ([block float formats](../block-float-formats/), where the block of 32 with its own scale is exactly this); let the outliers escape to a side list, which is this algorithm, and which JPEG and H.264 did decades earlier with escape codes for oversized coefficients; rotate the data first so that the outlier's energy is smeared across all coordinates and no single one is huge ([rotations and rank](../rotations-and-rank/)); or, in video and in GPTQ, choose the rounding of each value with its downstream effect in mind rather than by nearest level. That last idea, **rate-distortion-optimised rounding**, deserves its one paragraph: a video encoder will round a coefficient *down* to zero when the bits saved are worth more than the distortion added at the current operating point, and GPTQ rounds each weight while compensating the error in the weights not yet rounded, using the Hessian of the layer's output to decide what "compensate" means. Both are the dead zone's logic generalised: the quantizer is allowed to be wrong on purpose where being wrong is cheap.
 
 ## Connections
 
@@ -218,4 +218,4 @@ An **analogue-to-digital converter** is this article in silicon, and its data sh
 
 ## In the game
 
-The Butcher's chair holds all five of this article's fighters: [GRID](/compressionfight/#fighter=uniform) is the uniform step, [BENDER](/compressionfight/#fighter=companding) is μ-law and MP3's power law, [SCULPTOR](/compressionfight/#fighter=qmatrix) is JPEG's table, [WATERLINE](/compressionfight/#fighter=waterline) is bit allocation by water level, and [ESCAPE HATCH](/compressionfight/#fighter=escape) is the outlier side list. They appear in THE GALLERY, WALKMAN, PRIME TIME, THE COLD STORAGE and THE ONE-BIT VAULT, and the ZIGZAG FINISHER tag team (SCULPTOR, REPEATER, WOODCUTTER) is the forty-four zeros above turned into a combo.
+The quantization stage holds all five of this article's algorithms: [Uniform quantizer](/compressionfight/#fighter=uniform) is the uniform step, [μ-law companding](/compressionfight/#fighter=companding) is μ-law and MP3's power law, [Quantization matrix](/compressionfight/#fighter=qmatrix) is JPEG's table, [Water-filling allocation](/compressionfight/#fighter=waterline) is bit allocation by water level, and [Outlier escape](/compressionfight/#fighter=escape) is the outlier side list. They appear in the Photographs task, the Music distribution task, the Streaming video task, the KV cache cold storage task and the KV cache at 1–2 bits task, and the synergy 'Quantization matrix + zigzag RLE + Huffman' is the forty-four zeros above turned into a pipeline.

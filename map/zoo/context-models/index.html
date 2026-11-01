@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Context models: predicting the next symbol · Choose Your Codec</title>
+<meta name="description" content="After &#39;th&#39;, how sure are you the next letter is &#39;e&#39;? How a model turns that certainty into fewer bits, what it does when a context has never seen a symbol, and why any predictor, from a count table to a transformer, is a compressor.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/" class="on" aria-current="page">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Prediction</span><span>/</span><span>Statistical context models</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Prediction · Statistical context models</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/context-models.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Context models: predicting the next symbol</h1>
+    <p class="summary">After &#39;th&#39;, how sure are you the next letter is &#39;e&#39;? How a model turns that certainty into fewer bits, what it does when a context has never seen a symbol, and why any predictor, from a count table to a transformer, is a compressor.</p>
+    <div class="meta">15 min read</div>
+  </header>
+  
+  <div class="prose"><h2 id="a-guessing-game-in-a-living-room">A guessing game in a living room</h2>
+<p>In 1951 Claude Shannon published a short paper called <em>Prediction and Entropy of Printed English</em>, and the experiment in it was done at home. He would take a passage of text his subject had not read, cover it, and ask her to guess the next letter. If she was wrong, she guessed again, and again, until she got it. His principal subject was his wife, Betty, and she was good at it. Given a hundred letters of context she often needed only one guess; English, it turned out, carries about one bit of information per letter, when the reader is a person who knows the language. The 4.75 bits a 27-symbol alphabet nominally needs, or the 4.1 you get from letter frequencies alone, were mostly habit, not news.</p>
+<p>The experiment measured something no code of the time could cash in. Shannon&rsquo;s guesser was a <em>model</em>: a function from everything seen so far to a probability distribution over the next letter. The <a href="../modeling-and-coding/">first article</a>
+ argued that a compressor is a model plus a coder, and that the coder charges $-\log_2 P(\text{actual} \mid \text{context})$. So the question this article answers is Betty&rsquo;s question, stated for machines: <em>after &ldquo;th&rdquo;, how sure are you the next letter is &ldquo;e&rdquo;, and how do you turn that certainty into fewer bits?</em> The second half of the question has a short answer, the <a href="../arithmetic-and-ans/">arithmetic coder</a>
+, which accepts a fresh distribution for every symbol. The first half is the whole of this article, because it is where every bit of ratio in the lossless world is actually won.</p>
+<h2 id="a-sentence-a-context-a-count">A sentence, a context, a count</h2>
+<p>Take a text short enough to keep in your head, with spaces written as underscores:</p>
+<pre tabindex="0"><code>the_theme_of_the_thesis
+</code></pre><p>Twenty-three characters. Suppose we are about to code the &ldquo;e&rdquo; after the final &ldquo;th&rdquo; (position 15), and the model is allowed to look at the two previous characters: an <strong>order-2</strong> model. What does it know? It scans the past for every occurrence of &ldquo;th&rdquo; and counts what followed. There were two earlier ones, at &ldquo;the&rdquo; and &ldquo;theme&rdquo;, and both were followed by &ldquo;e&rdquo;. Two for two.</p>
+<p>The naive move is to say $P(e \mid th) = 1$. That is a catastrophe waiting to happen, because the coder charges $-\log_2 P$, and $-\log_2 0 = \infty$: if the next character after some &ldquo;th&rdquo; is ever anything else, the file cannot be written. Every count-based model needs to leave probability for things it has not seen. The oldest way is Laplace&rsquo;s: add one to every count, as if each of the 27 symbols had been seen once before the data started.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">text</span> <span class="o">=</span> <span class="s2">&#34;the_theme_of_the_thesis&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">A</span> <span class="o">=</span> <span class="mi">27</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">counts_after</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ctx</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">text</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">ctx</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">out</span><span class="p">[</span><span class="n">text</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">text</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">out</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">ctx</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&#34;th&#34;</span><span class="p">,</span> <span class="s2">&#34;he&#34;</span><span class="p">,</span> <span class="s2">&#34;e_&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">c</span> <span class="o">=</span> <span class="n">counts_after</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">n</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;after &#34;</span><span class="si">{</span><span class="n">ctx</span><span class="si">}</span><span class="s1">&#34;: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s1">  P(e) = (</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&#34;e&#34;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s1">+1)/(</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s1">+</span><span class="si">{</span><span class="n">A</span><span class="si">}</span><span class="s1">) = </span><span class="si">{</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&#34;e&#34;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="n">A</span><span class="p">)</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">&#39;</span>
+</span></span><span class="line"><span class="cl">          <span class="sa">f</span><span class="s1">&#39;  -&gt; </span><span class="si">{</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">((</span><span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&#34;e&#34;</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="n">A</span><span class="p">))</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> bits&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after &#34;th&#34;: {&#39;e&#39;: 4}  P(e) = (4+1)/(4+27) = 0.161  -&gt; 2.63 bits</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after &#34;he&#34;: {&#39;_&#39;: 2, &#39;m&#39;: 1, &#39;s&#39;: 1}  P(e) = (0+1)/(4+27) = 0.032  -&gt; 4.95 bits</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after &#34;e_&#34;: {&#39;t&#39;: 2, &#39;o&#39;: 1}  P(e) = (0+1)/(3+27) = 0.033  -&gt; 4.91 bits</span>
+</span></span></code></pre></div><p>(The listing counts over the whole string, four &ldquo;th&quot;s in all, which is what the game&rsquo;s lab does; the arithmetic is the same.) After &ldquo;th&rdquo;, with four sightings of &ldquo;e&rdquo; and nothing else, Laplace gives $P(e \mid th) = 5/31 = 0.161$, and the coder charges $2.63$ bits for an &ldquo;e&rdquo; that any English reader would have bet the house on. After ten more sightings, $15/41 = 0.366$, 1.45 bits. It takes twenty-five consecutive &ldquo;e&quot;s before the model will even say fifty-fifty. Laplace smoothing is honest about the unseen but absurdly slow to trust the seen, because it spreads 27 phantom counts over an alphabet in which, after &ldquo;th&rdquo;, twenty-five of the symbols will never appear.</p>
+<div class="map-lab" data-fighter="cm"><p class="lab-fail">Interactive lab (cm) needs JavaScript.</p></div>
+
+<p>Real context models fix this in two ways, and both are worth knowing. The first is to replace the counts with a <strong>state that moves at a fixed rate</strong>: keep $P$ for the symbol (or, in a binary model, for the bit), and after each observation move it a fixed fraction of the way toward what happened.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">p</span> <span class="o">=</span> <span class="mf">0.5</span>                      <span class="c1"># P(next is &#39;e&#39; | th), binary, starts undecided</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">15</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">p</span> <span class="o">+=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">p</span><span class="p">)</span> <span class="o">/</span> <span class="mi">8</span>       <span class="c1"># every &#39;e&#39; moves p an eighth of the way to 1</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">hit</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">14</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;after </span><span class="si">{</span><span class="n">hit</span><span class="si">:</span><span class="s2">2d</span><span class="si">}</span><span class="s2"> hits: P = </span><span class="si">{</span><span class="n">p</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, cost of the next e = </span><span class="si">{</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> bits&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after  1 hits: P = 0.562, cost of the next e = 0.83 bits</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after  4 hits: P = 0.707, cost of the next e = 0.50 bits</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after 14 hits: P = 0.923, cost of the next e = 0.12 bits</span>
+</span></span></code></pre></div><p>Four sightings and the &ldquo;e&rdquo; costs half a bit instead of 2.63; fourteen and it costs 0.12. The rate, here $1/8$, is a dial between how fast the model trusts and how badly it is fooled by a fluke, and real models often start with a fast rate and slow it as the count grows (which is what CABAC&rsquo;s probability-state machine and PAQ&rsquo;s adaptive counters both do under the hood). The second fix is a better estimate of how much probability the unseen deserve, which is the subject of the next section, because it turns out to be the central engineering problem of the whole family.</p>
+<h2 id="longer-contexts-and-the-cliff">Longer contexts, and the cliff</h2>
+<p>An order-2 model knows &ldquo;th&rdquo; is followed by &ldquo;e&rdquo;. An order-3 model knows &ldquo;the&rdquo; is followed by a space or an &ldquo;m&rdquo;; an order-5 model knows &ldquo;thesi&rdquo; is followed by &ldquo;s&rdquo;. More context, sharper predictions, fewer bits. So why not order 20?</p>
+<p>Because of the table. An order-$k$ model over an alphabet of $A$ symbols has up to $A^k$ contexts, and every context has to be <em>seen</em> before it can predict anything. On real text the tables grow until memory runs out, and worse, the long contexts are mostly empty, so the model spends its time with no evidence at all. Here is the effect measured on a 55 KB English sample (this site&rsquo;s primer), coding adaptively in one pass with a Laplace-smoothed order-$k$ table and nothing else:</p>
+<figure class="fig"><a href="/compressionfight/map/img/context-models/bits_vs_order.png"><img src="/compressionfight/map/img/context-models/bits_vs_order.png" alt="Bits per character versus context order for an order-k model alone and for PPM with escapes" loading="lazy"></a><figcaption>Bits per character against context order on a 55 KB English sample. An order-k table alone (red) improves from order 0 to order 1 and then falls off a cliff: by order 4 it is worse than sending raw bytes, because nearly every context is new. The same tables with PPM&rsquo;s escape mechanism (green) keep improving to 2.81 bits per character at order 4, below xz at 3.05 and zlib at 3.25 on the same bytes.</figcaption></figure>
+
+<p>The red curve is the cliff. Order 1 is the best the lone table manages, 4.44 bits per character; by order 4 it is paying 6.7 bits, nearly a raw byte, because almost every four-character context in a 55 KB file is being seen for the first time and Laplace has 256 phantom counts spread over it. The sharper the model&rsquo;s <em>potential</em> knowledge, the less <em>actual</em> knowledge it has per context. A long-context model on its own is a confident ignoramus.</p>
+<h2 id="escapes-paying-for-what-you-did-not-know">Escapes: paying for what you did not know</h2>
+<p>So the question that unlocks the family: <em>what should a model do when its longest context has never seen this symbol?</em> It should not pretend; it should admit it and ask something less specific. Cleary and Witten&rsquo;s 1984 answer, Prediction by Partial Matching, made the admission a symbol in its own right. Every context&rsquo;s distribution contains, besides the symbols it has seen, an <strong>escape</strong> symbol meaning &ldquo;not one of these; consult a shorter context&rdquo;. The coder codes the escape at its probability, drops to order $k-1$, and tries again; if that fails too, another escape, and so on down to order 0, and finally to an order $-1$ model that is uniform over the alphabet and cannot fail.</p>
+<p>The cost of a symbol is then the <em>sum over the ladder</em>: every escape it took, plus the final hit. Watch it on the toy text. Code the first &ldquo;s&rdquo; of &ldquo;thesis&rdquo;, at position 20, after the context &ldquo;the&rdquo;. Nothing in the past has an &ldquo;s&rdquo; in it at all.</p>
+<figure class="fig"><a href="/compressionfight/map/img/context-models/escape_ladder.png"><img src="/compressionfight/map/img/context-models/escape_ladder.png" alt="The escape ladder for the first s of thesis: four escapes and a uniform fallback" loading="lazy"></a><figcaption>Coding the first &rsquo;s&rsquo; after &rsquo;the&rsquo;. Order 3 has seen a space and an &rsquo;m&rsquo; after &rsquo;the&rsquo;, never an &rsquo;s&rsquo;: escape, 1.32 bits. Order 2 after &lsquo;he&rsquo;: the same, 1.32. Order 1 after &rsquo;e&rsquo;: 1.58. Order 0: &rsquo;s&rsquo; has never occurred at all, 1.95. Order -1: uniform over 27 symbols, 4.75. Total 10.93 bits for one genuinely new character.</figcaption></figure>
+
+<p>Nearly eleven bits, for a character that would have cost eight raw. That is the right price: the model had no evidence, and a model with no evidence should pay for its ignorance, but it should pay <em>once</em>, at the rung where the ignorance actually lives, rather than a little at every rung forever. The escape probability itself is the delicate part. In the figure it is the PPMC rule, $u/(n+u)$ where $u$ is the number of distinct symbols seen in the context and $n$ the total count: a context that has seen many different followers is more likely to see a new one. Compare that to Laplace. For the &ldquo;e&rdquo; after the final &ldquo;th&rdquo;, PPMC&rsquo;s order-2 rung says $P(e) = 2/3$ (two sightings, one distinct symbol, so $2/(2+1)$), 0.58 bits, where Laplace said 2.63. Same counts, a different theory of the unseen, four and a half times fewer bits. Add <strong>exclusion</strong> (once order 3 has ruled out space and &ldquo;m&rdquo;, the lower orders should not spend probability on them either) and you have PPMC, the compression-ratio champion of the early 1990s. Dmitry Shkarin&rsquo;s PPMd, inside 7-Zip and RAR, is its descendant and is still what you get when you ask either for &ldquo;best text compression&rdquo;. The green curve in the figure is a PPM of this kind, and at order 4 it reaches 2.81 bits per character, under both xz and zlib on the same file, in forty lines of Python with no tuning.</p>
+<p>The ladder also explains why PPM beats the LZ family on text and why it costs what it costs. LZ77 only sees exact repeats; a context model sees that after &ldquo;th&rdquo; comes &ldquo;e&rdquo; sixty percent of the time whether or not this particular &ldquo;the&rdquo; was ever followed by this particular word. The price is memory for the tables and strict symmetry: the decoder must rebuild every context and every escape probability from decoded history, so it does exactly the encoder&rsquo;s work, and neither side can skip ahead.</p>
+<h2 id="mixing-when-two-models-disagree">Mixing: when two models disagree</h2>
+<p>PPM uses one context at a time: the longest that has anything to say. A different idea, and the one that owns the records, is to ask <em>all</em> of them at once and combine their answers. The order-5 model says the next bit is a 1 with probability 0.9; the order-1 model says 0.3; a word-level model says 0.6. What is the right combination?</p>
+<p>Not the average. Averaging probabilities can never be more confident than the most confident model, and models that are right for different reasons should reinforce. The move that works, which Matt Mahoney&rsquo;s PAQ series settled on around 2005, is to combine in the <strong>logistic domain</strong>: stretch each probability to a log-odds, take a weighted sum, and squash back.</p>
+$$\mathrm{st}(p) = \ln\frac{p}{1-p}, \qquad p_{\text{mix}} = \mathrm{sq}\!\left(\sum_i w_i\, \mathrm{st}(p_i)\right), \qquad \mathrm{sq}(x) = \frac{1}{1+e^{-x}}.$$<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">stretch</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">p</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">p</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">squash</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">x</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.3</span>            <span class="c1"># two models&#39; P(bit = 1)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="p">((</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">pm</span> <span class="o">=</span> <span class="n">squash</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">stretch</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span> <span class="o">+</span> <span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">stretch</span><span class="p">(</span><span class="n">p2</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;weights </span><span class="si">{</span><span class="n">w</span><span class="si">}</span><span class="s2">: mix = </span><span class="si">{</span><span class="n">pm</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">   (linear average would be </span><span class="si">{</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">p1</span> <span class="o">+</span> <span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">p2</span><span class="p">)</span><span class="o">/</span><span class="nb">sum</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]);</span> <span class="n">lr</span> <span class="o">=</span> <span class="mf">0.02</span>
+</span></span><span class="line"><span class="cl"><span class="n">pm</span> <span class="o">=</span> <span class="n">squash</span><span class="p">(</span><span class="n">w</span> <span class="o">@</span> <span class="p">[</span><span class="n">stretch</span><span class="p">(</span><span class="n">p1</span><span class="p">),</span> <span class="n">stretch</span><span class="p">(</span><span class="n">p2</span><span class="p">)])</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span> <span class="o">+=</span> <span class="n">lr</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">pm</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">stretch</span><span class="p">(</span><span class="n">p1</span><span class="p">),</span> <span class="n">stretch</span><span class="p">(</span><span class="n">p2</span><span class="p">)])</span>   <span class="c1"># bit was 1: reward the model that said so</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;after one &#39;1&#39;: weights -&gt; </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="s2">, mix -&gt; </span><span class="si">{</span><span class="n">squash</span><span class="p">(</span><span class="n">w</span> <span class="o">@</span> <span class="p">[</span><span class="n">stretch</span><span class="p">(</span><span class="n">p1</span><span class="p">),</span> <span class="n">stretch</span><span class="p">(</span><span class="n">p2</span><span class="p">)])</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># weights (0.5, 0.5): mix = 0.663   (linear average would be 0.600)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># weights (1.0, 1.0): mix = 0.794   (linear average would be 0.600)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># weights (2.0, 0.2): mix = 0.986   (linear average would be 0.845)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># after one &#39;1&#39;: weights -&gt; [0.515 0.494], mix -&gt; 0.671</span>
+</span></span></code></pre></div><p>Two things in that listing. With weights that have learned to trust the first model, the mix is 0.986, more confident than either input, which a linear average cannot do. And the weight update is one line: $w_i \mathrel{+}= \eta\,(y - p_{\text{mix}})\,\mathrm{st}(p_i)$, the gradient of the coding cost $-\log_2 p_{\text{mix}}(y)$ with respect to $w_i$. The mixer is a single-layer neural network trained online to minimize bits, and the bits it minimizes are the bits in the file. PAQ8 runs hundreds of such models (orders 1 through 6, word contexts, sparse contexts that skip bytes, models specialized for images, executables, columns of tables) through a few layers of mixers selected by context, and feeds the result to a binary arithmetic coder. It runs at tens of kilobytes per second. Every byte updates hundreds of tables. It is the best lossless compression there is, and nobody uses it for anything but winning.</p>
+<h2 id="the-hutter-prize-and-the-rule-that-keeps-it-honest">The Hutter Prize and the rule that keeps it honest</h2>
+<p>What it wins is a prize. In 2006 Marcus Hutter offered money for compressing the first 100 MB of English Wikipedia, enwik8, and in 2020 raised the stakes to the first gigabyte, enwik9, with half a million euros on the table paid out in proportion to improvement. The PAQ lineage and its successor cmix have held the record throughout; the current entries land around 110 MB for the gigabyte, roughly 0.9 bits per character.</p>
+<p>The prize has one rule that matters more than the number. <strong>The size that counts is the compressed file plus the decompressor.</strong> You could &ldquo;compress&rdquo; enwik9 to zero bytes by shipping a decompressor with enwik9 inside it. You could compress it very well indeed by shipping a decompressor with a 70-billion-parameter language model inside it. Neither counts, because the whole point of a compressor is that what the receiver already holds is part of the bill. This is the <a href="../side-information/">side information</a>
+ stage stated as a contest rule, and it is why the Hutter Prize is a prize for <em>learning</em>, in Hutter&rsquo;s own framing: a decompressor of size $S$ that reproduces the data from $C$ bytes has found $S + C$ bytes of description, and the shortest description is the best model of what Wikipedia is.</p>
+<h2 id="any-predictor-is-a-compressor">Any predictor is a compressor</h2>
+<p>Now the step that makes this article the hinge of the modern map. The mixer in PAQ is a tiny neural network producing $P(\text{next bit} \mid \text{context})$. A transformer language model is a large neural network producing $P(\text{next token} \mid \text{context})$. There is no difference in kind. Attach an arithmetic coder to a 7B-parameter LLM, give it English, and it compresses to about 0.8 bits per character, below cmix, far below zstd&rsquo;s 2.5, with zero code written for compression. The model&rsquo;s cross-entropy on the text <em>is</em> the compressed size; that was the content of the <a href="../modeling-and-coding/">first article</a>
+, and here it is as a product.</p>
+<p>The price is what the context mixing&rsquo;s algorithm card lists as weaknesses, and every one of them follows from the ladder and the mixer. The decoder must run the identical model, so decompression costs a forward pass per token: symmetric and slow. The model&rsquo;s state is the entire context: gigabytes of memory, no random access, no seeking into the middle of the stream. And the probabilities must be bit-exact on both machines, because an arithmetic coder that receives $P = 0.4999$ on one side and $0.5001$ on the other decodes garbage from that symbol onward; floating-point reductions on two different GPUs do not agree in the last bit, so practical LLM compressors quantize the model&rsquo;s probabilities to integers before they touch the coder.</p>
+<div class="map-lab" data-fighter="neural_prior"><p class="lab-fail">Interactive lab (neural_prior) needs JavaScript.</p></div>
+
+<p>The same socket appears in miniature inside every video decoder. CABAC, the entropy stage of H.264 and HEVC, is a context model: each binary decision (is this block skipped? is this coefficient nonzero? is the motion vector&rsquo;s sign negative?) chooses one of several hundred probability states based on what the neighbouring blocks did, and the state adapts at a fixed rate after every decision, exactly like the counter listing above. It is order-1-ish, with &ldquo;context&rdquo; meaning spatial neighbours rather than previous bytes, and it is why CABAC saves roughly a tenth of the bitrate against the older Huffman-style CAVLC. And in learned image codecs, the &ldquo;hyperprior&rdquo; of Ballé and colleagues is a small network that predicts the distribution of each latent coefficient from a few side bits, feeding an arithmetic coder; the <a href="../learned-transforms/">learned transforms</a>
+ article has the rest of that pipeline.</p>
+<div class="map-lab" data-fighter="arith"><p class="lab-fail">Interactive lab (arith) needs JavaScript.</p></div>
+
+<h2 id="connections">Connections</h2>
+<p><strong>n-gram language models</strong> are order-$k$ context models under another name, and the problem of unseen n-grams is the escape problem. Kneser–Ney smoothing, the standard answer in speech recognition for twenty years, backs off from a trigram to a bigram to a unigram with absolute discounting and a continuation probability that is, in substance, a more careful estimate of $u/(n+u)$. PPM and Kneser–Ney were invented in different departments for the same reason and converged on the same shape.</p>
+<p><strong>Prequential and MDL.</strong> Coding a file adaptively, one symbol at a time with the model updated after each, produces a total of $\sum_t -\log_2 P_t(x_t \mid x_{<t})$. Dawid called that quantity the prequential (predictive-sequential) log-loss and proposed judging a statistical model by it; Rissanen&rsquo;s minimum description length principle says the same from the coding side. A context model&rsquo;s output length is a model-selection criterion you can read off a file size.</p>
+<p><strong>Solomonoff induction</strong>, in one sentence: weight every computable hypothesis by $2^{-(\text{its length in bits})}$, and predict by the weighted mixture; it is the uncomputable limit of a context mixer whose models are all possible programs, and the Hutter Prize is its budget-constrained cousin.</p>
+<p><strong>In the game:</strong> the <a href="/compressionfight/#fighter=cm">context mixing</a>
+ is this family, <a href="/compressionfight/#fighter=neural_prior">learned probability model</a>
+ its learned extreme, and the <a href="/compressionfight/#fighter=arith">arithmetic coding</a>
+ the partner neither can work without. They headline the Maximum-ratio text archive task, where ratio is everything and nobody is in a hurry.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=cm" title="cm"><img src="/compressionfight/img/fighters/cm.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>cm</span></a></li><li><a href="/compressionfight/#fighter=neural_prior" title="neural_prior"><img src="/compressionfight/img/fighters/neural_prior.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>neural_prior</span></a></li><li><a href="/compressionfight/#fighter=arith" title="arith"><img src="/compressionfight/img/fighters/arith.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>arith</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Arithmetic coding and ANS: fractional bits</a></li><li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li><li><a href="/compressionfight/map/zoo/side-information/">Side information: what the decoder knew before the first byte</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/linear-prediction/"><small>&larr; Previous</small>Guess, then send the miss: linear prediction</a>
+    <a class="next" href="/compressionfight/map/zoo/motion-compensation/"><small>Next &rarr;</small>Motion compensation: predicting across frames</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#a-guessing-game-in-a-living-room">A guessing game in a living room</a></li>
+    <li><a href="#a-sentence-a-context-a-count">A sentence, a context, a count</a></li>
+    <li><a href="#longer-contexts-and-the-cliff">Longer contexts, and the cliff</a></li>
+    <li><a href="#escapes-paying-for-what-you-did-not-know">Escapes: paying for what you did not know</a></li>
+    <li><a href="#mixing-when-two-models-disagree">Mixing: when two models disagree</a></li>
+    <li><a href="#the-hutter-prize-and-the-rule-that-keeps-it-honest">The Hutter Prize and the rule that keeps it honest</a></li>
+    <li><a href="#any-predictor-is-a-compressor">Any predictor is a compressor</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

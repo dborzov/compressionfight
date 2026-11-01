@@ -13,12 +13,17 @@ import os, json
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-BG, FG, DIM = "#0b0714", "#ece6f7", "#8a81a3"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
 here = os.path.dirname(os.path.abspath(__file__))
 data = json.load(open(os.path.join(here, "cyc_data.json")))
 ROLES, FIGHTERS = data["roles"], data["fighters"]
+from _style import STAGE  # DESIGN.md --c-* values override whatever data.js exported
+for _k, _v in ROLES.items():
+    _v["color"] = STAGE.get(_k, _v["color"])
 CODECS = {c["id"]: c for c in data["codecs"]}
 FLOW = ["transform", "predict", "quantize", "entropy"]
 SIDE = ["perceptual", "prior"]
@@ -54,9 +59,9 @@ def rbox(ax, x, y, w, h, color, text, sub=None, dashed=False, alpha=1.0):
                        ec=color, lw=2.2, ls="--" if dashed else "-", alpha=alpha)
     ax.add_patch(p)
     ax.text(x + w / 2, y + h * (0.62 if sub else 0.5), text, ha="center", va="center", fontsize=13,
-            color=("#120a1e" if not dashed else color), fontweight="bold", linespacing=1.1)
+            color=("#f3eadb" if not dashed else color), fontweight="bold", linespacing=1.1)
     if sub:
-        ax.text(x + w / 2, y + h * 0.2, sub, ha="center", va="center", fontsize=10.5, color="#120a1e" if not dashed else DIM)
+        ax.text(x + w / 2, y + h * 0.2, sub, ha="center", va="center", fontsize=10.5, color="#f3eadb" if not dashed else DIM)
 
 def strip(ax, cid, title_prefix=""):
     c = CODECS[cid]; squad = c["squad"]
@@ -72,7 +77,7 @@ def strip(ax, cid, title_prefix=""):
     scale = min(1.0, 15.8 / total)
     w, gap = w * scale, gap * scale
     x = x0
-    rbox(ax, x, y, 0.9 * scale, 1.2, "#2a2140", "data", dashed=False); x += 0.9 * scale + gap
+    rbox(ax, x, y, 0.9 * scale, 1.2, "#b89f78", "data", dashed=False); x += 0.9 * scale + gap
     for fid in flow_ids:
         role = FIGHTERS[fid]["role"]; col = ROLES[role]["color"]
         rbox(ax, x, y, w, 1.2, col, SHORT.get(fid, fid), sub=FIGHTERS[fid]["name"].title())
@@ -84,7 +89,7 @@ def strip(ax, cid, title_prefix=""):
         ax.add_patch(FancyArrowPatch((x - gap + 0.06, y + 0.6), (x - 0.04, y + 0.6), arrowstyle="-|>", mutation_scale=16, color=FG, lw=1.5))
         x += w + gap
     ax.add_patch(FancyArrowPatch((x - gap + 0.06, y + 0.6), (x - 0.04, y + 0.6), arrowstyle="-|>", mutation_scale=16, color=FG, lw=1.5))
-    rbox(ax, x, y, 0.9 * scale, 1.2, "#2a2140", "bits")
+    rbox(ax, x, y, 0.9 * scale, 1.2, "#b89f78", "bits")
     # side row: perceptual steers, prior is held
     if side:
         sx = 0.1; sw = 2.0

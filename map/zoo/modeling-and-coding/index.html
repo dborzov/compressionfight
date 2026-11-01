@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Modeling and coding: bits are surprise · Choose Your Codec</title>
+<meta name="description" content="Why every file has a floor it cannot shrink below, why the floor belongs to the probabilities rather than the coder, and why compressing with the wrong model costs exactly the KL divergence.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/" class="on" aria-current="page">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Foundations</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Foundations</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/modeling-and-coding.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Modeling and coding: bits are surprise</h1>
+    <p class="summary">Why every file has a floor it cannot shrink below, why the floor belongs to the probabilities rather than the coder, and why compressing with the wrong model costs exactly the KL divergence.</p>
+    <div class="meta">14 min read</div>
+  </header>
+  
+  <div class="prose"><h2 id="the-question-nobody-could-price">The question nobody could price</h2>
+<p>Imagine a telephone company&rsquo;s traffic department in the spring of 1948. A junior engineer, call her Harriet Lund, has been handed a question by her manager that sounds like bookkeeping and turns out to be philosophy: <em>how many telegraph symbols per second can this line really carry, if the operators on it &ldquo;talk like humans&rdquo;?</em> The company wants to know how many conversations to sell per wire. The physics is settled: the line can carry so many pulses per second before the pulses smear into each other. What Harriet needs is a different number. Human messages are not random pulses. They are full of habits. How much of a message is habit, and how much is news?</p>
+<p>Her first answer is the one everybody gives. There are 26 letters plus a space; twenty-seven things; five bits each, as the Baudot teleprinter already does. Count the letters, multiply by five, done. She knows this is wrong before she writes it down, because the telegraph operators down the hall do not transmit &ldquo;THE&rdquo; letter by letter in their heads. They know the next letter after &ldquo;T-H&rdquo; is almost always &ldquo;E&rdquo;. A code that charges &ldquo;E&rdquo; five bits there is charging for something the receiver could have guessed.</p>
+<p>Her second answer is cleverer. Operators use perhaps two thousand distinct words; eleven bits name one of two thousand; English words average around four and a half letters, so that is about two and a half bits per letter instead of five. Better. But it has the same disease one level up. &ldquo;THE&rdquo; is one word in two thousand, yet it is a tenth of everything they send. Charging it eleven bits is as wasteful as charging &ldquo;E&rdquo; five. And some words she has never seen, so the two-thousand-word table is a lie about the future.</p>
+<p>Each time, the naive answer fails the same way: it prices every symbol the same, while the symbols are not the same. Some are nearly certain and some are shocks. If there is a correct price, it has to depend on how surprising the symbol was. That is as far as Harriet gets on her own. In July her library receives the <em>Bell System Technical Journal</em> with a long paper by a mathematician named Shannon, and it contains the price.</p>
+<h2 id="a-weather-station-and-a-code-that-fits-it">A weather station and a code that fits it</h2>
+<p>Put the telegraph aside and take the smallest case that shows everything. A weather station in a valley sends one of four reports every hour: SUN, RAIN, SNOW, HAIL. Over years of logs the frequencies settle at</p>
+$$p = (0.5,\ 0.25,\ 0.125,\ 0.125).$$<p>The obvious code is fixed: two bits per report, <code>00 01 10 11</code>, forty-eight bits a day, no thought required. Now try a code that matches the frequencies: SUN <code>0</code>, RAIN <code>10</code>, SNOW <code>110</code>, HAIL <code>111</code>. It still decodes without separators, because no codeword is the start of another (the <a href="../prefix-codes/">prefix codes</a>
+ article is about why that property is the whole game). Its average length is</p>
+$$0.5\cdot 1 + 0.25\cdot 2 + 0.125\cdot 3 + 0.125\cdot 3 = 1.75\ \text{bits per report},$$<p>forty-two bits a day instead of forty-eight. So far this is just a good code. The interesting thing is a question: <em>could a cleverer code do better than 1.75?</em> Three-bit codewords for the rare symbols look wasteful; could SNOW take <code>11</code> if we rearranged? Try a few and you will find that every rearrangement that shortens one word lengthens another, and the average never drops below 1.75. Something is holding the floor there, and it is not the cleverness of the code.</p>
+<p>Here is what is holding it. Look at the lengths we chose next to the probabilities: SUN has $p = 1/2$ and got 1 bit; RAIN has $p = 1/4$ and got 2; SNOW and HAIL have $p = 1/8$ and got 3. In every case the length is $-\log_2 p$. The code is not merely &ldquo;shorter for common symbols&rdquo;; it charges each symbol exactly the logarithm of its improbability. And the average of that charge is</p>
+$$H(p) = -\sum_i p_i \log_2 p_i = 1.75.$$<figure class="fig"><a href="/compressionfight/map/img/modeling-and-coding/cost_curve.png"><img src="/compressionfight/map/img/modeling-and-coding/cost_curve.png" alt="The curve of minus log2 p against p, with the two stations&#39; symbols marked on it" loading="lazy"></a><figcaption>The price of a symbol. A symbol with probability 1/2 costs one bit, 1/4 costs two, 1/8 costs three. On the desert station SUN at 0.9 would cost 0.15 bits and HAIL at 0.02 would cost 5.6; a fixed code charges two for everything.</figcaption></figure>
+
+<h2 id="why-the-price-is-a-logarithm">Why the price is a logarithm</h2>
+<p>Here is the question that matters, the one the whole field hangs from: <em>why that function?</em> Why should the right charge for a symbol be $-\log_2 p$ and not, say, $1/p$ or $1 - p$?</p>
+<p>Because of what happens to sequences. The valley station&rsquo;s day is twenty-four reports. If the reports are independent, the probability of a specific day&rsquo;s log is the product of twenty-four probabilities. A day of all SUN has probability $(1/2)^{24}$. A day with twelve SUN, six RAIN, three SNOW, three HAIL has probability $(1/2)^{12}(1/4)^{6}(1/8)^{3}(1/8)^{3} = 2^{-42}$. Now, how many bits does it take to name one specific thing among all the things that could have happened? If the possibilities were equally likely you would need $\log_2(\text{count})$ bits. They are not equally likely, but the typical day has probability about $2^{-42}$, so there are, roughly, $2^{42}$ &ldquo;typical days&rdquo; and you need about 42 bits to say which one happened. Forty-two is exactly $24 \times 1.75$. The logarithm is forced on us by one fact: probabilities of sequences multiply, and lengths of codes add. The only function that turns a product into a sum is a logarithm. So the price of a symbol must be $-\log_2 p$, prices are additive over a message, and the average price per symbol is the entropy.</p>
+<p>This is the first thing to take away, and it is worth stating plainly because it is so often misread. <strong>The floor is a property of the probabilities, not of the coder.</strong> Shannon&rsquo;s source coding theorem (we state it, we do not prove it) says: for a source of independent symbols with distribution $p$, any lossless code must spend at least $H(p)$ bits per symbol on average, and codes exist that come arbitrarily close to $H(p)$ when symbols are coded in long blocks. No ingenuity moves the floor. Ingenuity can only find the floor and stand on it.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">entropy</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">p</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">p</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">stations</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&#34;valley&#34;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">            <span class="s2">&#34;desert&#34;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">            <span class="s2">&#34;hills&#34;</span><span class="p">:</span>  <span class="p">[</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">]}</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">stations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">7s</span><span class="si">}</span><span class="s2"> H = </span><span class="si">{</span><span class="n">entropy</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> bits/report, prices = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># valley  H = 1.750 bits/report, prices = [1. 2. 3. 3.]</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># desert  H = 0.618 bits/report, prices = [0.15 4.32 5.06 5.64]</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># hills   H = 1.750 bits/report, prices = [2. 1. 3. 3.]</span>
+</span></span></code></pre></div><p>Three lines of NumPy, and the valley&rsquo;s floor comes out at the 1.75 we found by hand. Two other stations have appeared in that listing; we will need both.</p>
+<div class="map-lab" data-fighter="huffman"><p class="lab-fail">Interactive lab (huffman) needs JavaScript.</p></div>
+
+<h2 id="the-desert-station-where-the-coder-becomes-the-bottleneck">The desert station, where the coder becomes the bottleneck</h2>
+<p>The second station sits in a desert: $p = (0.9, 0.05, 0.03, 0.02)$. The entropy function says $H = 0.618$ bits per report. SUN, at $p = 0.9$, should cost $-\log_2 0.9 = 0.15$ bits. But a prefix code assigns whole codewords, and the shortest possible codeword is one bit long. The best prefix code for this station is SUN <code>0</code>, RAIN <code>10</code>, SNOW <code>110</code>, HAIL <code>111</code> again, and it averages $0.9 + 0.1 + 0.09 + 0.06 = 1.15$ bits, nearly double the floor. No prefix code of any kind can beat 1.0 here, because SUN alone, at one bit each, already costs 0.9 bits per report on average.</p>
+<p>So for the desert, the floor is 0.62 and the best whole-bit code sits at 1.15. The gap is not in the probabilities; we know them perfectly. The gap is in the coder, which cannot charge a fraction of a bit. The way out is to charge for several symbols at once, so that a run of nine SUNs can cost nine times 0.15 bits, a bit and a half in total, rather than nine bits. Arithmetic coding and ANS do precisely that, and the <a href="../arithmetic-and-ans/">fractional bits</a>
+ article is where the desert station gets its 0.62. For now the lesson is the shape of the problem: <em>entropy is the target, and a coder is judged by how close it gets.</em></p>
+<h2 id="the-split">The split</h2>
+<p>Step back from the stations and notice what we did. We never asked how the weather works. We asked only for the probability of each report, and once we had it, the price of each report followed mechanically. That division is the organizing idea of the entire field, and it deserves its own vocabulary.</p>
+<p>A <strong>model</strong> is anything that assigns a probability $P(\text{symbol} \mid \text{everything seen so far})$ to the next symbol. The valley model is a four-entry table; it ignores the past entirely. A better model would notice that SNOW is likelier in January, or that the hour after RAIN is rarely SUN, and would assign sharper probabilities.</p>
+<p>A <strong>coder</strong> is a machine that, handed a symbol and the probability its model gave it, emits about $-\log_2 P$ bits, and whose decoder, handed the same probabilities, recovers the symbol. Huffman is a coder, arithmetic coding is a coder, ANS is a coder.</p>
+<p><strong>Every compressor is these two halves.</strong> The coder half is close to solved: modern coders sit within a fraction of a percent of $-\log_2 P$. What is not solved, and never will be, is the model half, because a model is a claim about the world. LZ77 is a model (&ldquo;the next bytes are the ones that followed this phrase last time&rdquo;). A DCT plus a quantizer plus a run-length stage is a model of photographs. A context mixer is a model of text. A language model is a model of text with a few billion parameters. And when you plug a large language model into an arithmetic coder, with nothing else changed, you get a compressor that takes English to roughly 0.8 bits per character, where zstd manages about 2.5 and the raw file was 8. A 1 GB text archive: 310 MB with zstd, around 100 MB with the LLM. None of that improvement came from the coder. All of it came from the model knowing more about English.</p>
+<p>That is the claim this site rests on, and you can see it in the <a href="../../">map</a>
+: one stage for the coder (the entropy-coding stage), and nearly every other stage is some species of model. &ldquo;How well can you compress $X$&rdquo; and &ldquo;how well can you predict $X$&rdquo; are the same question, because the compressed size <em>is</em> the sum of the log-losses of the predictions.</p>
+<div class="map-lab" data-fighter="cm"><p class="lab-fail">Interactive lab (cm) needs JavaScript.</p></div>
+
+<h2 id="the-hills-station-and-what-it-costs-to-be-wrong">The hills station, and what it costs to be wrong</h2>
+<p>Now the third station, in the hills, where it rains more than it shines: $P = (0.25, 0.5, 0.125, 0.125)$. Its entropy is 1.75, the same as the valley&rsquo;s. But suppose the hill station was built by the same contractor, who installed the valley&rsquo;s code (SUN <code>0</code>, RAIN <code>10</code>, …) without re-measuring. The code is the one appropriate to $Q = (0.5, 0.25, 0.125, 0.125)$ and the weather is $P$. How much does the hill station pay?</p>
+<p>Each report costs the length the valley code gives it, and the lengths are $-\log_2 Q$. The average under the true frequencies $P$ is</p>
+$$H(P, Q) = -\sum_i P_i \log_2 Q_i = 0.25\cdot 1 + 0.5\cdot 2 + 0.125\cdot 3 + 0.125\cdot 3 = 2.0\ \text{bits}.$$<p>Two bits per report. The clever code, applied to the wrong station, does exactly as well as the fixed code that never had an opinion about the weather at all. The floor was 1.75; the mismatch costs a quarter of a bit on every report, six bits a day, forever.</p>
+<p>That quarter bit has a name and a formula. Write the actual cost minus the floor:</p>
+$$H(P,Q) - H(P) = \sum_i P_i \log_2 \frac{P_i}{Q_i} = D_{\mathrm{KL}}(P \,\|\, Q).$$<p>The term on the right is the Kullback–Leibler divergence of the truth from the model, and the identity</p>
+$$H(P, Q) = H(P) + D_{\mathrm{KL}}(P \,\|\, Q)$$<p>is the single most useful equation for thinking about compressors. It says the bill always splits into two parts: the part that is genuinely unpredictable, $H(P)$, which no one can avoid, and the part you pay for not knowing $P$, which is exactly the KL divergence of your model from the truth.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">])</span>   <span class="c1"># the hills, what really happens</span>
+</span></span><span class="line"><span class="cl"><span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">])</span>   <span class="c1"># the valley code we shipped</span>
+</span></span><span class="line"><span class="cl"><span class="n">cross</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">P</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">Q</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>      <span class="c1"># what we actually pay per report</span>
+</span></span><span class="line"><span class="cl"><span class="n">kl</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">P</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">P</span> <span class="o">/</span> <span class="n">Q</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>      <span class="c1"># the mismatch tax</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;H(P) = </span><span class="si">{</span><span class="n">entropy</span><span class="p">(</span><span class="n">P</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">   H(P,Q) = </span><span class="si">{</span><span class="n">cross</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">   D_KL(P||Q) = </span><span class="si">{</span><span class="n">kl</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;H(P) + D_KL = </span><span class="si">{</span><span class="n">entropy</span><span class="p">(</span><span class="n">P</span><span class="p">)</span> <span class="o">+</span> <span class="n">kl</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  (equals H(P,Q))&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># H(P) = 1.750   H(P,Q) = 2.000   D_KL(P||Q) = 0.250</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># H(P) + D_KL = 2.000  (equals H(P,Q))</span>
+</span></span></code></pre></div><figure class="fig"><a href="/compressionfight/map/img/modeling-and-coding/three_stations.png"><img src="/compressionfight/map/img/modeling-and-coding/three_stations.png" alt="Grouped bars for the three stations: the fixed code, the entropy, the best prefix code, and the cost under the valley&#39;s model" loading="lazy"></a><figcaption>Three stations, one coder. In the valley the matched code hits the floor exactly. In the desert the floor is 0.62 but no whole-bit code can get under 1.0. In the hills the entropy is 1.75 again, but the valley&rsquo;s code charges 2.0: the extra 0.25 bits per report is the KL divergence.</figcaption></figure>
+
+<p>Read that equation once more with a different emphasis. The KL divergence is usually introduced as an abstract measure of distance between distributions. Here it is a byte count. &ldquo;How much did you know about the data&rdquo; is not a figure of speech; it is the difference between two file sizes. A model trained on the wrong corpus, a dictionary built from last year&rsquo;s logs, a quantization table tuned for a different kind of image: each pays $D_{\mathrm{KL}}$, measurably, in the output. The <a href="../side-information/">side information</a>
+ article is largely about engineering that term down.</p>
+<h2 id="compressed-output-should-look-like-noise">Compressed output should look like noise</h2>
+<p>There is a practical test hiding in the theorem. If a coder is charging $-\log_2 P$ per symbol and the model is right, the output has entropy equal to its length: one bit of information per bit. A stream with one bit of information per bit has no structure left in it at all. Its zeros and ones are equally frequent, its pairs are equally frequent, nothing predicts anything. It is indistinguishable from coin flips.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">code</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s2">&#34;0&#34;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s2">&#34;10&#34;</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">&#34;110&#34;</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="s2">&#34;111&#34;</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="n">reports</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">100_000</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">bits</span> <span class="o">=</span> <span class="s2">&#34;&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">code</span><span class="p">[</span><span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">reports</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;bits per report: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">reports</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">   (H = 1.75)&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;fraction of 1s: </span><span class="si">{</span><span class="n">bits</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">pairs</span> <span class="o">=</span> <span class="p">[</span><span class="n">bits</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;2-bit blocks:&#34;</span><span class="p">,</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">pairs</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">pairs</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&#34;00&#34;</span><span class="p">,</span> <span class="s2">&#34;01&#34;</span><span class="p">,</span> <span class="s2">&#34;10&#34;</span><span class="p">,</span> <span class="s2">&#34;11&#34;</span><span class="p">)})</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># bits per report: 1.7482   (H = 1.75)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># fraction of 1s: 0.4983</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 2-bit blocks: {&#39;00&#39;: 0.251, &#39;01&#39;: 0.248, &#39;10&#39;: 0.254, &#39;11&#39;: 0.247}</span>
+</span></span></code></pre></div><p>A hundred thousand valley reports through the valley code: 1.748 bits each, half the bits are ones, every two-bit block appears a quarter of the time. The output is noise. This is the sanity check you can run on any format: gzip a <code>.zip</code> file and it does not shrink, because DEFLATE&rsquo;s entropy stage already left nothing. If a compressor&rsquo;s output <em>does</em> compress further, some redundancy survived, which means some probability was mis-estimated, which means there is a KL term still being paid.</p>
+<h2 id="what-harriets-answer-looks-like">What Harriet&rsquo;s answer looks like</h2>
+<p>Harriet&rsquo;s two naive answers were both models, and both were bad ones. &ldquo;Five bits per letter&rdquo; is the uniform model, $Q = 1/27$ for every letter; the KL divergence from real English is enormous, about three bits per letter. &ldquo;Eleven bits per word&rdquo; is a better model that still ignores context. Shannon&rsquo;s answer was not a number but a method: measure $P$ as carefully as you can, with as much context as you can afford, and the capacity of the line in human sentences is the line&rsquo;s bits per second divided by the entropy per letter. In 1951 he ran a guessing game with human subjects to estimate that entropy and put it near one bit per letter. The <a href="../context-models/">context models</a>
+ article picks that game up, because it is exactly where modern text compression starts.</p>
+<h2 id="connections">Connections</h2>
+<p><strong>Perplexity.</strong> Language models report perplexity, and perplexity is $2^{\text{bits per token}}$ when the bits are the model&rsquo;s cross-entropy on held-out text. The desert station has perplexity $2^{0.618} = 1.53$: on average the next report is as uncertain as a choice among 1.53 equally likely options. A model with perplexity 20 on English is one that spends $\log_2 20 = 4.3$ bits per token, which, divided by about four characters per token, is a bit per character. Perplexity leaderboards are compression leaderboards wearing a different unit.</p>
+<p><strong>Kelly betting.</strong> A gambler who believes the next report will be SUN with probability 0.9 and bets a fraction of her wealth accordingly grows her wealth at a rate set by the same sum, $\sum P_i \log_2 (\text{odds})$. The optimal bet fractions are the probabilities, the growth rate per round is the log-score of the forecast, and a forecaster who uses the wrong $Q$ grows slower by exactly $D_{\mathrm{KL}}(P\|Q)$ per round. Compression and compounding are the same arithmetic because both multiply probabilities and only care about the logarithm.</p>
+<p><strong>Occam and MDL.</strong> If a model&rsquo;s quality is its cross-entropy on the data, then &ldquo;the best explanation is the shortest&rdquo; becomes a theorem instead of a slogan. Rissanen&rsquo;s minimum description length principle says to pick the model that minimizes (bits to describe the model) + (bits to describe the data under the model). A model that compresses the data is a model that has found structure in it; a model that merely memorizes it is as long as the data. The second term in that sum is this article; the first is the <a href="../side-information/">side information</a>
+ article.</p>
+<p><strong>In the game:</strong> the <a href="/compressionfight/#fighter=huffman">Huffman coding</a>
+ is the first coder; the <a href="/compressionfight/#fighter=cm">context mixing</a>
+ and <a href="/compressionfight/#fighter=neural_prior">learned probability model</a>
+ are the extreme of the model half. The split appears in every task, and the Maximum-ratio text archive task (bzip2 / xz / PAQ) is the one where only the model is allowed to matter.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=cm" title="cm"><img src="/compressionfight/img/fighters/cm.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>cm</span></a></li><li><a href="/compressionfight/#fighter=neural_prior" title="neural_prior"><img src="/compressionfight/img/fighters/neural_prior.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>neural_prior</span></a></li><li><a href="/compressionfight/#fighter=huffman" title="huffman"><img src="/compressionfight/img/fighters/huffman.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>huffman</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes: whole bits</a></li><li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Arithmetic coding and ANS: fractional bits</a></li><li><a href="/compressionfight/map/zoo/context-models/">Context models: predicting the next symbol</a></li><li><a href="/compressionfight/map/zoo/side-information/">Side information: what the decoder knew before the first byte</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <span></span>
+    <a class="next" href="/compressionfight/map/zoo/anatomy-of-a-job/"><small>Next &rarr;</small>The anatomy of a compression task: the five axes</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#the-question-nobody-could-price">The question nobody could price</a></li>
+    <li><a href="#a-weather-station-and-a-code-that-fits-it">A weather station and a code that fits it</a></li>
+    <li><a href="#why-the-price-is-a-logarithm">Why the price is a logarithm</a></li>
+    <li><a href="#the-desert-station-where-the-coder-becomes-the-bottleneck">The desert station, where the coder becomes the bottleneck</a></li>
+    <li><a href="#the-split">The split</a></li>
+    <li><a href="#the-hills-station-and-what-it-costs-to-be-wrong">The hills station, and what it costs to be wrong</a></li>
+    <li><a href="#compressed-output-should-look-like-noise">Compressed output should look like noise</a></li>
+    <li><a href="#what-harriets-answer-looks-like">What Harriet&rsquo;s answer looks like</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

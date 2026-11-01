@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Channel and layout transforms: group like statistics · Choose Your Codec</title>
+<meta name="description" content="RGB to YCbCr, stereo to mid/side, byte shuffling and columnar storage are one principle at three scales: put bytes that share statistics next to each other and separate the ones that do not, so the coders downstream see clean distributions instead of interleaved mush.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/" class="on" aria-current="page">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Transform</span><span>/</span><span>Channel and layout transforms</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Transform · Channel and layout transforms</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/channel-and-layout.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Channel and layout transforms: group like statistics</h1>
+    <p class="summary">RGB to YCbCr, stereo to mid/side, byte shuffling and columnar storage are one principle at three scales: put bytes that share statistics next to each other and separate the ones that do not, so the coders downstream see clean distributions instead of interleaved mush.</p>
+    <div class="meta">13 min read</div>
+  </header>
+  
+  <div class="prose"><h2 id="the-colour-that-had-to-hide">The colour that had to hide</h2>
+<p>Imagine an engineer at a television manufacturer in 1952, a year or so before the American colour standard is settled, and imagine the constraint sheet on his desk. Colour television must be broadcast on the same channels, in the same bandwidth, as the black-and-white service, and every black-and-white set already in a living room must keep showing a correct picture from the colour signal, without modification. Fifteen million of them. He cannot send three pictures, red, green and blue, in the space of one. And he cannot send red, green and blue at all, because the old sets would not know what to do with any of them.</p>
+<p>The first answer anyone proposes is to send brightness, which is what the old sets want, and then somehow squeeze the colour in beside it. The question that stops the room is what &ldquo;the colour&rdquo; is. If you have sent brightness, how much of red, green and blue is left to send? The camera produces three full signals. Intuition says you have sent one of three and two remain. The engineer who answers that question correctly, and the NTSC committee did, has discovered the subject of this article. The same discovery was made again by the people who designed stereo audio broadcasting, again by whoever first compressed a float array and wondered why it would not shrink, and again by the database engineers who built columnar stores. Each time the question is the same. <em>Why does storing the same numbers in a different order make them compress several times better?</em> The primer quotes a factor of 5 to 10 for a table in Parquet against the same table as gzipped CSV. Nothing about the numbers changed. Only where they sit.</p>
+<h2 id="four-pixels">Four pixels</h2>
+<p>Here are four pixels from a patch of skin going into shadow, as a camera produces them, three bytes each:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">px</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">200</span><span class="p">,</span> <span class="mi">192</span><span class="p">,</span> <span class="mi">188</span><span class="p">],</span> <span class="p">[</span><span class="mi">172</span><span class="p">,</span> <span class="mi">166</span><span class="p">,</span> <span class="mi">160</span><span class="p">],</span> <span class="p">[</span><span class="mi">141</span><span class="p">,</span> <span class="mi">137</span><span class="p">,</span> <span class="mi">134</span><span class="p">],</span> <span class="p">[</span><span class="mi">112</span><span class="p">,</span> <span class="mi">106</span><span class="p">,</span> <span class="mi">104</span><span class="p">]],</span> <span class="nb">float</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">R</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">B</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">T</span>
+</span></span><span class="line"><span class="cl"><span class="n">Y</span>  <span class="o">=</span> <span class="mf">0.299</span><span class="o">*</span><span class="n">R</span> <span class="o">+</span> <span class="mf">0.587</span><span class="o">*</span><span class="n">G</span> <span class="o">+</span> <span class="mf">0.114</span><span class="o">*</span><span class="n">B</span>
+</span></span><span class="line"><span class="cl"><span class="n">Cb</span> <span class="o">=</span> <span class="mi">128</span> <span class="o">-</span> <span class="mf">0.168736</span><span class="o">*</span><span class="n">R</span> <span class="o">-</span> <span class="mf">0.331264</span><span class="o">*</span><span class="n">G</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">B</span>
+</span></span><span class="line"><span class="cl"><span class="n">Cr</span> <span class="o">=</span> <span class="mi">128</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">R</span> <span class="o">-</span> <span class="mf">0.418688</span><span class="o">*</span><span class="n">G</span> <span class="o">-</span> <span class="mf">0.081312</span><span class="o">*</span><span class="n">B</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">ch</span> <span class="ow">in</span> <span class="p">[(</span><span class="s2">&#34;R&#34;</span><span class="p">,</span> <span class="n">R</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;G&#34;</span><span class="p">,</span> <span class="n">G</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;B&#34;</span><span class="p">,</span> <span class="n">B</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;Y&#34;</span><span class="p">,</span> <span class="n">Y</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;Cb&#34;</span><span class="p">,</span> <span class="n">Cb</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;Cr&#34;</span><span class="p">,</span> <span class="n">Cr</span><span class="p">)]:</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">2s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">ch</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">   range </span><span class="si">{</span><span class="n">ch</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">-</span><span class="n">ch</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">5.1f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>R  [200. 172. 141. 112.]   range  88.0
+G  [192. 166. 137. 106.]   range  86.0
+B  [188. 160. 134. 104.]   range  84.0
+Y  [193.9 167.1 137.9 107.6]   range  86.4
+Cb [124.7 124.  125.8 126. ]   range   2.0
+Cr [132.3 131.5 130.2 131.2]   range   2.1
+</code></pre><p>Look at the red, green and blue rows. They are three nearly identical sequences. Each one goes from about 200 down to about 105 in the same four steps, and each one would cost a coder about the same number of bits, say seven bits per sample for a range of 88. Three channels, twenty-one bits per pixel, and most of those bits are saying the same thing three times: <em>this patch is getting darker</em>. The colour, the fact that this is skin and not grey, is the tiny difference between the rows, R a little above G a little above B, and it is drowned in the brightness.</p>
+<p>The three lines under them are JPEG&rsquo;s <strong>YCbCr</strong> transform, the same mixing that the television committee arrived at. $Y$ is a weighted average of the three, with the weights 0.299, 0.587 and 0.114 chosen to match how bright each primary looks to the eye, and it carries the darkening: range 86, the same as before. $C_b$ and $C_r$ are the differences of blue and red from that brightness, offset by 128 so they can be stored as bytes, and their ranges are 2.0 and 2.1. The brightness was stored three times; now it is stored once, and the two leftover channels say &ldquo;a bit warm&rdquo; in about one bit each. Nothing was discarded. The transform is a 3×3 matrix with an inverse, and the pixels come back exactly in floating point.</p>
+<figure class="fig"><a href="/compressionfight/map/img/channel-and-layout/planes.png"><img src="/compressionfight/map/img/channel-and-layout/planes.png" alt="The R, G, B planes and the Y, Cb, Cr planes of a drawn portrait as grey images, with a bar chart of each plane&#39;s standard deviation" loading="lazy"></a><figcaption>The same move on a whole 256×256 picture. The three RGB planes are three near-copies of the brightness, each with a standard deviation around 60 to 70; after the transform Y keeps it and Cb and Cr fall to 26 and 12.</figcaption></figure>
+
+<p>This is the first aha, and it answers the 1952 question. <em>R, G and B are three copies of brightness plus a little colour.</em> Send brightness once, and what is left to send is not two more pictures but two small corrections, which is exactly how much bandwidth was spare. The black-and-white sets take $Y$ and ignore the rest, which was the whole point.</p>
+<div class="map-lab" data-fighter="prism"><p class="lab-fail">Interactive lab (prism) needs JavaScript.</p></div>
+
+<p>For a coder the win is a matter of distributions. Three channels of standard deviation 60 to 70 cost about $3 \times \tfrac12 \log_2 \sigma^2$ bits per pixel at a fixed error; one channel of 59 and two of 26 and 12 cost noticeably less, because $\log_2$ of a small variance is small. It is the same arithmetic as the <a href="../block-transforms/">transform coding gain</a>
+ of the DCT, applied across the colour axis instead of the spatial one, and for the same reason: the geometric mean of the variances dropped while the arithmetic mean stayed about where it was. On its own the saving is modest, the algorithm card calls it &ldquo;a tiny win&rdquo;, and the real reason every image and video codec starts with this transform is what it makes possible next. Once colour sits in two channels of its own, those channels can be treated differently from brightness, and the eye, which resolves colour at about half the resolution it resolves brightness, does not mind if they are stored at half the resolution. That is chroma subsampling, the cheapest 2:1 in all of image coding, and it belongs to the <a href="../perceptual-models/">perceptual</a>
+ stage, which decides what the viewer will not miss. The transform stage only made the two channels separable.</p>
+<div class="map-lab" data-fighter="chroma"><p class="lab-fail">Interactive lab (chroma) needs JavaScript.</p></div>
+
+<h2 id="integers-in-integers-out">Integers in, integers out</h2>
+<p>The transform above has a catch for lossless work. The coefficients are irrational, so $Y$ comes out as 193.9 rather than an integer, and rounding it to a byte loses a fraction of a bit of information that the inverse cannot recover. PNG, JPEG XL and FLAC all need the same decorrelation <em>without</em> the loss, and the trick that gives it is called lifting: build the transform as a sequence of steps, each of which adds a rounded function of some channels to another channel, and each step is reversible by subtracting the same rounded function.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">ycocg_r</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>                      <span class="c1"># lifting steps: integer in, integer out</span>
+</span></span><span class="line"><span class="cl">    <span class="n">co</span> <span class="o">=</span> <span class="n">r</span> <span class="o">-</span> <span class="n">b</span><span class="p">;</span>  <span class="n">t</span> <span class="o">=</span> <span class="n">b</span> <span class="o">+</span> <span class="p">(</span><span class="n">co</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cg</span> <span class="o">=</span> <span class="n">g</span> <span class="o">-</span> <span class="n">t</span><span class="p">;</span>  <span class="n">y</span> <span class="o">=</span> <span class="n">t</span> <span class="o">+</span> <span class="p">(</span><span class="n">cg</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">y</span><span class="p">,</span> <span class="n">co</span><span class="p">,</span> <span class="n">cg</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">ycocg_r_inv</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">co</span><span class="p">,</span> <span class="n">cg</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">t</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="p">(</span><span class="n">cg</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">);</span>  <span class="n">g</span> <span class="o">=</span> <span class="n">cg</span> <span class="o">+</span> <span class="n">t</span>
+</span></span><span class="line"><span class="cl">    <span class="n">b</span> <span class="o">=</span> <span class="n">t</span> <span class="o">-</span> <span class="p">(</span><span class="n">co</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">);</span>  <span class="n">r</span> <span class="o">=</span> <span class="n">b</span> <span class="o">+</span> <span class="n">co</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;YCoCg-R(200,192,188) =&#34;</span><span class="p">,</span> <span class="n">ycocg_r</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mi">192</span><span class="p">,</span> <span class="mi">188</span><span class="p">),</span> <span class="s2">&#34;-&gt;&#34;</span><span class="p">,</span> <span class="n">ycocg_r_inv</span><span class="p">(</span><span class="o">*</span><span class="n">ycocg_r</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mi">192</span><span class="p">,</span> <span class="mi">188</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">L</span><span class="p">,</span> <span class="n">R</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">980</span>                            <span class="c1"># stereo sample pair</span>
+</span></span><span class="line"><span class="cl"><span class="n">mid</span><span class="p">,</span> <span class="n">side</span> <span class="o">=</span> <span class="p">(</span><span class="n">L</span> <span class="o">+</span> <span class="n">R</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">,</span> <span class="n">L</span> <span class="o">-</span> <span class="n">R</span>             <span class="c1"># FLAC: mid keeps the floor, side keeps the parity</span>
+</span></span><span class="line"><span class="cl"><span class="n">total</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">mid</span> <span class="o">+</span> <span class="p">(</span><span class="n">side</span> <span class="o">&amp;</span> <span class="mi">1</span><span class="p">)</span>                  <span class="c1"># the lost bit of L+R is the parity of L-R</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;mid/side =&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">mid</span><span class="p">,</span> <span class="n">side</span><span class="p">),</span> <span class="s2">&#34; back to&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">total</span> <span class="o">+</span> <span class="n">side</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">total</span> <span class="o">-</span> <span class="n">side</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>YCoCg-R(200,192,188) = (193, 12, -2) -&gt; (200, 192, 188)
+mid/side = (990, 20)  back to (1000, 980)
+</code></pre><p><strong>YCoCg-R</strong> is a luma and two chroma channels, &ldquo;orange&rdquo; and &ldquo;green&rdquo;, built from four lifting steps using only shifts and adds. The halving <code>&gt;&gt; 1</code> throws away a bit each time, and the inverse recovers it because the inverse undoes the steps in reverse order with the <em>same</em> truncated values available to it. Three bytes went in as (200, 192, 188), became (193, 12, −2), and come back as (200, 192, 188): the transform is a bijection on integers.</p>
+<p>The second half is stereo. The left and right channels of a recording are two microphones a few centimetres apart hearing the same room, so like R and G they are near-copies: 1000 and 980. <strong>Mid/side</strong> stores the average and the difference, 990 and 20, and the difference is small and quiet wherever the stereo image is narrow, which is most of the time. FLAC&rsquo;s version keeps <code>side = L − R</code> in full and <code>mid = (L + R) &gt;&gt; 1</code>, dropping the lowest bit of the sum, which is safe because the sum and the difference of two integers always have the same parity: the dropped bit of the sum is the lowest bit of the side channel, so the decoder reads it back from there. Twenty is cheaper to code than 980; the <a href="../linear-prediction/">linear predictor</a>
+ and the Rice coder that follow in FLAC see one loud channel and one quiet one instead of two loud ones.</p>
+<p>These two examples are the second aha in its narrowest form. <strong>Mix the channels so one carries the shared part and the others carry the small differences.</strong> The shared part was being paid for once per channel; now it is paid for once.</p>
+<h2 id="the-same-idea-one-level-down-inside-a-float">The same idea, one level down: inside a float</h2>
+<p>Now a case where nobody is mixing anything, and the principle still applies. A sensor logs a slowly drifting voltage as 32-bit floats. The values are nearly identical, differing in the fourth decimal, and yet a general-purpose compressor barely touches the file. Here are eight of them as bytes:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.9950</span><span class="p">,</span> <span class="mf">1.9975</span><span class="p">,</span> <span class="mf">2.0000</span><span class="p">,</span> <span class="mf">2.0025</span><span class="p">,</span> <span class="mf">2.0050</span><span class="p">,</span> <span class="mf">2.0075</span><span class="p">,</span> <span class="mf">2.0100</span><span class="p">,</span> <span class="mf">2.0125</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">by</span> <span class="o">=</span> <span class="n">vals</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)[:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>      <span class="c1"># columns: byte3 byte2 byte1 byte0</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">by</span><span class="p">):</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  &#34;</span> <span class="o">+</span> <span class="s2">&#34; &#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">x</span><span class="si">:</span><span class="s2">02x</span><span class="si">}</span><span class="s2">&#34;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">b</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">H</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>                                              <span class="c1"># zeroth-order entropy in bits/symbol</span>
+</span></span><span class="line"><span class="cl">    <span class="n">_</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">);</span> <span class="n">p</span> <span class="o">=</span> <span class="n">c</span> <span class="o">/</span> <span class="n">c</span><span class="o">.</span><span class="n">sum</span><span class="p">();</span> <span class="k">return</span> <span class="o">-</span><span class="p">(</span><span class="n">p</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">p</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4096</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>          <span class="c1"># 4096 samples of a slow sine near 2.0</span>
+</span></span><span class="line"><span class="cl"><span class="n">sig</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="mi">3</span><span class="o">*</span><span class="n">t</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.002</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="mi">4096</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">planes</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)[:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;entropy per byte plane (b3..b0):&#34;</span><span class="p">,</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">H</span><span class="p">(</span><span class="n">planes</span><span class="p">[:,</span> <span class="n">j</span><span class="p">])),</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;entropy of the interleaved bytes :&#34;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">H</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">))),</span> <span class="mi">2</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">zlib</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;zlib bytes, interleaved:&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(),</span> <span class="mi">9</span><span class="p">)),</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34; shuffled:&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">planes</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(),</span> <span class="mi">9</span><span class="p">)),</span> <span class="s2">&#34; raw:&#34;</span><span class="p">,</span> <span class="n">sig</span><span class="o">.</span><span class="n">nbytes</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>1.9950  3f ff 5c 29
+1.9975  3f ff ae 14
+2.0000  40 00 00 00
+2.0025  40 00 28 f6
+2.0050  40 00 51 ec
+2.0075  40 00 7a e1
+2.0100  40 00 a3 d7
+2.0125  40 00 cc cd
+</code></pre><pre tabindex="0"><code>entropy per byte plane (b3..b0): [1.0, 6.29, 7.95, 7.96]
+entropy of the interleaved bytes : 6.87
+zlib bytes, interleaved: 14102  shuffled: 9817  raw: 16384
+</code></pre><p>Read the hex columns. The top byte, sign and most of the exponent, is <code>3f</code> or <code>40</code> for every value: the numbers are all near 2, so the exponent is one of two things. The next byte holds the last exponent bit and the top seven mantissa bits, and it is <code>ff</code> or <code>00</code>. The bottom two bytes are the fine mantissa, and they are different for every value, with no pattern a coder could use; they are, in effect, noise. A float32 is a struct of four fields with four completely different statistics, and in memory the fields of consecutive floats are interleaved: constant, nearly constant, noise, noise, constant, nearly constant, noise, noise. A byte-oriented compressor walking that stream sees an entropy of 6.87 bits per byte and manages 14102 bytes out of 16384, a saving of 14%.</p>
+<p>The fix is called <strong>byte shuffle</strong>, and Blosc and HDF5 apply it before every general-purpose compressor for exactly this reason. Transpose the array: all the top bytes first, then all the second bytes, then the third, then the fourth. The numbers are untouched, and the inverse is another transpose. On 4096 samples of a slow sine near 2.0, the entropies of the four planes come out as 1.0, 6.3, 7.95 and 7.96 bits per byte: the exponent plane is a one-bit decision, the low mantissa planes are incompressible, and now they are in separate rooms. The same zlib on the shuffled bytes gives 9817, a saving of 40% instead of 14%, and almost all of it comes from the exponent plane, which collapses to a few dozen bytes of run lengths while the mantissa planes stay where they were. Shuffling did not make the mantissa compressible. It stopped the mantissa from poisoning the exponent.</p>
+<figure class="fig"><a href="/compressionfight/map/img/channel-and-layout/byteplanes.png"><img src="/compressionfight/map/img/channel-and-layout/byteplanes.png" alt="A slow sine of 4096 float32 samples, its four byte planes shown as rows, and a bar chart of the entropy of each plane against the interleaved stream" loading="lazy"></a><figcaption>Byte shuffle on a float32 array. The top byte plane is almost constant and the two low mantissa planes are noise; interleaved, the mixture has an entropy of 6.87 bits per byte, separated, the exponent plane costs 1 bit and the noise stays where it was.</figcaption></figure>
+
+<h2 id="the-same-idea-one-level-up-a-table">The same idea, one level up: a table</h2>
+<p>The last scale is a database table. Six rows of a web log, five columns: a date, a method, a status, a path, a latency. Stored as text, row by row, the byte stream reads a date, then a word, then a number, then a path, then a small integer, then the next date, and the compressor at the end of the pipe sees a mixture of five languages. Stored column by column, each column is a stream in one language, and the statistics of each are simple enough to count by hand: the date column has 1 distinct value in 6, method and status and path have 2 or 3, and only the latency column has 6.</p>
+<figure class="fig"><a href="/compressionfight/map/img/channel-and-layout/layout.png"><img src="/compressionfight/map/img/channel-and-layout/layout.png" alt="The same six-row, five-column log laid out row-wise and column-wise, with distinct-value counts per column" loading="lazy"></a><figcaption>Same thirty values. Row-wise, consecutive bytes belong to different columns with different distributions. Column-wise, each column is homogeneous: one has a single value, three have two or three, and each can be given the coder that fits it.</figcaption></figure>
+
+<p>Scale that up to twenty thousand rows and measure. Here the measurement surprises in a useful way:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span><span class="o">,</span> <span class="nn">zlib</span>
+</span></span><span class="line"><span class="cl"><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="n">n</span> <span class="o">=</span> <span class="mi">20000</span>
+</span></span><span class="line"><span class="cl"><span class="n">cols</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&#34;date&#34;</span><span class="p">:</span>   <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="s2">&#34;2024-03-01&#34;</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;method&#34;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s2">&#34;GET&#34;</span><span class="p">,</span> <span class="s2">&#34;GET&#34;</span><span class="p">,</span> <span class="s2">&#34;GET&#34;</span><span class="p">,</span> <span class="s2">&#34;POST&#34;</span><span class="p">,</span> <span class="s2">&#34;PUT&#34;</span><span class="p">],</span> <span class="n">n</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;status&#34;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s2">&#34;200&#34;</span><span class="p">,</span> <span class="s2">&#34;200&#34;</span><span class="p">,</span> <span class="s2">&#34;200&#34;</span><span class="p">,</span> <span class="s2">&#34;201&#34;</span><span class="p">,</span> <span class="s2">&#34;404&#34;</span><span class="p">,</span> <span class="s2">&#34;500&#34;</span><span class="p">],</span> <span class="n">n</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;path&#34;</span><span class="p">:</span>   <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s2">&#34;/api/users&#34;</span><span class="p">,</span> <span class="s2">&#34;/api/users&#34;</span><span class="p">,</span> <span class="s2">&#34;/api/orders&#34;</span><span class="p">,</span> <span class="s2">&#34;/api/items&#34;</span><span class="p">,</span> <span class="s2">&#34;/api/login&#34;</span><span class="p">],</span> <span class="n">n</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;ms&#34;</span><span class="p">:</span>     <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)}</span>
+</span></span><span class="line"><span class="cl"><span class="n">H</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">p</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">p</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()))(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">row_wise</span> <span class="o">=</span> <span class="s2">&#34;</span><span class="se">\n</span><span class="s2">&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&#34;,&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">cols</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">col_wise</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&#34;</span><span class="se">\n</span><span class="s2">&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&#34;</span><span class="se">\n</span><span class="s2">&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">c</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl"><span class="n">z</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">b</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">9</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;raw:&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">row_wise</span><span class="p">),</span> <span class="s2">&#34;B   zlib row-wise:&#34;</span><span class="p">,</span> <span class="n">z</span><span class="p">(</span><span class="n">row_wise</span><span class="p">),</span> <span class="s2">&#34;B   zlib column-wise:&#34;</span><span class="p">,</span> <span class="n">z</span><span class="p">(</span><span class="n">col_wise</span><span class="p">),</span> <span class="s2">&#34;B&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="o">.</span><span class="n">items</span><span class="p">():</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;  </span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">7s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">c</span><span class="p">))</span><span class="si">:</span><span class="s2">3d</span><span class="si">}</span><span class="s2"> distinct   entropy </span><span class="si">{</span><span class="n">H</span><span class="p">(</span><span class="n">c</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> bits/row&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;sum of column entropies:&#34;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">H</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="mi">2</span><span class="p">),</span> <span class="s2">&#34;bits/row -&gt;&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nb">round</span><span class="p">(</span><span class="n">n</span><span class="o">*</span><span class="nb">sum</span><span class="p">(</span><span class="n">H</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="o">/</span><span class="mi">8</span><span class="p">),</span> <span class="s2">&#34;B if each column is coded at its own entropy&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>raw: 664798 B   zlib row-wise: 53830 B   zlib column-wise: 45701 B
+  date      1 distinct   entropy -0.00 bits/row
+  method    3 distinct   entropy 1.37 bits/row
+  status    4 distinct   entropy 1.79 bits/row
+  path      4 distinct   entropy 1.92 bits/row
+  ms       59 distinct   entropy 5.88 bits/row
+sum of column entropies: 10.96 bits/row -&gt; 27394 B if each column is coded at its own entropy
+</code></pre><p>Handing the two layouts to the same general-purpose compressor gains only 18%. That is not a failure of the principle; it is a lesson about which coders care about layout. An <a href="../lz-family/">LZ matcher</a>
+ with a 32 KB window finds the string <code>/api/users</code> whether it is next to a date or next to another path, so for <em>repeats</em> the row layout costs little. The number to look at is the last line. Each column, considered alone, has a tiny alphabet and a skewed distribution, and the sum of the five per-column entropies is 10.96 bits per row, 1.4 bytes, against 2.7 bytes per row for zlib on the rows: a further factor of two that no byte-oriented matcher will find, because it lives in <em>per-column distributions</em>, not in repeated strings. That is what Parquet&rsquo;s column encoders go after. A column with four distinct values gets a <strong>dictionary</strong> and two-bit indices; a column of one repeated value gets <strong>run-length encoding</strong> and costs nothing; a column of timestamps or IDs gets <strong>delta</strong> coding; and then a general-purpose compressor runs over each column&rsquo;s page, seeing one clean distribution at a time. The 5 to 10× against gzipped CSV is mostly these encoders, and they are only available once the layout has put each column in a room of its own.</p>
+<p>This is the second aha at its full scale. <strong>Group bytes that share statistics, and separate the ones that do not.</strong> YCbCr does it across three channels of a pixel. Byte shuffle does it across the four fields of a float. Struct-of-arrays, which game engines use for the same reason their physics loops want all the positions together, does it across the fields of a record. Columnar storage does it across the columns of a table. It is one transform at three scales, and in every case the reason it works is that the coders downstream, whether an entropy coder, a delta coder or an LZ window, do better on a clean distribution than on an interleaved mixture of several.</p>
+<h2 id="blocking-is-not-compression">Blocking is not compression</h2>
+<p>There is a transform in every codec&rsquo;s layout that does the opposite of everything above, and it is worth naming because it is so often mistaken for a compression technique. Blocks. bzip2 sorts in blocks of 100 to 900 kB; FLAC codes in frames of a few thousand samples; video codecs close a group of pictures every couple of seconds; Parquet splits a column into row groups; zstd frames, GGUF blocks and CacheGen&rsquo;s anchor tokens are the same thing in other clothes. In each case the stream is cut into pieces that are coded independently, with the context, the dictionary and the adaptive statistics reset at every cut.</p>
+<p>Every one of those resets costs ratio. Here is the price on the shuffled float array from above, compressed as one piece and in independent pieces:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span><span class="o">,</span> <span class="nn">zlib</span>
+</span></span><span class="line"><span class="cl"><span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4096</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">sig</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="mi">3</span><span class="o">*</span><span class="n">t</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.002</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">standard_normal</span><span class="p">(</span><span class="mi">4096</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">planes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>      <span class="c1"># shuffled layout</span>
+</span></span><span class="line"><span class="cl"><span class="n">whole</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">planes</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(),</span> <span class="mi">9</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">blocks</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">64</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">chunks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_split</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">4096</span><span class="p">),</span> <span class="n">blocks</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">planes</span><span class="p">[:,</span> <span class="n">c</span><span class="p">])</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(),</span> <span class="mi">9</span><span class="p">))</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">blocks</span><span class="si">:</span><span class="s2">3d</span><span class="si">}</span><span class="s2"> independent block(s): </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> bytes  (+</span><span class="si">{</span><span class="mi">100</span><span class="o">*</span><span class="p">(</span><span class="n">total</span><span class="o">/</span><span class="n">whole</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">%)&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>  1 independent block(s): 9816 bytes  (+0%)
+  4 independent block(s): 10369 bytes  (+6%)
+ 16 independent block(s): 10834 bytes  (+17%)
+ 64 independent block(s): 11454 bytes  (+17%)
+</code></pre><p>Sixty-four blocks of 64 samples cost 17% more than one block, and every byte of that is paid for something other than ratio. What it buys is plumbing: a decoder can start at block 40 without reading blocks 0 to 39, which is random access; eight cores can take eight blocks each, which is parallelism; a corrupted byte destroys one block rather than everything after it, which is containment; and the encoder needs memory for one block rather than the whole stream, which is a bounded footprint. The third aha of this article is the one the <a href="../anatomy-of-a-job/">anatomy of a job</a>
+ article turns into a rule: <strong>blocking is not compression, it is plumbing, and the block size is a dial set by the job, not by the data.</strong> A streaming service sets its keyframe interval for seeking; a message queue frames each message so it can be decoded alone; a KV cache is paged in blocks of sixteen tokens so memory can be reclaimed. None of them would choose the block size by asking what compresses best, because the answer to that question is always &ldquo;one block&rdquo;.</p>
+<h2 id="connections">Connections</h2>
+<p><strong>Decorrelation, again.</strong> Run PCA on the RGB values of a natural photograph and the first principal component comes out close to a weighted average of the three channels, roughly luma, with the other two components carrying colour differences: YCbCr is a fixed, eye-weighted approximation to the data-adaptive rotation of the <a href="../rotations-and-rank/">rotations article</a>
+, in the same way the DCT is a fixed approximation to the KLT of a smooth row. The television committee derived it from colorimetry and compatibility; statistics would have handed them nearly the same matrix.</p>
+<p><strong>Data-oriented design.</strong> The struct-of-arrays layout that game and simulation programmers adopt for cache efficiency is the column layout for the same reason: a loop that touches only positions should not drag velocities and names through the cache. &ldquo;Group what is accessed together&rdquo; and &ldquo;group what compresses together&rdquo; are the same instruction, because both are about what sits in the same window.</p>
+<p><strong>Database compression.</strong> The reason an analytical database is both smaller and faster than the same data in a row store is that both properties come from one layout. Decoding only the columns a query touches is random access by construction, and the per-column encoders are the per-column coders of this article. Parquet&rsquo;s dictionary pages are a shared prior the <a href="../side-information/">side information</a>
+ article would recognise.</p>
+<p><strong>In the game:</strong> YCbCr / mid-side (channel decorrelation) sits in the transform stage in the Photographs task (JPEG), the Streaming video task (H.264 / AV1), the Modern web images task (WebP) and the Lossless audio task (FLAC mid/side), and is paired with Chroma subsampling in the synergy &lsquo;Colour transform + chroma subsampling&rsquo;; byte shuffle, columnar layout and framing have no algorithm of their own because they are the plumbing every pipeline stands on.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=prism" title="prism"><img src="/compressionfight/img/fighters/prism.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>prism</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/block-transforms/">Block transforms: which directions matter</a></li><li><a href="/compressionfight/map/zoo/perceptual-models/">Perceptual models: what the consumer cannot notice</a></li><li><a href="/compressionfight/map/zoo/lz-family/">Say it again: the LZ family</a></li><li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: twelve worked dissections</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/rotations-and-rank/"><small>&larr; Previous</small>Rotations and rank: learned axes</a>
+    <a class="next" href="/compressionfight/map/zoo/sorting-transforms/"><small>Next &rarr;</small>Sorting transforms: the Burrows-Wheeler idea</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#the-colour-that-had-to-hide">The colour that had to hide</a></li>
+    <li><a href="#four-pixels">Four pixels</a></li>
+    <li><a href="#integers-in-integers-out">Integers in, integers out</a></li>
+    <li><a href="#the-same-idea-one-level-down-inside-a-float">The same idea, one level down: inside a float</a></li>
+    <li><a href="#the-same-idea-one-level-up-a-table">The same idea, one level up: a table</a></li>
+    <li><a href="#blocking-is-not-compression">Blocking is not compression</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

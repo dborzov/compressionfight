@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Sorting transforms: the Burrows-Wheeler idea · Choose Your Codec</title>
+<meta name="description" content="The Burrows-Wheeler transform is a reversible permutation that groups letters by the context that follows them, turning context into locality, and the same sorted table is a search index.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/" class="on" aria-current="page">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Transform</span><span>/</span><span>Sorting transforms</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Transform · Sorting transforms</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/sorting-transforms.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Sorting transforms: the Burrows-Wheeler idea</h1>
+    <p class="summary">The Burrows-Wheeler transform is a reversible permutation that groups letters by the context that follows them, turning context into locality, and the same sorted table is a search index.</p>
+    <div class="meta">14 min read</div>
+  </header>
+  
+  <div class="prose"><h1 id="the-shuffler-sorting-transforms">The shuffler: sorting transforms</h1>
+<p><em>How can sorting a block of text, a reversible permutation, make it compress like a context model?</em></p>
+<h2 id="the-question">The question</h2>
+<p>Palo Alto, 1994. Michael Burrows and David Wheeler at DEC&rsquo;s Systems Research Center publish a technical report with a modest title, &ldquo;A Block-sorting Lossless Data Compression Algorithm&rdquo;, describing something Wheeler had found years earlier and nobody had quite believed was useful. The claim was strange. Take a block of text. Permute its characters, in a particular reversible way. Do nothing else clever. Then feed the permuted block to the cheapest, dumbest back end you have, and get compression ratios close to the best context models of the day, which were slow, memory-hungry adaptive beasts.</p>
+<p>Here is why that should sound impossible. An entropy coder charges by the histogram. If the block contains 500 <code>e</code>s and 20 <code>z</code>s, a Huffman or arithmetic coder working from those counts charges a fixed price per <code>e</code> and per <code>z</code>, and <em>a permutation does not change the counts</em>. Shuffle the letters any way you like; the order-0 entropy, the bits-per-symbol floor for a coder that sees only frequencies, is identical before and after. On a 75 KB sample of this site&rsquo;s own documentation, the raw text has an order-0 entropy of 4.868 bits per character, and after the Burrows-Wheeler transform it has an order-0 entropy of 4.868 bits per character. By the only number the entropy-coding stage can see, nothing happened.</p>
+<p>So what did?</p>
+<h2 id="seven-rotations-of-a-banana">Seven rotations of a banana</h2>
+<p>Take <code>banana$</code>, where <code>$</code> is an end marker that sorts before every letter. Write down all seven rotations of the string, sort them, and read off the <em>last</em> character of each row:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">bwt</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">rots</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">:]</span> <span class="o">+</span> <span class="n">s</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)))</span>   <span class="c1"># every rotation, sorted</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="s2">&#34;&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rots</span><span class="p">),</span> <span class="n">rots</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>     <span class="c1"># last column, and where the original landed</span>
+</span></span><span class="line"><span class="cl"><span class="n">L</span><span class="p">,</span> <span class="n">idx</span> <span class="o">=</span> <span class="n">bwt</span><span class="p">(</span><span class="s2">&#34;banana$&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>annb$aa 4
+</code></pre><figure class="fig"><a href="/compressionfight/map/img/sorting-transforms/rotations.png"><img src="/compressionfight/map/img/sorting-transforms/rotations.png" alt="The sorted rotation tables of banana$ and abracadabra$ with the first column F and last column L highlighted and the original string&#39;s row marked" loading="lazy"></a><figcaption>Every rotation, sorted. The first column F is the sorted characters; the last column L is the transform. Row 4 of the banana table is the original string, and that row number is the primary index.</figcaption></figure>
+
+<p>Look at the table. The sorted first column, call it $F$, is just the characters of <code>banana$</code> in order: <code>$aaabnn</code>. The last column, $L$, is <code>annb$aa</code>. Both have the same letters, as a permutation must. But the two <code>n</code>s in $L$ are adjacent, and three of the four <code>a</code>s are too. The transform output is <code>a</code>, then <code>nn</code>, then <code>b$</code>, then <code>aa</code>: four runs where the input <code>banana$</code> had seven.</p>
+<p>Why did the <code>n</code>s land together? Read along their rows. Row 2 is <code>ana$ban</code> and row 3 is <code>anana$b</code>. Both rotations <em>begin</em> with <code>an</code>, because that is what the sort put next to each other, and each one&rsquo;s last character is the character that <em>precedes</em> that beginning in the original string. Both <code>n</code>s in <code>banana</code> are followed by <code>a</code>, so when the rotations are sorted by what follows, those two <code>n</code>s are neighbours. Rows 5 and 6 begin with <code>na</code>; their last characters are the letters before each <code>na</code>, which are <code>a</code> and <code>a</code>. Rows 1 to 3 begin with <code>a</code>; their last characters are what precedes each <code>a</code>: <code>n</code>, <code>n</code>, <code>b</code>.</p>
+<p>That is the whole trick, and it is worth saying it in the general case before going on. The <strong>Burrows-Wheeler transform</strong> of a string $s$ of length $n$ is the last column $L$ of the lexicographically sorted matrix of its $n$ rotations, together with the <strong>primary index</strong>, the row at which the original string appears. Row $i$ of the matrix begins with some context $c_i$ (the rotation&rsquo;s prefix) and ends with the character $L[i]$ that precedes that context in $s$. So</p>
+$$L[i] = s\big[(\mathrm{SA}[i] - 1) \bmod n\big],$$<p>where $\mathrm{SA}$ is the <strong>suffix array</strong>, the starting positions of the rotations in sorted order. $L$ is the string&rsquo;s characters <em>sorted by the context that follows each of them</em>.</p>
+<h2 id="aha-1-context-becomes-locality">Aha 1: context becomes locality</h2>
+<p>Now the question from the opening has an answer. A <a href="../context-models/">context model</a>
+ like PPM gets its ratio by conditioning: after <code>th</code>, <code>e</code> is very likely, so <code>e</code> in that context costs a fraction of a bit. It pays for that with a table of statistics per context, updated adaptively, and an arithmetic coder that is handed a different distribution for every symbol.</p>
+<p>The BWT does the conditioning by <em>sorting</em>. Every character that is followed by <code>he_</code> in a block of English lands in one contiguous stretch of $L$, and that stretch is nearly all <code>t</code>. Every character followed by <code>ing_</code> lands in another stretch, mostly <code>r</code>, <code>k</code>, <code>d</code>, <code>t</code>. Every character followed by <code>u</code> is mostly <code>q</code> and <code>o</code>. The transform has not changed what the frequencies are over the block. It has arranged for the frequencies to be <em>wildly different from one neighbourhood of the output to the next</em>. The information a context model keeps in a table, the BWT keeps in the <em>position</em> of each character.</p>
+<p>This is the aha moment of the family and it is worth sitting with: context correlation, a kind of redundancy that an order-0 coder cannot see at all, has been converted into <strong>locality</strong>, which is a kind of redundancy that is easy to see but that an order-0 coder <em>also</em> cannot use directly, because it still sums over the whole block. The entropy is 4.868 bits before and 4.868 bits after. A reversible permutation cannot lower it. What it can do is set up the next stage.</p>
+<figure class="fig"><a href="/compressionfight/map/img/sorting-transforms/runs.png"><img src="/compressionfight/map/img/sorting-transforms/runs.png" alt="Left: histogram of run lengths in 75 KB of Markdown before and after the BWT, runs falling from 73,513 to 36,824. Right: bits per character after BWT and move-to-front falling from 4.53 to 3.06 as the block size grows from 1 KB to 64 KB" loading="lazy"></a><figcaption>Left: the same 75 KB of text has 73,513 runs raw and 36,824 after the BWT, with runs of forty or more appearing where there were none. Right: order-0 entropy after BWT and move-to-front, against block size; the dashed line is the raw text&rsquo;s 4.87 bits.</figcaption></figure>
+
+<p>The left panel is the measurement on the 75 KB sample: the raw text has 73,513 runs of identical characters, the longest being 85 (a line of dashes); the transformed text has 36,824, the longest being 259. Nothing was added or removed. The characters were lined up by context, and contexts in English have strong opinions about what precedes them.</p>
+<div class="map-lab" data-fighter="bwt"><p class="lab-fail">Interactive lab (bwt) needs JavaScript.</p></div>
+
+<div class="viz"><iframe src="/compressionfight/map/viz/sorting-transforms-bwt.html" height="520" loading="lazy" title="Interactive visualization" style="height:520px"></iframe></div>
+
+<h2 id="three-links-deep-mtf-runs-and-only-then-a-coder">Three links deep: MTF, runs, and only then a coder</h2>
+<p>A back end that can cash in locality has to turn &ldquo;the symbol I just saw is likely to recur soon&rdquo; into &ldquo;small numbers are common&rdquo;. That is <strong>move-to-front</strong>: keep the alphabet in a list, output each symbol&rsquo;s current position in the list, then move that symbol to the front.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">mtf</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">alphabet</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">table</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">alphabet</span><span class="p">),</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">i</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">c</span><span class="p">);</span> <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">table</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">table</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>                          <span class="c1"># move it to the front</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">out</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">mtf</span><span class="p">(</span><span class="s2">&#34;annb$aa&#34;</span><span class="p">,</span> <span class="s2">&#34;$abn&#34;</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">mtf</span><span class="p">(</span><span class="s2">&#34;ard$rcaaaabb&#34;</span><span class="p">,</span> <span class="s2">&#34;$abcdr&#34;</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">mtf</span><span class="p">(</span><span class="s2">&#34;aaaaaabbbbbbaaaaaa&#34;</span><span class="p">,</span> <span class="s2">&#34;ab&#34;</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>[1, 3, 0, 3, 3, 3, 0]
+[1, 5, 5, 3, 2, 5, 4, 0, 0, 0, 5, 0]
+[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]
+</code></pre><p>On seven characters of banana there is little to show: a run of two <code>n</code>s becomes <code>3, 0</code>, and the rest is noise. On <code>abracadabra$</code>, whose transform is <code>ard$rcaaaabb</code>, the run of four <code>a</code>s becomes <code>4, 0, 0, 0</code>, and the final <code>bb</code> becomes <code>5, 0</code>. The third line is the point: a long run of anything becomes a run of zeros after its first symbol, and a block that alternates between a few symbols in long stretches becomes almost entirely zeros no matter <em>which</em> symbols they were. On the 75 KB sample, 52 percent of the MTF output is zero, and the order-0 entropy of the MTF output is 3.05 bits per character against the 4.87 of the raw text. <em>Now</em> the frequencies are skewed, and a plain Huffman coder can see it.</p>
+<p>Between MTF and the coder, one more stage: <strong>run-length encoding</strong> of the zeros, because a run of 200 zeros is 200 symbols at a bit or so each to a Huffman coder and a single (run, length) token to RLE. bzip2 codes zero runs with a pair of special symbols that spell the run length in a bijective base-2, so the alphabet the Huffman stage sees is &ldquo;a run of zeros of some length&rdquo; plus the nonzero MTF indices.</p>
+<p>This is the composition rule of the primer, three links deep, and it is the second aha of the family. The BWT converts context into locality; MTF converts locality into small numbers; RLE converts runs of small numbers into a handful of tokens; and only then does an entropy coder see the global skew it needs. Each stage eats what the previous one produced and emits what the next one wants. Remove any one and the chain breaks: BWT then Huffman compresses nothing, because the histogram is unchanged; MTF without BWT does little on raw text, because raw text has only weak locality; RLE on raw text finds almost no runs. It is a pipeline of matched interfaces, not a bag of tricks.</p>
+<div class="map-lab" data-fighter="rle"><p class="lab-fail">Interactive lab (rle) needs JavaScript.</p></div>
+
+<h2 id="undoing-it-with-one-index">Undoing it with one index</h2>
+<p>It would all be useless if the sort threw information away, and a sceptic should ask how <code>annb$aa</code> plus the number 4 can possibly be enough to get <code>banana$</code> back. The brute-force argument is short enough to run. We know $L$. We know $F$, because $F$ is $L$ sorted. Write each $L[i]$ in front of each row, sort the rows, and you have the sorted list of all <em>two</em>-character prefixes of the rotations. Repeat $n$ times and you have rebuilt the whole matrix:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">ibwt</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&#34;&#34;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">rows</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">L</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">rows</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)))</span>   <span class="c1"># prepend L, re-sort, repeat</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">rows</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">ibwt</span><span class="p">(</span><span class="s2">&#34;annb$aa&#34;</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>banana$
+</code></pre><p>That is $O(n^2 \log n)$ and nobody does it, but it proves the point: $L$ determines the matrix, and the primary index picks the row. The real inverse is linear time and rests on one observation, the <strong>LF mapping</strong>. Take the $k$-th occurrence of some character <code>a</code> counting down column $L$, and the $k$-th occurrence of <code>a</code> counting down column $F$. They are the <em>same character of the original string</em>. The reason: the <code>a</code>s in $L$ appear in the order of their following contexts (because rows are sorted by what follows), and the <code>a</code>s in $F$ appear sorted by what follows <em>them</em>, which is the same ordering. So the rank of a character within its letter is preserved between the two columns, and &ldquo;the row in $F$ where this $L$-character lives&rdquo; is a lookup. Hop from $L[i]$ to its row in $F$, read that row&rsquo;s $L$, hop again; each hop moves one character backwards through the string.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">ibwt_lf</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">order</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="p">(</span><span class="n">L</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">i</span><span class="p">))</span>     <span class="c1"># L&#39;s characters in F order, ties by position</span>
+</span></span><span class="line"><span class="cl">    <span class="n">LF</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">f</span> <span class="k">for</span> <span class="n">f</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">order</span><span class="p">)}</span>                   <span class="c1"># row i of L -&gt; row of the same character in F</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span><span class="p">,</span> <span class="n">i</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">idx</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">L</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span> <span class="n">i</span> <span class="o">=</span> <span class="n">LF</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="s2">&#34;&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">ibwt_lf</span><span class="p">(</span><span class="s2">&#34;annb$aa&#34;</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">ibwt_lf</span><span class="p">(</span><span class="s2">&#34;ard$rcaaaabb&#34;</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>banana$ abracadabra$
+</code></pre><p>Seven hops for banana, twelve for abracadabra, one array of $n$ integers, and the original is back. Encoding needs a sort of $n$ rotations (a suffix array, built in $O(n)$ or $O(n \log n)$ with the right algorithm, and in practice the most expensive part of bzip2); decoding needs one counting pass and $n$ hops. The transform is a little asymmetric and the asymmetry points the wrong way for an archive, which is one of the reasons the LZ family won the general-purpose war.</p>
+<h2 id="the-dials-block-size-and-the-one-thing-you-cannot-have">The dials: block size, and the one thing you cannot have</h2>
+<p>Everything above operates on a <strong>block</strong>. The sort is over the rotations of a block, the LF mapping is within a block, and a character&rsquo;s context is only visible to the sort if the context is in the same block. So the block size is a dial, and the right panel of the figure above turns it: on the sample, 1 KB blocks leave 4.53 bits per character after BWT and MTF, 8 KB blocks 3.72, 64 KB blocks 3.06. Bigger blocks mean more characters sharing each context and longer, purer runs. bzip2&rsquo;s block size is its only user-facing parameter, 100 KB to 900 KB (the <code>-1</code> to <code>-9</code> flags), and the memory cost of the sort is several bytes per input byte on top of the block itself, so a 900 KB block wants a few megabytes of RAM, a lot in 1996 and nothing now.</p>
+<p>What the dial cannot buy is streaming or random access. The first byte of the output cannot be emitted until the last byte of the block has been read and sorted, so latency is a whole block; and no byte of a block can be decoded without the LF walk from the primary index through every byte before it. Every block is one indivisible unit, which puts the BWT on the opposite side of the seek dial from the <a href="../motion-compensation/">motion compensation</a>
+ article&rsquo;s GOP, where the whole design is about how often to cut the chain. It is the right shape for a file compressed once and read whole, and the wrong shape for a log that is appended to, a socket, or a column a query wants to skip into.</p>
+<h2 id="bzip2-a-transform-in-a-lossless-codec">bzip2: a transform in a lossless codec</h2>
+<p>Imagine Julian Seward in 1996, with the DEC report on his desk and a problem that is not technical. He has a BWT compressor that works and that uses an arithmetic coder as its back end, which is the natural choice, since an adaptive arithmetic coder can follow the shifting local statistics of the transformed block almost perfectly. But in 1996 arithmetic coding is covered by patents held by IBM and others, and a free compressor that infringes a patent is not free. JPEG&rsquo;s arithmetic mode exists in the standard and is used by nobody for exactly this reason. So he takes the arithmetic coder out and replaces it with Huffman, the one coder everyone agrees is unencumbered, accepting a small loss of ratio to ship something anyone can use; that trade is the documented reason bzip2 uses Huffman codes, and the scene around it is imagined. The result is the stack the primer calls canonical: an initial run-length pass to tame worst-case inputs for the sort, the BWT over blocks of up to 900 KB, move-to-front, run-length coding of zeros, and Huffman with several tables switched every fifty symbols so that the coder can still follow the local statistics a little. It beat gzip&rsquo;s ratio handily on text, cost several times the CPU, and sat in every Unix distribution for twenty years until xz and zstd displaced it.</p>
+<p>The point to carry away is in the map&rsquo;s name for the family: a <em>transform</em> in a lossless codec. The transform stage is usually described as the setup move for a quantizer, a DCT that piles energy into a few coefficients so the rest can be discarded. The BWT is in the same stage for the same reason, a rearrangement that saves nothing itself and makes the next stages&rsquo; job possible, with no quantizer anywhere in the pipeline. The transform&rsquo;s job is to change the <em>shape</em> of the redundancy, and shape is what the downstream stages are sensitive to.</p>
+<h2 id="aha-3-the-same-table-is-an-index">Aha 3: the same table is an index</h2>
+<p>There is a third thing the sorted matrix is, and it is the reason the BWT appears in the &ldquo;used in&rdquo; line of the game&rsquo;s <a href="/compressionfight/#fighter=bwt">Burrows-Wheeler (BWT)</a>
+ alongside genome aligners. The LF mapping walks backwards through the string one character at a time. Run it on a <em>pattern</em> instead of on the whole text and it counts the pattern&rsquo;s occurrences.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">fm_count</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">pattern</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">alphabet</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">L</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="n">C</span> <span class="o">=</span> <span class="p">{</span><span class="n">c</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">x</span> <span class="o">&lt;</span> <span class="n">c</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">L</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">alphabet</span><span class="p">}</span>           <span class="c1"># rows of F where c starts</span>
+</span></span><span class="line"><span class="cl">    <span class="n">occ</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">c</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="n">L</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>                          <span class="c1"># how many c in L before row i</span>
+</span></span><span class="line"><span class="cl">    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">pattern</span><span class="p">):</span>                                <span class="c1"># read the pattern backwards</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">C</span><span class="p">:</span> <span class="k">return</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">        <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">C</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">+</span> <span class="n">occ</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">lo</span><span class="p">),</span> <span class="n">C</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">+</span> <span class="n">occ</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">hi</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">lo</span> <span class="o">&gt;=</span> <span class="n">hi</span><span class="p">:</span> <span class="k">return</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span>
+</span></span><span class="line"><span class="cl"><span class="n">L</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">bwt</span><span class="p">(</span><span class="s2">&#34;banana$&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">([(</span><span class="n">p</span><span class="p">,</span> <span class="n">fm_count</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&#34;ana&#34;</span><span class="p">,</span> <span class="s2">&#34;an&#34;</span><span class="p">,</span> <span class="s2">&#34;nan&#34;</span><span class="p">,</span> <span class="s2">&#34;ban&#34;</span><span class="p">,</span> <span class="s2">&#34;nab&#34;</span><span class="p">)])</span>
+</span></span></code></pre></div><pre tabindex="0"><code>[(&#39;ana&#39;, 2), (&#39;an&#39;, 2), (&#39;nan&#39;, 1), (&#39;ban&#39;, 1), (&#39;nab&#39;, 0)]
+</code></pre><p>Read the pattern from its last character. The rows of the sorted matrix that begin with <code>a</code> are a contiguous range, $[C(\text{a}), C(\text{b}))$. Among those rows, the ones whose <em>preceding</em> character is <code>n</code> are the ones whose $L$ entry is <code>n</code>; by the LF property, those map to a contiguous range of the rows beginning with <code>na</code>. Among those, the ones preceded by <code>a</code> map to the rows beginning with <code>ana</code>. Each step shrinks the range by one character of context and costs one rank query, &ldquo;how many <code>n</code>s in $L$ before row $i$&rdquo;, so the number of steps is the length of the pattern, not the length of the text. <code>ana</code> occurs twice in <code>banana</code> (overlapping, at positions 1 and 3), and the range after three steps has width 2.</p>
+<p>This is the <strong>FM-index</strong> of Ferragina and Manzini, 2000: store $L$ in a form that answers rank queries quickly (a wavelet tree or sampled counts), plus the small $C$ table, and you have a structure that both <em>is</em> the compressed text and answers &ldquo;how many times, and where, does this pattern occur&rdquo; in time proportional to the pattern. A human genome is three billion characters over a four-letter alphabet; its FM-index fits in a few gigabytes, and the aligners that map sequencing reads to it, BWA and Bowtie from 2009 onwards, locate each read by backward search. Every genome sequenced in the last fifteen years has passed through a Burrows-Wheeler transform, not to compress it, but to search it. The same sort, the same column, the same LF hop.</p>
+<h2 id="connections">Connections</h2>
+<p>The suffix array is the BWT with the last step left off, and it is also the limit object of an LZ match finder: sorted suffixes let you find the longest previous occurrence of any string in time proportional to its length, which is what the <a href="../lz-family/">LZ family</a>
+&rsquo;s encoders are approximating with hash chains and binary trees. The two families, so different at the output, share their most expensive data structure.</p>
+<p>The relation to PPM is the one to keep. PPM conditions on the preceding $k$ characters and stores statistics in a table; the BWT groups by the <em>following</em> characters, in the position of the output, with no table. Transforming a block and running an adaptive order-0 coder over it approximates a context model of unbounded order whose statistics are local rather than global, which is why BWT-based compressors sit between gzip and PPM on the ratio axis and why the best of them (bsc, the BWT mode of some research compressors) pair the transform with an adaptive arithmetic coder rather than with bzip2&rsquo;s Huffman tables. <a href="../context-models/">Context models</a>
+ is the article about what the table-based approach buys for the extra cost.</p>
+<p>And the FM-index is a reminder that a compressed representation can be a <em>better</em> representation of the data than the raw one. A sorted, indexed, reversible permutation of a genome answers questions the genome itself cannot answer without a scan. That theme, a compressed form that serves computation directly, returns in the Billion-scale vector search task with product quantization, where distances are computed on the codes.</p>
+<p><strong>In the game:</strong> <a href="/compressionfight/#fighter=bwt">Burrows-Wheeler (BWT)</a>
+ and <a href="/compressionfight/#fighter=rle">Run-length coding</a>
+ are accepted in the Maximum-ratio text archive task (bzip2 against xz and PAQ), where there is no latency pressure and a patient decoder; Run-length coding also serves in the Photographs task, running JPEG&rsquo;s zigzag zeros ahead of Huffman. The <a href="../codec-dissections/">codec dissection</a>
+ of bzip2 shows the five-stage stack stage by stage.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=bwt" title="bwt"><img src="/compressionfight/img/fighters/bwt.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>bwt</span></a></li><li><a href="/compressionfight/#fighter=rle" title="rle"><img src="/compressionfight/img/fighters/rle.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>rle</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/lz-family/">Say it again: the LZ family</a></li><li><a href="/compressionfight/map/zoo/context-models/">Context models: predicting the next symbol</a></li><li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes: whole bits</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/channel-and-layout/"><small>&larr; Previous</small>Channel and layout transforms: group like statistics</a>
+    <a class="next" href="/compressionfight/map/zoo/learned-transforms/"><small>Next &rarr;</small>Learned transforms: autoencoders as codecs</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#the-question">The question</a></li>
+    <li><a href="#seven-rotations-of-a-banana">Seven rotations of a banana</a></li>
+    <li><a href="#aha-1-context-becomes-locality">Aha 1: context becomes locality</a></li>
+    <li><a href="#three-links-deep-mtf-runs-and-only-then-a-coder">Three links deep: MTF, runs, and only then a coder</a></li>
+    <li><a href="#undoing-it-with-one-index">Undoing it with one index</a></li>
+    <li><a href="#the-dials-block-size-and-the-one-thing-you-cannot-have">The dials: block size, and the one thing you cannot have</a></li>
+    <li><a href="#bzip2-a-transform-in-a-lossless-codec">bzip2: a transform in a lossless codec</a></li>
+    <li><a href="#aha-3-the-same-table-is-an-index">Aha 3: the same table is an index</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

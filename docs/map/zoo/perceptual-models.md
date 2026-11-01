@@ -1,5 +1,5 @@
 ---
-title: "Perceptual models: the con artist"
+title: "Perceptual models: what the consumer cannot notice"
 slug: perceptual-models
 chair: perceptual
 family: "Human perceptual models"
@@ -15,11 +15,11 @@ Imagine Erlangen, 1989. An engineer at the Fraunhofer institute, call her Katrin
 
 Then someone plays castanets. Each click, in the coded version, is preceded by a faint smear of noise, a ghost arriving a few milliseconds before the sound that caused it. The rig barely registers it. Katrin hears it on the first pass. (The story is invented; the problem it describes, the pre-echo on transient-heavy test tracks, is the real one the MP3 developers had to solve, and the broad lineage from Fraunhofer's work to MPEG-1 Layer III in 1993 is real too.)
 
-The question this chair exists to answer: *if the error metric is wrong, every "optimal" codec is optimal for the wrong thing, so what does the consumer actually not notice?* The [rate-distortion](../rate-and-distortion/) article ended by saying that mean squared error is a stand-in and that this chair's job is to replace it. Here is the replacement, for the ear, the eye, and finally for a consumer nobody can interview.
+The question this stage exists to answer: *if the error metric is wrong, every "optimal" codec is optimal for the wrong thing, so what does the consumer actually not notice?* The [rate-distortion](../rate-and-distortion/) article ended by saying that mean squared error is a stand-in and that this stage's job is to replace it. Here is the replacement, for the ear, the eye, and finally for a consumer nobody can interview.
 
 ## Why squared error lies
 
-The Butcher's trade is bits for distortion, and so far distortion has meant $\sum (x - \hat{x})^2$. That number treats every sample alike: a unit of noise in a silent passage costs the same as a unit of noise under a trumpet. The ear does not. Two of its properties break the metric at once. Loudness is logarithmic: the same absolute noise power is deafening next to silence and nothing next to a fortissimo, which is why audio is measured in decibels at all. And the ear is a bank of overlapping band-pass filters, roughly two dozen **critical bands** across the audible range, and what happens in one band is nearly independent of what happens three bands away. A metric that does not know about bands and does not know about levels will spend bits where nobody is listening.
+The quantization stage's trade is bits for distortion, and so far distortion has meant $\sum (x - \hat{x})^2$. That number treats every sample alike: a unit of noise in a silent passage costs the same as a unit of noise under a trumpet. The ear does not. Two of its properties break the metric at once. Loudness is logarithmic: the same absolute noise power is deafening next to silence and nothing next to a fortissimo, which is why audio is measured in decibels at all. And the ear is a bank of overlapping band-pass filters, roughly two dozen **critical bands** across the audible range, and what happens in one band is nearly independent of what happens three bands away. A metric that does not know about bands and does not know about levels will spend bits where nobody is listening.
 
 So the naive fix, "weight the squared error by the ear's sensitivity curve," is the right instinct and not nearly enough, because the ear's sensitivity is not a fixed curve. It depends on what else is playing. That dependence is the heart of the matter.
 
@@ -64,7 +64,7 @@ $$
 
 iterated against the real quantizer until the frame's bit budget is met. In MP3 the encoder runs an FFT alongside the MDCT purely to compute this; the result steers per-band scale factors that set the quantizer step. That is the first aha, and it is the arithmetic behind the number everyone knows: MP3 at 128 kbit/s against 1,411 kbit/s for CD audio, eleven to one, is mostly noise placed under a curve that the listener cannot see over.
 
-Notice what is *not* in the bitstream. The threshold, the spreading function, the FFT: none of it is transmitted. The decoder receives scale factors and quantized coefficients and does arithmetic; it never runs the model and never knows why the encoder chose what it chose. The perceptual model is **encoder-only**. That is why two MP3 encoders at the same bitrate can sound different, why the format could be frozen in 1993 while encoders kept improving for twenty years, and why this chair never adds a byte of decoder complexity.
+Notice what is *not* in the bitstream. The threshold, the spreading function, the FFT: none of it is transmitted. The decoder receives scale factors and quantized coefficients and does arithmetic; it never runs the model and never knows why the encoder chose what it chose. The perceptual model is **encoder-only**. That is why two MP3 encoders at the same bitrate can sound different, why the format could be frozen in 1993 while encoders kept improving for twenty years, and why this stage never adds a byte of decoder complexity.
 
 {{< lab id="psychoacoustic" >}}
 
@@ -80,7 +80,7 @@ The eye's version of the sensitivity curve is the **contrast sensitivity functio
 
 {{< fig src="img/perceptual-models/csf.png" alt="A band-pass curve of relative contrast sensitivity against spatial frequency on a log axis, peaking near 8 cycles per degree and falling steeply above 16; the range an 8-by-8 DCT block covers at ordinary viewing distances is shaded." caption="The luminance contrast sensitivity function (the Mannos-Sakrison fit, normalised). An 8×8 DCT's high-frequency coefficients land on the falling right side, which is why JPEG's quantization table gives them steps six times coarser than the DC term." >}}
 
-Lay this over the [DCT](../block-transforms/). Each of the 64 coefficients of an 8×8 block corresponds to a spatial frequency, and the high-order ones sit on the right-hand slope of the curve, where a given amount of error is invisible. JPEG's standard luminance quantization table is that curve compiled into step sizes: 16 for the DC term, rising to 99 in the bottom-right corner. Scaling the whole table by one factor is the quality slider, as the [scalar quantization](../scalar-quantization/) article showed; the *shape* of the table is this chair's contribution, and it is as encoder-chosen as a masking threshold, except that JPEG, unusually, ships the table in the file's header.
+Lay this over the [DCT](../block-transforms/). Each of the 64 coefficients of an 8×8 block corresponds to a spatial frequency, and the high-order ones sit on the right-hand slope of the curve, where a given amount of error is invisible. JPEG's standard luminance quantization table is that curve compiled into step sizes: 16 for the DC term, rising to 99 in the bottom-right corner. Scaling the whole table by one factor is the quality slider, as the [scalar quantization](../scalar-quantization/) article showed; the *shape* of the table is this stage's contribution, and it is as encoder-chosen as a masking threshold, except that JPEG, unusually, ships the table in the file's header.
 
 The second thing the eye does badly is colour. The retina samples brightness at full resolution and colour at a fraction of it: the opponent-colour channels (red-versus-green, blue-versus-yellow) have their own contrast sensitivity functions that peak lower and fall off at far lower spatial frequencies than the luminance curve. So after the [channel transform](../channel-and-layout/) has split the image into a luma plane Y and two chroma planes Cb and Cr, the chroma planes can simply be sampled more coarsely.
 
@@ -147,10 +147,10 @@ There is one more consumer on the map, and it does not have ears. When the reade
 
 The **Weber-Fechner law** (perceived intensity grows with the logarithm of physical intensity) is the oldest result in psychophysics and the reason every curve here is drawn in decibels and log frequency. μ-law telephony, MP3's power-law quantizer and the JND staircase all descend from it.
 
-The **JPEG quality slider** is one scalar multiplying one table whose shape is the contrast sensitivity function; the slider is rate control, the table is this chair.
+The **JPEG quality slider** is one scalar multiplying one table whose shape is the contrast sensitivity function; the slider is rate control, the table is this stage.
 
 The **loudness war** is masking's evil twin in mastering: dynamic-range compression pushes everything toward the loudest level because louder sounds "better" on first hearing, and in doing so it masks the quiet detail that a codec would otherwise have had to pay for. Heavily mastered music compresses more easily; it also has less in it.
 
 **Perceptual hashing** (the pHash family) keeps only the lowest-frequency DCT coefficients of a downscaled greyscale image and thresholds them: it survives recompression, resizing and small edits because it keeps exactly the part of the image the contrast sensitivity function says a viewer sees, and throws away the rest. A fingerprint built from a perceptual model.
 
-**In the game:** the HYPNOTIST (psychoacoustic) sits in the Con Artist's chair for WALKMAN (MP3), where the MASKED QUANT combo pairs it with the Bender; the ILLUSIONIST (chroma) for THE GALLERY (JPEG) and PRIME TIME (H.264/AV1), and the COLOR CON combo pairs it with the Prism; the FORGER (gan) for THE PHONE CALL (SoundStream / EnCodec) and THE SHOWROOM's learned codecs, where the PLAUSIBLE FORGERY combo needs a Brainjar to paint on and FORGER WITHOUT A CANVAS is the anti-combo when there is none.
+**In the game:** the Psychoacoustic model (psychoacoustic) sits in the perceptual-model stage for the Music distribution task (MP3), where the synergy 'Psychoacoustic model + companding' pairs it with the μ-law companding; the Chroma subsampling (chroma) for the Photographs task (JPEG) and the Streaming video task (H.264/AV1), and the synergy 'Colour transform + chroma subsampling' pairs it with the YCbCr / mid-side; the Adversarial loss (gan) for the Real-time speech task (SoundStream / EnCodec) and the Modern web images task's learned codecs, where the synergy 'Learned decoder + adversarial loss' needs a learned decoder to train, and the conflict 'Adversarial loss without a learned network' flags the case where there is none.

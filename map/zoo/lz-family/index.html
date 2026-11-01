@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Say it again: the LZ family · Choose Your Codec</title>
+<meta name="description" content="A back-reference is a prediction made with certainty; the window it points into can be the last 32 KB, a trained dictionary, or a file on another machine.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/" class="on" aria-current="page">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Prediction</span><span>/</span><span>Dictionary matchers: the LZ family</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Prediction · Dictionary matchers: the LZ family</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/lz-family.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Say it again: the LZ family</h1>
+    <p class="summary">A back-reference is a prediction made with certainty; the window it points into can be the last 32 KB, a trained dictionary, or a file on another machine.</p>
+    <div class="meta">14 min read</div>
+  </header>
+  
+  <div class="prose"><h1 id="say-it-again-the-lz-family">Say it again: the LZ family</h1>
+<p><em>The data repeats itself. How do you say &ldquo;the same as before&rdquo; cheaply, and how far back is &ldquo;before&rdquo;?</em></p>
+<h2 id="the-question">The question</h2>
+<p>Haifa, 1977. Jacob Ziv and Abraham Lempel at the Technion are circling a problem that Shannon&rsquo;s theory answers only in principle. Shannon says the cost of a message is its surprise under the right probability model, and that the model is where all the cleverness lives (see <a href="../modeling-and-coding/">modeling and coding</a>
+). Fine. But <em>which</em> model? A model of English is not a model of Fortran listings, and neither is a model of the accounting tapes a bank wants to shrink. Every probability model anyone had built was hand-fitted to one kind of data. Was there a compressor that needed no model at all, one that would learn whatever it was fed and still approach the entropy of the source?</p>
+<p>The two of them noticed something that is obvious the moment you say it and was not obvious before. Real data does not merely have skewed letter frequencies. It <em>repeats itself</em>. A program uses the same identifier a hundred times. A log says <code>connection refused</code> on every third line. A JSON document says <code>&quot;user_id&quot;:</code> once per record. If the next twenty bytes are a copy of twenty bytes you have already sent, you do not need a model of those bytes. You need a pointer.</p>
+<p>That is the whole family in one sentence, and the rest of this article is about the two questions it leaves open: what, exactly, does a pointer cost, and what may it point into?</p>
+<h2 id="a-cat-a-mat-and-four-pointers">A cat, a mat, and four pointers</h2>
+<p>Take the string <code>the_cat_sat_on_the_mat_the_cat_sat</code>, 34 bytes. Scan it left to right. At each position, look back through everything already emitted and ask: is the longest string starting <em>here</em> also sitting somewhere <em>back there</em>? If it is, and it is at least three bytes long, emit a pair (distance back, length) instead of the bytes. Otherwise emit the byte itself and move on by one.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">lz77</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">minlen</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">i</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">best</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>                                  <span class="c1"># (distance, length)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">window</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>         <span class="c1"># every start in the window</span>
+</span></span><span class="line"><span class="cl">            <span class="n">L</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">            <span class="k">while</span> <span class="n">i</span> <span class="o">+</span> <span class="n">L</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="ow">and</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">L</span> <span class="o">-</span> <span class="n">d</span><span class="p">]</span> <span class="o">==</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">L</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">                <span class="n">L</span> <span class="o">+=</span> <span class="mi">1</span>                                 <span class="c1"># may run past the start: overlap is fine</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">L</span> <span class="o">&gt;</span> <span class="n">best</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="n">best</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">L</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">best</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">minlen</span><span class="p">:</span> <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">best</span><span class="p">);</span> <span class="n">i</span> <span class="o">+=</span> <span class="n">best</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="k">else</span><span class="p">:</span>                  <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span> <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">out</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">s</span> <span class="o">=</span> <span class="s2">&#34;the_cat_sat_on_the_mat_the_cat_sat&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">toks</span> <span class="o">=</span> <span class="n">lz77</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">toks</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">lits</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">toks</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="s2">&#34;bytes -&gt;&#34;</span><span class="p">,</span> <span class="n">lits</span><span class="p">,</span> <span class="s2">&#34;literals +&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">toks</span><span class="p">)</span> <span class="o">-</span> <span class="n">lits</span><span class="p">,</span> <span class="s2">&#34;matches&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>[&#39;t&#39;, &#39;h&#39;, &#39;e&#39;, &#39;_&#39;, &#39;c&#39;, &#39;a&#39;, &#39;t&#39;, &#39;_&#39;, &#39;s&#39;, (4, 3), &#39;o&#39;, &#39;n&#39;, &#39;_&#39;, (15, 4), &#39;m&#39;, (11, 3), (23, 11)]
+34 bytes -&gt; 13 literals + 4 matches
+</code></pre><p>Read the tokens against the string. The first eight bytes are new, so they go out as literals. At position 9 the parser sees <code>at_</code> and finds the same three bytes four positions back (the tail of <code>cat_</code>): token <code>(4,3)</code>. <code>on_</code> is new. At position 15, <code>the_</code> was seen at position 0: <code>(15,4)</code>. The <code>m</code> of <code>mat</code> is new, but <code>at_</code> is again three bytes that occurred eleven back: <code>(11,3)</code>. And then the big one: the last eleven bytes, <code>the_cat_sat</code>, are a verbatim copy of the first eleven, twenty-three positions back: <code>(23,11)</code>.</p>
+<figure class="fig"><a href="/compressionfight/map/img/lz-family/matches.png"><img src="/compressionfight/map/img/lz-family/matches.png" alt="The toy string with the four back-references drawn as arrows from each copy to its source" loading="lazy"></a><figcaption>The greedy parse of the toy string. Thirteen bytes are literals; four pointers cover the remaining twenty-one.</figcaption></figure>
+
+<p>Four pointers cover 21 of the 34 bytes. If a pointer cost two bytes, the message would go out as 13 + 8 = 21 bytes, a saving of 13. Real formats do better on the pointers (we will see how), but the bookkeeping is already the right shape: <em>literals plus copies</em>.</p>
+<p>The decoder has an easier job than the encoder. It never searches. It reads a literal and appends it, or reads <code>(d, L)</code> and copies <code>L</code> bytes from <code>d</code> positions back in what it has already written:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">lz77_decode</span><span class="p">(</span><span class="n">toks</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">toks</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span> <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">else</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">d</span><span class="p">,</span> <span class="n">L</span> <span class="o">=</span> <span class="n">t</span>
+</span></span><span class="line"><span class="cl">            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">L</span><span class="p">):</span> <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="n">d</span><span class="p">])</span>   <span class="c1"># byte by byte, so overlaps work</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="s2">&#34;&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">lz77_decode</span><span class="p">(</span><span class="n">lz77</span><span class="p">(</span><span class="s2">&#34;abababababab&#34;</span><span class="p">,</span> <span class="mi">12</span><span class="p">)),</span> <span class="n">lz77</span><span class="p">(</span><span class="s2">&#34;abababababab&#34;</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>abababababab [&#39;a&#39;, &#39;b&#39;, (2, 10)]
+</code></pre><p>Notice the second example. The pointer <code>(2, 10)</code> says &ldquo;go back two bytes and copy ten&rdquo;, which means copying bytes that are being written <em>during</em> the copy. That is legal, and it is how LZ77 does run-length encoding for free: <code>(1, 1000)</code> is a thousand repeats of the previous byte.</p>
+<p>Now the proper names. The thing we just built is <strong>LZ77</strong>: the data already emitted is the <strong>window</strong> (or sliding window; the encoder may only point back at most $W$ bytes), a pointer is a <strong>back-reference</strong> or <strong>match</strong> $(d, L)$ with distance $d \le W$ and length $L$, and the sequence of literals and matches is the <strong>parse</strong>. The decoder&rsquo;s state is the last $W$ bytes of its own output, nothing more. There is no table, no tree, no model to transmit. The dictionary is the data itself.</p>
+<h2 id="aha-1-a-pointer-is-a-prediction-with-certainty">Aha 1: a pointer is a prediction with certainty</h2>
+<p>Look at what <code>(23, 11)</code> actually says. It says: <em>the next eleven bytes are exactly those eleven</em>. In the language of <a href="../modeling-and-coding/">modeling and coding</a>
+, a predictor hands the entropy coder a probability for each symbol and the coder charges $-\log_2 P$. A back-reference is the degenerate case where the predictor assigns $P = 1$ to each of the eleven bytes. Each of them then costs $-\log_2 1 = 0$ bits. The whole of <code>the_cat_sat</code>, 88 bits as literals, costs nothing. What you pay for is the <em>pointer</em>: the bits needed to say which prediction you are making, i.e. $d$ and $L$.</p>
+<p>That reframing explains two things people find odd about LZ.</p>
+<p>First, why it is in the prediction stage on the map and not the entropy-coding stage&rsquo;s. LZ77 saves no bits by itself; it rewrites a stream of bytes into a stream of literals and pointers. In our toy, 13 literals and 4 pairs. Whether that is smaller than 34 bytes depends entirely on how the pairs are written down, and that is an entropy coder&rsquo;s job.</p>
+<p>Second, why there is always an entropy coder <em>after</em> it. The token stream is not noise. Short matches are far more common than long ones; distances cluster (recent bytes are the most likely source of a copy); among literals, <code>e</code> and space still dominate. All of that is statistical skew, and a prefix code or an ANS coder eats it. DEFLATE, the format inside zip, gzip and PNG, codes its tokens with two Huffman trees per block: one over an alphabet that merges the 256 literals with the possible match lengths (3 to 258), and a second over distance buckets (1 to 32,768). A match in DEFLATE typically costs a dozen-odd bits for the pair, which is how <code>(23, 11)</code> turns 88 bits into about 15. zstd keeps the architecture and upgrades each part: literals through a fast Huffman, the (literal-length, match-length, offset) triples through FSE, a table-driven ANS; see <a href="../arithmetic-and-ans/">fractional bits</a>
+. LZ4 goes the other way and uses <em>no</em> entropy coder: byte-aligned tokens, pointers written as raw 16-bit offsets, a ratio around 2:1 instead of 3:1, and decoding at multiple gigabytes per second because decoding is nothing but <code>memcpy</code>.</p>
+<p>That last word is the one to hold on to.</p>
+<h2 id="aha-2-two-dials-and-a-decoder-that-does-not-care">Aha 2: two dials, and a decoder that does not care</h2>
+<p>Shrink the window and run the parser again.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">toks</span> <span class="o">=</span> <span class="n">lz77</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="n">w</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">toks</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)])</span>
+</span></span></code></pre></div><pre tabindex="0"><code>4 [(4, 3)]
+3 []
+</code></pre><p>With a four-byte window the parser can only still see <code>at_</code> four bytes back; the three longer matches are out of reach and become literals. With three bytes it finds nothing at all, and the &ldquo;compressor&rdquo; emits the input unchanged. The window is <strong>reach</strong>: a repeat farther back than $W$ does not exist as far as the encoder is concerned. It is also <strong>memory</strong>: the decoder must hold the last $W$ bytes of output to resolve pointers. DEFLATE&rsquo;s $W = 32{,}768$ was chosen in 1990 for machines with a megabyte of RAM, and it is frozen in every gzip file ever written. LZMA (xz, 7z) lets the window run to hundreds of megabytes; zstd&rsquo;s <code>--long</code> mode reaches 128 MB and beyond, which is what lets it find the second copy of a file inside a tarball.</p>
+<figure class="fig"><a href="/compressionfight/map/img/lz-family/window.png"><img src="/compressionfight/map/img/lz-family/window.png" alt="Compression ratio rising from 4.6 to 7.2 as the LZ window grows from 4 KB to 4 MB on a synthetic log" loading="lazy"></a><figcaption>One codec (LZMA), one 3.7 MB synthetic log, the window swept. Each of the 3,000 line templates recurs about every 300 KB; the ratio climbs steeply once the window can reach that far and then saturates.</figcaption></figure>
+
+<p>The figure is a real measurement on a synthetic service log: 40,000 lines drawn from 3,000 templates, so a given template recurs roughly every 300 KB. Below a 32 KB window the codec only catches the short-range repeats (timestamps, <code>INFO</code>, <code>path=/api/</code>) and manages 4.8:1. By 1 MB every template is in reach and the ratio is 7.1:1. Nothing about the codec changed except how far back it was allowed to look.</p>
+<p>The second dial is <strong>parse effort</strong>. Our toy parser is <em>greedy</em>: at each position it takes the longest match available and moves on. Greedy is not optimal. Taking a 3-byte match now can cost you an 8-byte match that would have started one byte later. <em>Lazy</em> matching (gzip levels 4 to 9) checks whether deferring by one byte gives a longer match before committing. <em>Optimal parsing</em> (xz, zstd at high levels, Brotli at level 11) treats the problem as what it is: a shortest-path problem over positions, where each literal and each possible match is an edge weighted by its coded cost, and the cheapest parse is the cheapest path from the first byte to the last. Formally, for a parse $\pi$ into tokens $t_1, \dots, t_m$,</p>
+$$\text{bits}(\pi) = \sum_{k=1}^{m} -\log_2 P(t_k), \qquad \pi^\star = \arg\min_\pi \text{bits}(\pi),$$<p>and the minimisation is dynamic programming over at most $n$ nodes, once you know the costs the entropy coder will charge. Expensive, because the costs depend on the token statistics, which depend on the parse. The encoder iterates.</p>
+<p>Here is the property that made this family the substrate of everything that gets distributed. Both dials, window and parse effort, live on the encoder. The decoder&rsquo;s work per output byte is the same whether the encoder spent a microsecond or a minute choosing the tokens: read a token, copy some bytes. <code>gzip -1</code> and <code>gzip -9</code> produce files that decompress at the same speed. <code>zstd -1</code> through <code>zstd -19</code> change the match finder (hash chains, then binary trees, then optimal parsing) and nothing else. The compression-level slider that every user of these tools knows is purely an encoder-side knob, which is exactly what an <em>encode once, decode a billion times</em> job wants (see <a href="../anatomy-of-a-job/">the anatomy of a job</a>
+). Spend hours in a datacenter finding the best parse; every phone decodes it with a loop of <code>memcpy</code>.</p>
+<h2 id="the-other-flavour-writing-the-dictionary-down">The other flavour: writing the dictionary down</h2>
+<p>There is a second way to build a pointer, and in 1978 Lempel and Ziv published it too. Instead of pointing into the raw window, both sides maintain an explicit table of <em>phrases</em>, numbered as they are discovered. Terry Welch&rsquo;s 1984 variant, <strong>LZW</strong>, starts the table with the 256 single bytes and grows it by one entry per output code:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">lzw</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">table</span> <span class="o">=</span> <span class="p">{</span><span class="nb">chr</span><span class="p">(</span><span class="n">i</span><span class="p">):</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">256</span><span class="p">)}</span>
+</span></span><span class="line"><span class="cl">    <span class="n">w</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="s2">&#34;&#34;</span><span class="p">,</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">w</span> <span class="o">+</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">table</span><span class="p">:</span> <span class="n">w</span> <span class="o">+=</span> <span class="n">c</span>
+</span></span><span class="line"><span class="cl">        <span class="k">else</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="n">w</span><span class="p">]);</span> <span class="n">table</span><span class="p">[</span><span class="n">w</span> <span class="o">+</span> <span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">table</span><span class="p">);</span> <span class="n">w</span> <span class="o">=</span> <span class="n">c</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="n">w</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">out</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">lzw</span><span class="p">(</span><span class="s2">&#34;ABABABA&#34;</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>[65, 66, 256, 258]
+</code></pre><p>Walk it. <code>A</code> is in the table; <code>AB</code> is not, so emit 65 (<code>A</code>), add <code>AB</code> as entry 256, keep <code>B</code>. <code>BA</code> is not in the table: emit 66, add <code>BA</code> as 257, keep <code>A</code>. Now <code>AB</code> <em>is</em> in the table, so the parser extends to <code>ABA</code>, which is not: emit 256, add <code>ABA</code> as 258, keep <code>A</code>. Then <code>AB</code>, <code>ABA</code> are both known, the string ends, emit 258. Seven bytes became four codes, and the dictionary (<code>AB</code>, <code>BA</code>, <code>ABA</code>) was never transmitted; the decoder rebuilds it by replaying the same rule on the codes it receives.</p>
+<p>LZW was simple, symmetric and fast, and it is the compressor inside GIF, TIFF and Unix <code>compress</code>. It is also the family&rsquo;s cautionary tale about where a dictionary lives. Welch&rsquo;s employer, Sperry (later Unisys), held a patent on it; in late 1994 Unisys announced it would collect royalties from software that wrote GIFs, and within a year a group of volunteers had designed PNG around LZ77 and DEFLATE precisely to route around the patent. Phil Katz&rsquo;s PKZIP had made DEFLATE the de facto standard in 1993, and he published the format so that anyone could implement it. The lineage you use today, zip, gzip, PNG, HTTP, git, zstd, Brotli, LZ4, is all LZ77. The explicit-table branch mostly died with its patent, and not only for legal reasons: the window <em>is</em> a dictionary, one that needs no table management and never has to be reset when it fills.</p>
+<div class="map-lab" data-fighter="lz77"><p class="lab-fail">Interactive lab (lz77) needs JavaScript.</p></div>
+
+<div class="map-lab" data-fighter="lzw"><p class="lab-fail">Interactive lab (lzw) needs JavaScript.</p></div>
+
+<h2 id="the-small-message-problem">The small-message problem</h2>
+<p>Imagine a message-queue team in 2016. Ten million events a second, each a 300-byte JSON blob, each one compressed and decompressed on its own because consumers read them one at a time. Someone switches on gzip per message and watches the dashboard. The savings are a fraction of what the same events get when they are bulk-compressed in a nightly file, and the smallest messages come out <em>larger</em> than they went in.</p>
+<p>Our toy parser explains why without needing any further theory. On the first byte of a message, the window is empty. The parser cannot point at <code>&quot;user_id&quot;:</code> because it has never seen it; the first occurrence of everything is a literal. A 300-byte message has room for at most a few short self-repeats. And then the container costs: a gzip header and trailer are 18 bytes, and a DEFLATE block that stores literals uncompressed adds its own few bytes of framing, so a message with nothing to match goes out heavier than it came in.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">zlib</span><span class="o">,</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">random</span>
+</span></span><span class="line"><span class="cl"><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>                                           <span class="c1"># a checkout event: fixed schema, random values</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&#34;timestamp&#34;</span><span class="p">:</span> <span class="mi">1700000000</span> <span class="o">+</span> <span class="mi">60</span> <span class="o">*</span> <span class="n">i</span><span class="p">,</span> <span class="s2">&#34;level&#34;</span><span class="p">:</span> <span class="s2">&#34;info&#34;</span><span class="p">,</span> <span class="s2">&#34;service&#34;</span><span class="p">:</span> <span class="s2">&#34;checkout-api&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;region&#34;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s2">&#34;eu-west-1&#34;</span><span class="p">,</span> <span class="s2">&#34;us-east-1&#34;</span><span class="p">,</span> <span class="s2">&#34;ap-south-1&#34;</span><span class="p">]),</span> <span class="s2">&#34;user_id&#34;</span><span class="p">:</span> <span class="s2">&#34;u_</span><span class="si">%06x</span><span class="s2">&#34;</span> <span class="o">%</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">16</span><span class="o">**</span><span class="mi">6</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;event_type&#34;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s2">&#34;cart_add&#34;</span><span class="p">,</span> <span class="s2">&#34;cart_remove&#34;</span><span class="p">,</span> <span class="s2">&#34;checkout_start&#34;</span><span class="p">,</span> <span class="s2">&#34;page_view&#34;</span><span class="p">]),</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;sku&#34;</span><span class="p">:</span> <span class="s2">&#34;SKU-</span><span class="si">%05d</span><span class="s2">&#34;</span> <span class="o">%</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">100000</span><span class="p">),</span> <span class="s2">&#34;quantity&#34;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;price_cents&#34;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">20000</span><span class="p">),</span> <span class="s2">&#34;currency&#34;</span><span class="p">:</span> <span class="s2">&#34;EUR&#34;</span><span class="p">,</span> <span class="s2">&#34;session_id&#34;</span><span class="p">:</span> <span class="s2">&#34;s_</span><span class="si">%08x</span><span class="s2">&#34;</span> <span class="o">%</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">16</span><span class="o">**</span><span class="mi">8</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;latency_ms&#34;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span> <span class="s2">&#34;client&#34;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s2">&#34;ios&#34;</span><span class="p">,</span> <span class="s2">&#34;android&#34;</span><span class="p">,</span> <span class="s2">&#34;web&#34;</span><span class="p">])})</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">msg</span> <span class="o">=</span> <span class="n">event</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">dic</span> <span class="o">=</span> <span class="p">(</span><span class="n">event</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">event</span><span class="p">(</span><span class="mi">2</span><span class="p">))[:</span><span class="mi">600</span><span class="p">]</span>                       <span class="c1"># two earlier events, both sides keep them</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">deflate</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">zdict</span><span class="o">=</span><span class="sa">b</span><span class="s2">&#34;&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">co</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compressobj</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="n">zlib</span><span class="o">.</span><span class="n">DEFLATED</span><span class="p">,</span> <span class="o">-</span><span class="mi">15</span><span class="p">,</span> <span class="n">zdict</span><span class="o">=</span><span class="n">zdict</span><span class="p">)</span> <span class="k">if</span> <span class="n">zdict</span> <span class="k">else</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compressobj</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="n">zlib</span><span class="o">.</span><span class="n">DEFLATED</span><span class="p">,</span> <span class="o">-</span><span class="mi">15</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">co</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">+</span> <span class="n">co</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">),</span> <span class="s2">&#34;raw -&gt;&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">deflate</span><span class="p">(</span><span class="n">msg</span><span class="p">)),</span> <span class="s2">&#34;alone,&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">deflate</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">dic</span><span class="p">)),</span> <span class="s2">&#34;with a 600-byte dictionary&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>287 raw -&gt; 191 alone, 62 with a 600-byte dictionary
+</code></pre><p>The event has thirteen fields with random user ids, SKUs and prices, and the same schema every time. Alone, DEFLATE gets it from 287 bytes to 191: the field names repeat a little, the quotes and colons code cheaply, and that is all. Hand DEFLATE a <em>preset dictionary</em> of 600 bytes made of two earlier events, something zlib has supported since the 1990s, and the same message goes out as 62 bytes. Nothing about the algorithm changed. The window was simply non-empty when the first byte arrived: <code>&quot;timestamp&quot;:</code> and <code>&quot;service&quot;:&quot;checkout-api&quot;</code> and <code>&quot;currency&quot;:&quot;EUR&quot;</code> were all already there to point at.</p>
+<figure class="fig"><a href="/compressionfight/map/img/lz-family/dictionary.png"><img src="/compressionfight/map/img/lz-family/dictionary.png" alt="Compressed bytes per JSON message falling from 193 to 43 as the preset dictionary grows from nothing to 32 KB" loading="lazy"></a><figcaption>Fifty ~300-byte events, DEFLATE, mean compressed size against the size of the preset dictionary. The first 300 bytes of shared context do most of the work.</figcaption></figure>
+
+<p>Sweep the dictionary size and the curve is steep and then flat: the first few hundred bytes of shared context cut the message by two thirds, and 32 KB of context only shaves another third off <em>that</em>. The information that matters is the schema, and a schema is small. This is zstd&rsquo;s <code>--train</code>: pick the segments of a sample corpus that are most often matched against (zstd&rsquo;s COVER algorithm), pack them with pretrained entropy tables into a dictionary of around 100 KB, give it an ID, and have the frame header name the ID so the decoder knows which window to preload. Facebook built the feature for exactly this job. Brotli ships a fixed dictionary of about 120 KB of web English and HTML in the spec itself, which is why it beats gzip on small pages. The game&rsquo;s <a href="/compressionfight/#fighter=dictionary">Trained dictionary</a>
+ is this move, and <a href="../side-information/">side information</a>
+ is the article about what it costs to keep both sides holding the same 100 KB.</p>
+<div class="map-lab" data-fighter="dictionary"><p class="lab-fail">Interactive lab (dictionary) needs JavaScript.</p></div>
+
+<h2 id="aha-3-the-window-can-be-anything-both-sides-share">Aha 3: the window can be anything both sides share</h2>
+<p>Step back and look at what the dictionary trick really did. It replaced &ldquo;the window is the last $W$ bytes of this stream&rdquo; with &ldquo;the window is some bytes we both already have&rdquo;. Once you see the window as <em>any shared context</em>, three systems that look nothing like gzip turn out to be LZ77 with a different window.</p>
+<p><strong>rsync.</strong> You have a new version of a file; a remote machine has the old one. The receiver splits its old copy into blocks and sends back a weak rolling checksum and a strong hash per block. The sender slides the rolling checksum over the new file one byte at a time, and whenever it hits a block the receiver already holds, it sends &ldquo;copy block 17&rdquo; instead of the bytes. Literals plus pointers; the window is the old file on the other side of the network.</p>
+<p><strong>Deduplicating backup.</strong> A storage system holds terabytes; tonight&rsquo;s snapshot is mostly yesterday&rsquo;s. Split every stream into chunks, hash each chunk, store each distinct chunk once, and represent a file as a list of chunk hashes. Literals plus pointers again, where the window is the entire store and a pointer is a 32-byte hash. The sharp idea is <em>where to cut</em>. Fixed-size chunks fail the moment one byte is inserted, because every later boundary shifts by one and nothing after the edit matches:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">data</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">20000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span><span class="o">.</span><span class="n">tobytes</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">edited</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:</span><span class="mi">7000</span><span class="p">]</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">&#34;X&#34;</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="mi">7000</span><span class="p">:]</span>              <span class="c1"># insert one byte</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">fixed_chunks</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">{</span><span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">size</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">b</span><span class="p">),</span> <span class="n">size</span><span class="p">)}</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">cdc_chunks</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">win</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>         <span class="c1"># ~1 boundary per 1024 bytes</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span><span class="p">,</span> <span class="n">start</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(),</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">win</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">b</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">h</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">crc32</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="n">win</span><span class="p">:</span><span class="n">i</span><span class="p">])</span> <span class="o">&amp;</span> <span class="n">mask</span>            <span class="c1"># a stand-in for a rolling hash</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">h</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="n">out</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">i</span><span class="p">]);</span> <span class="n">start</span> <span class="o">=</span> <span class="n">i</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="n">start</span><span class="p">:]);</span> <span class="k">return</span> <span class="n">out</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&#34;fixed&#34;</span><span class="p">,</span> <span class="n">fixed_chunks</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;content-defined&#34;</span><span class="p">,</span> <span class="n">cdc_chunks</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">a</span><span class="p">,</span> <span class="n">b2</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">f</span><span class="p">(</span><span class="n">edited</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">16s</span><span class="si">}</span><span class="s2"> chunks </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="si">:</span><span class="s2">3d</span><span class="si">}</span><span class="s2">  unchanged after insert: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">a</span> <span class="o">&amp;</span> <span class="n">b2</span><span class="p">)</span><span class="si">:</span><span class="s2">3d</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>fixed            chunks  20  unchanged after insert:   7
+content-defined  chunks  20  unchanged after insert:  19
+</code></pre><p>Content-defined chunking cuts wherever a hash of the last few bytes hits a pattern, so boundaries are decided by the content, not by the byte count. Insert one byte and only the chunk containing it changes; the other nineteen still hash to the same values and cost nothing to store. Real systems use a true rolling hash (Rabin fingerprints, buzhash) that updates in $O(1)$ per byte, the same primitive rsync uses to find matches at arbitrary alignment.</p>
+<p><strong>git packfiles.</strong> Objects that look similar (the same path, similar size, so successive versions of one file) are sorted next to each other, each is delta-encoded as copies from and insertions relative to its neighbour, and the result is passed through zlib. Two layers of LZ: a pointer into another object, then pointers within the window.</p>
+<p>Each of these is the prediction stage with the window pointed somewhere new, and each one keeps the asymmetry: finding the matches (hashing, searching, chunking) is the expensive side, and reassembling from pointers is a copy. The map&rsquo;s <a href="../side-information/">side information</a>
+ article treats the question these raise, of how both ends come to hold the same window, as the shared-prior stage&rsquo;s problem; here it is enough to see that it is the <em>same</em> algorithm.</p>
+<h2 id="connections">Connections</h2>
+<p>Match finding is a string-searching problem, and the data structures of that field are the engines inside every LZ encoder. zstd&rsquo;s fast levels use hash chains; its slow levels use binary search trees over the window; the suffix tree and the suffix array, which index every suffix of a text so that the longest previous occurrence of any string can be found in time proportional to its length, are the theoretical limit of the match finder. The same suffix array, sorted the same way, is the Burrows-Wheeler transform in another guise, which is why the <a href="../sorting-transforms/">sorting transforms</a>
+ article can promise context-model-grade ratios from a sort.</p>
+<p>The output side connects the other way. The reason DEFLATE is &ldquo;LZ77 then Huffman&rdquo; and not &ldquo;Huffman then LZ77&rdquo; is the composition rule from the primer: the matcher manufactures a skewed token stream, and the <a href="../prefix-codes/">prefix code</a>
+ cashes it in. Reverse the order and Huffman would see flat byte frequencies in <code>abcabcabc</code> and the matcher would see noise.</p>
+<p>And the window-as-shared-context view connects to the whole shared-prior stage column. A trained zstd dictionary, Brotli&rsquo;s built-in web dictionary, the receiver&rsquo;s old file in rsync, the chunk store in a backup system: these are points on the primer&rsquo;s spectrum of <em>where the prior lives</em>, from &ldquo;learned from the stream&rdquo; to &ldquo;installed on both ends&rdquo;. LZ77 with an empty window is the adaptive extreme; LZ77 with a 100 KB trained window is a shared prior; and the fact that the same decoder loop serves both is the reason the dictionary feature was a few hundred lines in zstd rather than a new codec.</p>
+<p><strong>In the game:</strong> <a href="/compressionfight/#fighter=lz77">LZ77</a>
+, <a href="/compressionfight/#fighter=lzw">LZW</a>
+ and <a href="/compressionfight/#fighter=dictionary">Trained dictionary</a>
+ sit in the prediction stage&rsquo;s and the shared-prior stages of the General-purpose file archive task (DEFLATE), the Lossless images task (PNG), the Small JSON messages task (zstd with a trained dictionary) and the KV cache cold storage task (KVTC&rsquo;s DEFLATE back end); see the <a href="../codec-dissections/">codec dissections</a>
+ for each pipeline in full.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=lz77" title="lz77"><img src="/compressionfight/img/fighters/lz77.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>lz77</span></a></li><li><a href="/compressionfight/#fighter=lzw" title="lzw"><img src="/compressionfight/img/fighters/lzw.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>lzw</span></a></li><li><a href="/compressionfight/#fighter=dictionary" title="dictionary"><img src="/compressionfight/img/fighters/dictionary.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>dictionary</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/side-information/">Side information: what the decoder knew before the first byte</a></li><li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes: whole bits</a></li><li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms: the Burrows-Wheeler idea</a></li><li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: twelve worked dissections</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/arithmetic-and-ans/"><small>&larr; Previous</small>Arithmetic coding and ANS: fractional bits</a>
+    <a class="next" href="/compressionfight/map/zoo/linear-prediction/"><small>Next &rarr;</small>Guess, then send the miss: linear prediction</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#the-question">The question</a></li>
+    <li><a href="#a-cat-a-mat-and-four-pointers">A cat, a mat, and four pointers</a></li>
+    <li><a href="#aha-1-a-pointer-is-a-prediction-with-certainty">Aha 1: a pointer is a prediction with certainty</a></li>
+    <li><a href="#aha-2-two-dials-and-a-decoder-that-does-not-care">Aha 2: two dials, and a decoder that does not care</a></li>
+    <li><a href="#the-other-flavour-writing-the-dictionary-down">The other flavour: writing the dictionary down</a></li>
+    <li><a href="#the-small-message-problem">The small-message problem</a></li>
+    <li><a href="#aha-3-the-window-can-be-anything-both-sides-share">Aha 3: the window can be anything both sides share</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

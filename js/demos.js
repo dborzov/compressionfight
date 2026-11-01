@@ -1,4 +1,4 @@
-// Choose Your Codec — Special Move Training: one worked numeric example per fighter.
+// Choose Your Codec — Algorithm labs: one worked numeric example per algorithm.
 // Contract (docs/DEMOS.md): CYC.Demos.render(container, fighterId), CYC.Demos.has(id),
 // pure compute functions on CYC.Demos.calc.* (testable in node without a DOM).
 // Plain ES2020, no libraries. DOM is only touched inside render().
@@ -645,20 +645,20 @@ window.CYC = window.CYC || {};
   // DOM helpers (only called from render)
   // ===========================================================================
   var CSS = [
-    '.cyc-demo{font-family:var(--font-body,"Courier New",monospace);color:var(--fg,var(--ink,#eee));line-height:1.3;font-size:max(13px,.84em);max-width:100%;overflow:hidden}',
+    '.cyc-demo{font-family:inherit;color:var(--fg,var(--ink,#2a211b));line-height:1.3;font-size:max(13px,.84em);max-width:100%;overflow:hidden}',
     '.cyc-demo *{box-sizing:border-box}',
     '.cyc-demo .cyc-row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-start;max-width:100%}',
     '.cyc-demo .cyc-row>*{min-width:0;max-width:100%}',
     '.cyc-demo .cyc-col{display:flex;flex-direction:column;gap:6px;min-width:0}',
     '.cyc-demo .cyc-scroll{overflow-x:auto;max-width:100%;scrollbar-width:thin}',
-    '.cyc-demo .cyc-h{font-size:.8em;letter-spacing:.06em;text-transform:uppercase;opacity:.7;margin:0}',
-    '.cyc-demo table.cyc-strip{border-collapse:collapse;font-variant-numeric:tabular-nums;font-family:var(--viz-font,"Courier New",monospace)}',
+    '.cyc-demo .cyc-h{font-size:.8em;letter-spacing:.08em;font-variant:small-caps;color:var(--ink-2,#5a4a3d);margin:0}',
+    '.cyc-demo table.cyc-strip{border-collapse:collapse;font-variant-numeric:tabular-nums;font-family:var(--font-mono,"JetBrains Mono",ui-monospace,Menlo,monospace)}',
     '.cyc-demo table.cyc-strip td,.cyc-demo table.cyc-strip th{padding:1px 5px;text-align:right;white-space:nowrap;font-weight:normal}',
     '.cyc-demo table.cyc-strip th{text-align:left;opacity:.7}',
     '.cyc-demo table.cyc-strip td.hi{color:var(--role-color);font-weight:bold}',
     '.cyc-demo table.cyc-strip td.dim{opacity:.4}',
-    '.cyc-demo .cyc-matrix{display:inline-grid;gap:2px;font-variant-numeric:tabular-nums;font-family:var(--viz-font,"Courier New",monospace)}',
-    '.cyc-demo .cyc-cell{padding:1px 4px;text-align:right;min-width:2.2em;background:rgba(255,255,255,.05);position:relative}',
+    '.cyc-demo .cyc-matrix{display:inline-grid;gap:2px;font-variant-numeric:tabular-nums;font-family:var(--font-mono,"JetBrains Mono",ui-monospace,Menlo,monospace)}',
+    '.cyc-demo .cyc-cell{padding:1px 4px;text-align:right;min-width:2.2em;background:var(--paper-3,#e0d2b6);position:relative}',
     '.cyc-demo .cyc-cell.zero{opacity:.3}',
     '.cyc-demo .cyc-cell.hi{outline:1px solid var(--role-color);color:var(--role-color)}',
     '.cyc-demo canvas{display:block;max-width:100%}',
@@ -669,10 +669,10 @@ window.CYC = window.CYC || {};
     '.cyc-demo .cyc-toggle button{font:inherit;background:transparent;color:inherit;border:1px solid currentColor;opacity:.55;padding:0 8px;cursor:pointer;margin-right:4px;border-radius:2px}',
     '.cyc-demo .cyc-toggle button.on{opacity:1;border-color:var(--role-color);color:var(--role-color)}',
     '.cyc-demo .cyc-note{margin-top:8px;font-size:.9em;opacity:.8}',
-    '.cyc-demo .cyc-spans{font-family:var(--viz-font,"Courier New",monospace);line-height:1.9;word-break:break-all}',
+    '.cyc-demo .cyc-spans{font-family:var(--font-mono,"JetBrains Mono",ui-monospace,Menlo,monospace);line-height:1.9;word-break:break-all}',
     '.cyc-demo .cyc-span{display:inline-block;padding:0 1px;white-space:pre}',
     '.cyc-demo .cyc-span.lit{opacity:.5}',
-    '.cyc-demo .cyc-span.match{background:rgba(255,255,255,.07);outline:1px solid var(--role-color);margin:0 2px}',
+    '.cyc-demo .cyc-span.match{background:var(--paper-3,#e0d2b6);outline:1px solid var(--role-color);margin:0 2px}',
     '.cyc-demo .cyc-badge{font-size:.7em;vertical-align:super;color:var(--role-color);margin-left:1px}',
     '.cyc-demo .cyc-kv{display:grid;grid-template-columns:auto auto;gap:1px 12px;font-variant-numeric:tabular-nums;align-content:start}',
     '.cyc-demo .cyc-kv span:nth-child(odd){opacity:.75}',
@@ -740,8 +740,8 @@ window.CYC = window.CYC || {};
     return wrap;
   }
   function hexA(hex, a) {
-    hex = (hex || '#ffffff').trim();
-    if (hex[0] !== '#' || (hex.length !== 7 && hex.length !== 4)) return 'rgba(255,255,255,' + a + ')';
+    hex = (hex || '#2a211b').trim();
+    if (hex[0] !== '#' || (hex.length !== 7 && hex.length !== 4)) return 'rgba(42,33,27,' + a + ')';
     if (hex.length === 4) hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
     return 'rgba(' + parseInt(hex.slice(1, 3), 16) + ',' + parseInt(hex.slice(3, 5), 16) + ',' + parseInt(hex.slice(5, 7), 16) + ',' + a + ')';
   }
@@ -778,7 +778,10 @@ window.CYC = window.CYC || {};
     });
     return box;
   }
-  var PALETTE = ['#38d6ff', '#4dff7c', '#ff6a3d', '#d05cff', '#ffe23d', '#ff3d5a', '#ffc14d', '#8fa6ff'];
+  // Design tokens (docs/DESIGN.md): teal, sage, rose, plum, gold, bad, copper, teal-2. Refreshed from CSS variables in render().
+  var PALETTE_VARS = ['--teal', '--sage', '--rose', '--plum', '--gold', '--bad', '--copper', '--teal-2'];
+  var PALETTE = ['#246b66', '#6f8f4e', '#b05a4c', '#6b4a7a', '#b8892e', '#a7403a', '#9c6b3f', '#3f8f88'];
+  var NEG_COLOR = '#a7403a';
 
   // ---- canvas primitives ---------------------------------------------------
   // map: coordinates -1..1. o: {points, assign?, centroids?, arrows?, lines?, grid?: {x:[], y:[]}, labels?}
@@ -900,7 +903,7 @@ window.CYC = window.CYC || {};
     opts = opts || {}; var ctx = cv.ctx, n = m.length, cell = Math.min(cv.w, cv.h - (opts.label ? 14 : 0)) / n, top = opts.label ? 14 : 0;
     var max = opts.max || Math.max(1, Math.max.apply(null, m.map(function (r) { return Math.max.apply(null, r.map(Math.abs)); })));
     m.forEach(function (r, ri) { r.forEach(function (v, ci) {
-      var a = Math.abs(v) / max; ctx.fillStyle = v === 0 ? hexA(T.fg, 0.05) : (v < 0 ? hexA('#ff3d5a', 0.2 + 0.7 * a) : hexA(T.color, 0.2 + 0.7 * a));
+      var a = Math.abs(v) / max; ctx.fillStyle = v === 0 ? hexA(T.fg, 0.05) : (v < 0 ? hexA(NEG_COLOR, 0.2 + 0.7 * a) : hexA(T.color, 0.2 + 0.7 * a));
       ctx.fillRect(ci * cell + 1, top + ri * cell + 1, cell - 2, cell - 2);
     }); });
     if (opts.label) { ctx.fillStyle = T.fg; ctx.fillText(opts.label, 0, 6); }
@@ -1518,7 +1521,7 @@ window.CYC = window.CYC || {};
     }
     box.appendChild(slider('demo-evict-k', 'tokens kept k', 1, 16, 1, 5, draw));
     box.appendChild(view); draw(5);
-    box.appendChild(note('Rows are pages: 8 tokens each. Token 0 carries 0.30 of the attention, tokens 12–15 another 0.30, the rest is spread thin. Keeping the top 5 keeps 60% of the mass at 31% of the tokens, but a paged allocator only frees a page when all 8 of its tokens are gone. The score is the Con Artist\'s job; the pages are the system\'s.'));
+    box.appendChild(note('Rows are pages: 8 tokens each. Token 0 carries 0.30 of the attention, tokens 12–15 another 0.30, the rest is spread thin. Keeping the top 5 keeps 60% of the mass at 31% of the tokens, but a paged allocator only frees a page when all 8 of its tokens are gone. The score is the perceptual-model stage\'s job; the pages are the system\'s.'));
   };
 
   LABS.sinkguard = function (box, T) {
@@ -1590,17 +1593,19 @@ window.CYC = window.CYC || {};
     var lab = LABS[fighterId]; if (!lab) return;
     injectStyle();
     var f = (CYC.FIGHTERS || []).find(function (x) { return x.id === fighterId; }) || {};
-    var roleColor = (CYC.ROLES && CYC.ROLES[f.role] && CYC.ROLES[f.role].color) || '#38d6ff';
+    var roleColor = (CYC.ROLES && CYC.ROLES[f.role] && CYC.ROLES[f.role].color) || '#246b66';
     var root = el('div', 'cyc-demo'); root.dataset.fighter = fighterId;
     container.appendChild(root);
     var T = {
       color: cssVar(container, '--role-color', roleColor),
-      fg: cssVar(container, '--fg', cssVar(container, '--ink', '#eee')),
-      bg: cssVar(container, '--panel', '#111'),
-      font: cssVar(container, '--viz-font', 'monospace'),
+      fg: cssVar(container, '--fg', cssVar(container, '--ink', '#2a211b')),
+      bg: cssVar(container, '--panel', cssVar(container, '--paper-2', '#ebdfc8')),
+      font: cssVar(container, '--font-mono', '"JetBrains Mono", ui-monospace, monospace'),
       w: Math.max(220, Math.min(380, (container.clientWidth || 380) - 8))
     };
     T.dim = hexA(T.fg, 0.3);
+    PALETTE = PALETTE_VARS.map(function (v, i) { return cssVar(container, v, PALETTE[i]); });
+    NEG_COLOR = cssVar(container, '--bad', NEG_COLOR);
     root.style.setProperty('--role-color', T.color);
     lab(root, T, f);
   }

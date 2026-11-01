@@ -1,7 +1,7 @@
 {{ $g := partial "gameroot.html" . }}
 <header class="top">
-  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">MENU</button>
-  <a class="wordmark" href="{{ $g }}" aria-label="Choose Your Codec: back to the game"><span class="a">CHOOSE</span><span class="b">YOUR</span><span class="c">CODEC</span></a>
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="{{ $g }}" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
   <nav class="topnav" aria-label="Site">
     <a href="{{ "" | absURL }}"{{ if .IsHome }} aria-current="page"{{ end }}>Map</a>
     <a href="{{ "primer/" | absURL }}"{{ if eq .RelPermalink ("primer/" | relURL) }} aria-current="page"{{ end }}>Primer</a>

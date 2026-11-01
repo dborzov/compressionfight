@@ -5,13 +5,15 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 
-BG, FG, DIM = "#0b0714", "#ece6f7", "#8a81a3"
-ORANGE, PURPLE, CYAN, GREEN, YELLOW = "#ff6a3d", "#d05cff", "#38d6ff", "#4dff7c", "#ffe23d"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
+ORANGE, PURPLE, CYAN, GREEN, YELLOW = "#b05a4c", "#6b4a7a", "#246b66", "#6f8f4e", "#b8892e"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
                      "axes.edgecolor": DIM, "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
                      "text.color": FG, "font.size": 15, "axes.titlesize": 18, "axes.spines.top": False,
-                     "axes.spines.right": False, "grid.color": "#2a2140", "grid.linestyle": ":"})
+                     "axes.spines.right": False, "grid.color": "#b89f78", "grid.linestyle": ":"})
 
 g = np.linspace(-6, 6, 240_001); pdf = np.exp(-g**2 / 2) / np.sqrt(2 * np.pi); w = pdf / pdf.sum()
 def mse(lv):
@@ -29,7 +31,7 @@ fig, axes = plt.subplots(2, 1, figsize=(16, 8.4), dpi=100, sharex=True)
 for ax, levels, color, name, step_txt in (
         (axes[0], uni, ORANGE, "best uniform grid", f"step {s_best:.3f}"),
         (axes[1], lv, CYAN, "Lloyd-Max, 60 iterations", "steps grow outward")):
-    ax.fill_between(g, 0, pdf, color="#3a2d55", alpha=0.9)
+    ax.fill_between(g, 0, pdf, color="#e0d2b6", alpha=0.9)
     ax.plot(g, pdf, color=FG, lw=1.5)
     b = (levels[1:] + levels[:-1]) / 2
     for bb in b: ax.axvline(bb, color=DIM, lw=1, ls=":")

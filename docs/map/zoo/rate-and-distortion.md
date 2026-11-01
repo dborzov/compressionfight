@@ -1,5 +1,5 @@
 ---
-title: "Rate and distortion: the one irreversible chair"
+title: "Rate and distortion: the one irreversible stage"
 slug: rate-and-distortion
 chair: foundations
 family: "Foundations"
@@ -111,7 +111,7 @@ The gap is 0.256 bits at fine steps and drifts up only when $\Delta$ approaches 
 
 {{< fig src="img/rate-and-distortion/rd_curve.png" alt="Rate against distortion for a Gaussian source: the Shannon R(D) curve and, a constant 0.25 bit above it, the line of uniform quantizers with an entropy coder, with the Δ = 1, 2, 4 operating points marked" caption="The R(D) plane for a Gaussian with the toy's variance. The solid curve is the floor; the dashed line is what rounding to a grid and entropy coding the integers achieves, 0.25 bit above it at every step. The three dots are Δ = 1, 2, 4. Doubling Δ moves one bit down and one factor of four to the right." >}}
 
-This picture is the first thing to carry away. It is a *plane*, not a number. The horizontal axis is how wrong you are allowed to be; the vertical axis is what it costs; the floor is a curve, and a lossy codec is a point. "Quality 85 JPEG", "128 kbps MP3", "CRF 23 x264" and "Q4_K_M" are not different kinds of object. They are coordinates. When a paper says codec A beats codec B, it means A's point is below and to the left of B's. When a product has a quality slider, the slider walks the point along a curve. Everything else in the lossy half of the map, transforms, perceptual models, vector codebooks, is a way of pushing the codec's curve down toward the floor, and the Butcher's chair is where the point is finally chosen.
+This picture is the first thing to carry away. It is a *plane*, not a number. The horizontal axis is how wrong you are allowed to be; the vertical axis is what it costs; the floor is a curve, and a lossy codec is a point. "Quality 85 JPEG", "128 kbps MP3", "CRF 23 x264" and "Q4_K_M" are not different kinds of object. They are coordinates. When a paper says codec A beats codec B, it means A's point is below and to the left of B's. When a product has a quality slider, the slider walks the point along a curve. Everything else in the lossy half of the map, transforms, perceptual models, vector codebooks, is a way of pushing the codec's curve down toward the floor, and the quantization stage is where the point is finally chosen.
 
 ## Zeros are cheap: the dead zone
 
@@ -141,7 +141,7 @@ dead zone f=1/3, Δ=1.00: zeros=0.611  R=1.762 bits  D=0.1009
 plain rounding,  Δ=1.21: zeros=0.575  R=1.762 bits  D=0.1120
 ```
 
-Same 1.762 bits per coefficient; the dead-zone quantizer is 10% lower in error. Plain rounding had to coarsen its whole grid to 1.21 to reach that rate; the dead zone kept the fine grid for the values that matter and spent its savings on the ones near zero. This is the smallest instance of a pattern that recurs through the whole Butcher's chair: the question is never only "how big is the error" but "what does each error cost in bits", and the [scalar quantization article](../scalar-quantization/) takes it further.
+Same 1.762 bits per coefficient; the dead-zone quantizer is 10% lower in error. Plain rounding had to coarsen its whole grid to 1.21 to reach that rate; the dead zone kept the fine grid for the values that matter and spent its savings on the ones near zero. This is the smallest instance of a pattern that recurs through the whole quantization stage: the question is never only "how big is the error" but "what does each error cost in bits", and the [scalar quantization article](../scalar-quantization/) takes it further.
 
 ## Two coordinates and the water level
 
@@ -188,13 +188,13 @@ This is **reverse water-filling**, and it is the rate-distortion function of a s
 
 {{< lab id="waterline" >}}
 
-A quiet consequence is worth stating because it reorganises the rest of the map. Water-filling only has anything to allocate if the variances differ. Eight pixels of a photograph have nearly equal variances; nothing to do. The same eight pixels after a DCT have one huge coefficient and seven small ones, and now the water level drowns most of them for free. That is what a transform is for: it does not remove information, it *skews the variances* so that water-filling can harvest the skew. The harvest has a name, **transform coding gain**, and the [block transforms article](../block-transforms/) shows it equals the ratio of the arithmetic to the geometric mean of the coefficient variances. JPEG's quantization table is a water-filling allocation written down by hand, one $\Delta$ per coefficient, which is why the SCULPTOR fighter sits in the Butcher's chair rather than the Lens's. NVIDIA's 2026 KV-cache codec, KVTC, does the same allocation with a dynamic program over PCA coordinates, which is the WATERLINE fighter.
+A quiet consequence is worth stating because it reorganises the rest of the map. Water-filling only has anything to allocate if the variances differ. Eight pixels of a photograph have nearly equal variances; nothing to do. The same eight pixels after a DCT have one huge coefficient and seven small ones, and now the water level drowns most of them for free. That is what a transform is for: it does not remove information, it *skews the variances* so that water-filling can harvest the skew. The harvest has a name, **transform coding gain**, and the [block transforms article](../block-transforms/) shows it equals the ratio of the arithmetic to the geometric mean of the coefficient variances. JPEG's quantization table is a water-filling allocation written down by hand, one $\Delta$ per coefficient, which is why the Quantization matrix algorithm sits in the quantization stage rather than the transform stage's. NVIDIA's 2026 KV-cache codec, KVTC, does the same allocation with a dynamic program over PCA coordinates, which is the Water-filling allocation algorithm.
 
 ## Who decides what "error" means?
 
 Everything above measured error as mean squared difference, and the honest thing to say about that choice is that it was made for the mathematician's convenience, not the listener's. Squared error has a closed-form $R(D)$, it adds across coordinates, and it survives orthonormal transforms unchanged, which is exactly why water-filling works in the transform domain. But Ruth's customers do not hear mean squared error. They hear hiss on quiet passages and nothing at all on loud ones; they are deaf to a tone next to a louder tone; their eyes cannot resolve colour at the resolution they resolve brightness. Each of those is a statement that two reconstructions with the same squared error are not equally bad.
 
-So the third and last thing to take from this article is a definition. **Distortion is defined by the consumer.** $R(D)$ is a theorem about whatever $D$ you choose, and the choice is a model of who is listening. MSE is the stand-in you use before you have a better one; the whole job of the Con Artist's chair, the [perceptual models](../perceptual-models/) and, for transformers, [attention as the audience](../attention-as-audience/), is to replace it with a measure under which the water can be made deeper where nobody is looking. The psychoacoustic model does not change a single formula here. It changes the $\sigma_i^2$ that water-filling sees, by dividing each coordinate's error by how audible it is, and then lets the mathematics run unchanged. The exchange rate is universal; the currency is the consumer's.
+So the third and last thing to take from this article is a definition. **Distortion is defined by the consumer.** $R(D)$ is a theorem about whatever $D$ you choose, and the choice is a model of who is listening. MSE is the stand-in you use before you have a better one; the whole job of the perceptual-model stage, the [perceptual models](../perceptual-models/) and, for transformers, [attention as the audience](../attention-as-audience/), is to replace it with a measure under which the water can be made deeper where nobody is looking. The psychoacoustic model does not change a single formula here. It changes the $\sigma_i^2$ that water-filling sees, by dividing each coordinate's error by how audible it is, and then lets the mathematics run unchanged. The exchange rate is universal; the currency is the consumer's.
 
 One more bound ties this back to the floor. For any source with differential entropy $h(X)$, under squared error,
 
@@ -202,7 +202,7 @@ $$
 R(D) \ \ge\ h(X) - \tfrac12\log_2(2\pi e D),
 $$
 
-the **Shannon lower bound**, with equality for the Gaussian. The Gaussian is the hardest source of its variance to compress; every real signal, being more structured, has a lower floor. Most of the Oracle's and Lens's chairs are ways of exposing that structure so that the quantizer behind them can get nearer to it.
+the **Shannon lower bound**, with equality for the Gaussian. The Gaussian is the hardest source of its variance to compress; every real signal, being more structured, has a lower floor. Most of the prediction stage's and transform stages are ways of exposing that structure so that the quantizer behind them can get nearer to it.
 
 ## Connections
 
@@ -214,4 +214,4 @@ In a **variational autoencoder** the training loss is a reconstruction term plus
 
 ## In the game
 
-The Butcher's chair is this article's chair, and [GRID](/compressionfight/#fighter=uniform) is Ruth's step size made into a fighter. [WATERLINE](/compressionfight/#fighter=waterline) is reverse water-filling as a bit allocator in THE COLD STORAGE, and [SCULPTOR](/compressionfight/#fighter=qmatrix) is the same allocation hand-written as JPEG's table in THE GALLERY. Every heist from level 2 upward, THE GALLERY, WALKMAN, PRIME TIME, THE WEIGHTS VAULT and all of THE VAULT, is a position on the R(D) plane with a consumer attached.
+The quantization stage is this article's stage, and [Uniform quantizer](/compressionfight/#fighter=uniform) is Ruth's step size made into an algorithm. [Water-filling allocation](/compressionfight/#fighter=waterline) is reverse water-filling as a bit allocator in the KV cache cold storage task, and [Quantization matrix](/compressionfight/#fighter=qmatrix) is the same allocation hand-written as JPEG's table in the Photographs task. Every task from level 2 upward, the Photographs task, the Music distribution task, the Streaming video task, the LLM weights on a laptop task and all of the KV cache level, is a position on the R(D) plane with a consumer attached.

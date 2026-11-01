@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Block-scaled formats: int4 and NVFP4 · Choose Your Codec</title>
+<meta name="description" content="Why a GPU wants 4.5 bits per weight rather than 4 and refuses an entropy coder: the decoder is a kernel, the scale is amortised over a block, and every format on Hugging Face is a point on one curve.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/" class="on" aria-current="page">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Quantization</span><span>/</span><span>Block-scaled integer and float formats</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Quantization · Block-scaled integer and float formats</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/block-float-formats.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Block-scaled formats: int4 and NVFP4</h1>
+    <p class="summary">Why a GPU wants 4.5 bits per weight rather than 4 and refuses an entropy coder: the decoder is a kernel, the scale is amortised over a block, and every format on Hugging Face is a point on one curve.</p>
+    <div class="meta">14 min read</div>
+  </header>
+  
+  <div class="prose"><h1 id="block-scaled-formats-blocky">Block-scaled formats: blocky</h1>
+<p>Imagine an engineer in the spring of 2023, call him Teo, with a laptop that has 64 GB of memory and a 70-billion-parameter language model he wants to run on it. The arithmetic is short and discouraging. Seventy billion weights at two bytes each (the bf16 the model was trained in) is 140 GB. To fit beside the operating system and the working memory of inference he needs the weights under about 40 GB, which is 4.6 bits per weight. He knows the <a href="../scalar-quantization/">scalar quantization</a>
+ article: round to a grid, and every halving of the step costs a bit. Four bits it is, then. Two questions will take him the rest of the week. <em>Why does every working format end up at 4.5 bits rather than 4?</em> And, from a man who has read the <a href="../prefix-codes/">entropy-coding</a>
+ articles, the more irritating one: <em>the rounded values are heavily skewed, so why does nobody put a Huffman or ANS coder behind them?</em></p>
+<p>The answers are the same answer, and it is not about the data. It is about who the decoder is.</p>
+<h2 id="first-attempt-one-scale-for-the-tensor">First attempt: one scale for the tensor</h2>
+<p>The obvious scheme is the one every signal-processing textbook gives: pick a step size for the whole tensor, divide, round, store the integer. Teo picks the step so that the largest weight lands on the top of the 4-bit range. Here is what it does to eight weights, seven of them ordinary and one of them, as real weight matrices always have, a stray giant.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.31</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.52</span><span class="p">,</span> <span class="mf">0.18</span><span class="p">,</span> <span class="mf">0.09</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.24</span><span class="p">,</span> <span class="mf">0.43</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.12</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">])</span>   <span class="c1"># eight weights, one outlier</span>
+</span></span><span class="line"><span class="cl"><span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="mi">7</span>                  <span class="c1"># int4 symmetric: levels -7..7</span>
+</span></span><span class="line"><span class="cl"><span class="n">q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">w</span> <span class="o">/</span> <span class="n">scale</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;scale&#34;</span><span class="p">,</span> <span class="n">scale</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="s2">&#34; codes&#34;</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;decoded&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">q</span> <span class="o">*</span> <span class="n">scale</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="s2">&#34; MSE&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">q</span> <span class="o">*</span> <span class="n">scale</span> <span class="o">-</span> <span class="n">w</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">small</span> <span class="o">=</span> <span class="n">w</span><span class="p">[:</span><span class="mi">7</span><span class="p">];</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">small</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="mi">7</span>   <span class="c1"># the same seven without the outlier</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;without the outlier: scale&#34;</span><span class="p">,</span> <span class="n">s2</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="s2">&#34; codes&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">small</span> <span class="o">/</span> <span class="n">s2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34; MSE&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">small</span> <span class="o">/</span> <span class="n">s2</span><span class="p">)</span> <span class="o">*</span> <span class="n">s2</span> <span class="o">-</span> <span class="n">small</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>scale 0.857  codes [ 0 -1  0  0  0  1  0  7]
+decoded [ 0.   -0.86  0.    0.   -0.    0.86 -0.    6.  ]  MSE 0.0631
+without the outlier: scale 0.074  codes [ 4 -7  2  1 -3  6 -2]  MSE 0.00039
+</code></pre><p>One value of 6.0 forces a step of 0.857 on everyone, and five of the seven ordinary weights round to zero: the outlier is stored perfectly and its neighbours are erased. Take it out of the picture and the same seven weights get a step of 0.074, use the whole code range, and the squared error drops 160-fold. A single weight matrix in a transformer has tens of millions of entries and a tail of outliers with it, and the per-tensor grid is sized by the worst of them. Teo&rsquo;s first 4-bit model does not talk; it produces word salad.</p>
+<p>The scalar article already gave the diagnosis, <em>outliers set the scale</em>, and listed the cures: escape them to a side list, rotate them away, or shrink the group that shares a scale. Teo reaches for the last one, because it is the cheapest, and it leads straight to the first real question.</p>
+<h2 id="second-attempt-the-entropy-coding-stage-refused">Second attempt: the entropy-coding stage, refused</h2>
+<p>Before shrinking anything, notice how skewed those codes are. In a 4-bit tensor of Gaussian-ish weights, the codes near zero are far more common than the codes near the edge; a Huffman tree over the sixteen symbols might average three bits, and an <a href="../arithmetic-and-ans/">arithmetic coder</a>
+ would do a little better. A 25% saving for free. Teo writes the coder, measures the saving, and then writes the matrix-multiply kernel that has to consume the result.</p>
+<p>That is where it dies. A GPU matmul is tens of thousands of threads, each responsible for a handful of outputs, each needing <em>its own</em> weights, now: thread 3,187 wants row 42, columns 96 to 127, and it wants them without reading anything else. With a fixed-width code that address is arithmetic: byte offset $42 \cdot \text{row\_stride} + 96/2$. With a variable-length code there is no such arithmetic. To find where column 96 begins, a thread would have to decode columns 0 through 95 first, serially, because a prefix code only tells you where a symbol ends once you have read it. The thread would spend its time walking a bit stream while thirty thousand neighbours wait. One could add checkpoints every $n$ columns, each a stored offset, and then the checkpoints are side information and the decoder still walks from the nearest one; the game&rsquo;s Random Access Race exercise is exactly this experiment, and there is no setting where the variable-length layout wins on both size and speed.</p>
+<p>So the first aha is a constraint, not a trick: <strong>the decoder is a kernel</strong>. Its ideal is one multiply per element, every thread addressing its own data, nothing serial. Variable-length codes are impossible in that setting, so the format gives up the entropy-coding stage on purpose and pays the nominal width, four bits, for every weight, however predictable. The compression it buys is random access. Research codecs that do entropy-code weights exist, and they all do the same thing at load time: decompress to the int4 layout <em>before</em> the kernel runs. The entropy-coding stage works on the disk and the network; it never works in HBM.</p>
+<h2 id="third-attempt-blocks">Third attempt: blocks</h2>
+<p>Now shrink the group. Instead of one scale per tensor, store one scale per block of $n$ consecutive weights, in a higher-precision format, and let each block set its own step. The outlier at index 7 still erases its neighbours, but now only the $n - 1$ of them in its block. Everything else in the tensor is untouched. The price is the scale itself: with a 16-bit scale per block, the storage per weight is</p>
+$$
+\text{bits/weight} = \frac{16 + n\,b}{n} = b + \frac{16}{n},
+$$<p>where $b$ is the nominal width. The 16 bits are amortised over the block; the smaller the block, the better the outliers are contained and the more the scale costs. This is the second aha and it is the whole design space in one line.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">bpw</span><span class="p">(</span><span class="n">scale_bits</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span> <span class="k">return</span> <span class="p">(</span><span class="n">scale_bits</span> <span class="o">+</span> <span class="n">n</span> <span class="o">*</span> <span class="n">b</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;Q4_0  (fp16 scale, 32 × int4):        &#34;</span><span class="p">,</span> <span class="n">bpw</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;Q4_1  (fp16 scale + fp16 min, 32 × 4): &#34;</span><span class="p">,</span> <span class="n">bpw</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;Q8_0  (fp16 scale, 32 × int8):        &#34;</span><span class="p">,</span> <span class="n">bpw</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;Q4_K  (256 weights: 2 fp16 + 8×(6+6)-bit sub-scales/mins + 256 × 4):&#34;</span><span class="p">,</span> <span class="p">(</span><span class="mi">32</span> <span class="o">+</span> <span class="mi">96</span> <span class="o">+</span> <span class="mi">1024</span><span class="p">)</span> <span class="o">/</span> <span class="mi">256</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;NVFP4 (fp8 scale per 16 × E2M1):      &#34;</span><span class="p">,</span> <span class="n">bpw</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;MXFP4 (8-bit exponent per 32 × E2M1): &#34;</span><span class="p">,</span> <span class="n">bpw</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;int4 with an fp16 scale per </span><span class="si">{</span><span class="n">n</span><span class="si">:</span><span class="s2">3d</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">bpw</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> bits/weight&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>Q4_0  (fp16 scale, 32 × int4):         4.5
+Q4_1  (fp16 scale + fp16 min, 32 × 4):  5.0
+Q8_0  (fp16 scale, 32 × int8):         8.5
+Q4_K  (256 weights: 2 fp16 + 8×(6+6)-bit sub-scales/mins + 256 × 4): 4.5
+NVFP4 (fp8 scale per 16 × E2M1):       4.5
+MXFP4 (8-bit exponent per 32 × E2M1):  4.25
+int4 with an fp16 scale per   8: 6.000 bits/weight
+int4 with an fp16 scale per  16: 5.000 bits/weight
+int4 with an fp16 scale per  32: 4.500 bits/weight
+int4 with an fp16 scale per  64: 4.250 bits/weight
+int4 with an fp16 scale per 128: 4.125 bits/weight
+int4 with an fp16 scale per 256: 4.062 bits/weight
+</code></pre><p>There is Teo&rsquo;s 4.5. The GGUF format that llama.cpp made ubiquitous chose a block of 32 with an fp16 scale and called it <code>Q4_0</code>: 18 bytes per 32 weights. Its sibling <code>Q4_1</code> adds an fp16 minimum so the grid need not be symmetric about zero (5.0 bits). <code>Q8_0</code> keeps the same block and widens the codes to a byte (8.5 bits). The K-quants nest the idea: <code>Q4_K</code> groups 256 weights into a super-block with two fp16 super-scales, then gives each of eight sub-blocks of 32 a 6-bit scale and a 6-bit minimum <em>relative to the super-scales</em>, a scale of scales, so that the per-32 granularity of <code>Q4_1</code> costs 4.5 bits instead of 5.0. (<code>Q4_K_M</code>, the file most people download, mixes <code>Q4_K</code> with 6-bit blocks for the tensors that hurt most, and lands a little above 4.5.) Every one of these is a point on the curves in the figure below, and so is every quantized checkpoint on Hugging Face.</p>
+<figure class="fig"><a href="/compressionfight/map/img/block-float-formats/bits-vs-block.png"><img src="/compressionfight/map/img/block-float-formats/bits-vs-block.png" alt="Bits per weight against block size on a log axis, one curve per nominal width from 2 to 8 bits, each falling toward its width as the block grows; diamonds mark Q4_0, Q4_1, Q8_0, NVFP4, MXFP4 and KIVI&#39;s int2." loading="lazy"></a><figcaption>bits/weight = b + scale_bits/n. The nominal width is a floor the format can never go below (no entropy-coding stage), and the scale is a tax that shrinks with the block. Every named format is a point on one of these curves.</figcaption></figure>
+
+<p>Now the definition, properly. A <strong>block-scaled quantizer</strong> with block size $n$ and width $b$ represents a block $\mathbf{w} \in \mathbb{R}^n$ by a scale $d$ and integer codes $q_i \in \{-2^{b-1}, \dots, 2^{b-1} - 1\}$, with</p>
+$$
+q_i = \operatorname{round}\!\left(\frac{w_i}{d}\right), \qquad \hat{w}_i = d\, q_i, \qquad d = \frac{\max_i |w_i|}{2^{b-1} - 1}
+$$<p>for the <strong>absmax</strong> (symmetric) variant, or, for the <strong>min-max</strong> (asymmetric) variant, $\hat{w}_i = d\, q_i + m$ with $d = (\max \mathbf{w} - \min \mathbf{w})/(2^b - 1)$, $m = \min \mathbf{w}$, and unsigned codes. The asymmetric form spends a second number per block to use all $2^b$ levels on a lopsided block; the symmetric form wastes a level or two and saves the storage. The decoder in either case is one fused multiply-add per element, and that is the point.</p>
+<figure class="fig"><a href="/compressionfight/map/img/block-float-formats/error-vs-block.png"><img src="/compressionfight/map/img/block-float-formats/error-vs-block.png" alt="Mean squared error of int4 absmax quantization against block size, on 4,096 Gaussian weights with 1% outliers at 20 times the typical magnitude, with the bits-per-weight at each block size labelled; a second curve with no outliers stays an order of magnitude lower and nearly flat." loading="lazy"></a><figcaption>On data with 1% outliers, the error rises steadily with block size as each outlier ruins more neighbours; at 4,096 it is the per-tensor disaster from the first attempt. Without outliers the block size barely matters. Blocks are an outlier-containment device, and their cost is the scale bits.</figcaption></figure>
+
+<p>Pay attention to what the figure is <em>not</em> saying. The error without outliers hardly moves between $n = 8$ and $n = 4096$. Blocks are not a general improvement in quantization; they are an outlier-containment device, and their value is entirely a function of how heavy the tails are. That is why the same curve is read differently for weights (mild tails: 32 is plenty) and for activations and keys (which we will get to).</p>
+<figure class="fig"><a href="/compressionfight/map/img/block-float-formats/q4-layout.png"><img src="/compressionfight/map/img/block-float-formats/q4-layout.png" alt="Byte layout diagrams of a Q4_0 block (2-byte fp16 scale then 16 bytes of paired nibbles), a Q8_0 block (2-byte scale then 32 signed bytes), an NVFP4 block (1-byte fp8 scale then 8 bytes of paired E2M1 values) and a Q4_K super-block (two fp16 super-scales, 12 bytes of 6-bit sub-scales and minimums, then 8 sub-blocks of 32 nibbles)." loading="lazy"></a><figcaption>The layouts, byte by byte. In Q4_0, byte i holds weight i in its low nibble and weight i+16 in its high nibble, so a thread that unpacks one byte gets two weights that sit 16 apart; the kernel is written around the layout, and the layout around the kernel.</figcaption></figure>
+
+<div class="map-lab" data-fighter="blockint"><p class="lab-fail">Interactive lab (blockint) needs JavaScript.</p></div>
+
+<h2 id="a-floating-grid-nvfp4">A floating grid: NVFP4</h2>
+<p>Everything so far rounds to a uniform grid inside the block. Teo&rsquo;s weights are bell-shaped, dense near zero and sparse at the edges, and the scalar article&rsquo;s companding lesson applies: a grid whose levels crowd together near zero and spread apart near the edges wastes fewer levels on empty territory. A 4-bit floating-point number is exactly such a grid. <strong>E2M1</strong> (one sign bit, two exponent bits, one mantissa bit) has the fifteen levels $\pm\{0, 0.5, 1, 1.5, 2, 3, 4, 6\}$: steps of 0.5 up to 2, then 1, then 2. NVIDIA&rsquo;s <strong>NVFP4</strong> stores a block of 16 of these with one <strong>E4M3</strong> 8-bit floating scale, plus one fp32 scale for the whole tensor, and the Blackwell tensor core reads the format natively: the multiply-by-scale happens inside the matmul unit. Bits per element: $(8 + 16 \times 4)/16 = 4.5$, the same as <code>Q4_0</code>, with the scale budget spent on a block half the size.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">E2M1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mf">.5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">]);</span> <span class="n">E2M1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="o">-</span><span class="n">E2M1</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">E2M1</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span>  <span class="c1"># 15 levels</span>
+</span></span><span class="line"><span class="cl"><span class="n">blk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.12</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.80</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.22</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.61</span><span class="p">,</span> <span class="mf">0.09</span><span class="p">,</span> <span class="mf">1.9</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.14</span><span class="p">,</span> <span class="mf">0.41</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.27</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.73</span><span class="p">,</span> <span class="mf">0.18</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.44</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">q_fp4</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>                      <span class="c1"># NVFP4-style: absmax lands on 6, snap to the nearest E2M1 level</span>
+</span></span><span class="line"><span class="cl">    <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="mi">6</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">E2M1</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">/</span> <span class="n">s</span> <span class="o">-</span> <span class="n">E2M1</span><span class="p">[</span><span class="kc">None</span><span class="p">])</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span> <span class="o">*</span> <span class="n">s</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">q_int4</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>                     <span class="c1"># int4 absmax: absmax lands on 7, uniform steps</span>
+</span></span><span class="line"><span class="cl">    <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="mi">7</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[(</span><span class="s2">&#34;plain block &#34;</span><span class="p">,</span> <span class="n">blk</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;with outlier&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="o">==</span> <span class="mi">7</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">blk</span><span class="p">))]:</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&#34; MSE fp4&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">q_fp4</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span> <span class="s2">&#34; MSE int4&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">q_int4</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="o">==</span> <span class="mi">7</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">blk</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;outlier block, fp4 :&#34;</span><span class="p">,</span> <span class="n">q_fp4</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;outlier block, int4:&#34;</span><span class="p">,</span> <span class="n">q_int4</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>plain block   MSE fp4 0.0038  MSE int4 0.0063
+with outlier  MSE fp4 0.0285  MSE int4 0.0974
+outlier block, fp4 : [-0.   -0.67  0.67 -0.   -0.   -0.67 -0.    8.   -0.    0.67 -0.   -0.
+  0.67 -0.67 -0.   -0.67]
+outlier block, int4: [ 0.   -0.    1.14 -0.    0.   -1.14  0.    8.   -0.    0.   -0.    0.
+  0.   -1.14  0.   -0.  ]
+</code></pre><p>On the plain block the float grid is modestly better. With an 8.0 dropped in, the int4 step becomes $8/7 = 1.14$ and every weight under 0.57 in magnitude vanishes; the float grid&rsquo;s smallest non-zero level is $0.5 \times 8/6 = 0.67$, so anything above 0.33 survives, and the error is three and a half times lower. (On exactly Gaussian blocks with no outliers int4 wins by a hair, which is the honest version: the float grid is a bet on heavy tails, and tensors pay off that bet.) The <strong>MX</strong> formats standardised by the Open Compute Project make the other trade: the same E2M1 elements, but a block of 32 sharing a pure power-of-two exponent (E8M0) instead of a fp8 scale, 4.25 bits per element and a cheaper scaling circuit. In production, SGLang measured FP8-to-NVFP4 on a 27B model&rsquo;s KV cache at $-0.3$ points on GSM8K and $-1.0$ on GPQA-Diamond, for 1.78× the cache capacity; TensorRT-LLM uses the same format to encode KV pages as they migrate to host memory and decode them on the way back, with attention never reading the cold form.</p>
+<div class="map-lab" data-fighter="fp4"><p class="lab-fail">Interactive lab (fp4) needs JavaScript.</p></div>
+
+<h2 id="the-encoder-may-be-as-clever-as-it-likes">The encoder may be as clever as it likes</h2>
+<p>Nothing in a block format says how the codes must be chosen. Rounding to nearest is the cheapest encoder, not the best one, and because a model is quantized once and run a billion times, the encoder can afford to be expensive. <strong>GPTQ</strong> chooses each column&rsquo;s codes to minimise the error of the layer&rsquo;s <em>output</em> on calibration data, using a Hessian of the inputs to decide how to push rounding error onto columns that matter less. <strong>AWQ</strong> notices that a weight&rsquo;s importance is set by the activations that multiply it, and scales channels before quantization so that the important ones get finer effective steps. Both produce exactly the <code>Q4</code>-shaped layout above; the kernel cannot tell them apart from naive rounding. That asymmetry, lavish encoder and trivial decoder, is the <a href="../anatomy-of-a-job/">job&rsquo;s</a>
+ signature: encode once, decode on every token.</p>
+<h2 id="keys-values-and-which-way-to-slice">Keys, values, and which way to slice</h2>
+<p>Teo&rsquo;s model now fits. The next thing that does not fit is the KV cache, which grows with every token of context and, unlike the weights, is written <em>during</em> inference by the model itself; there is no calibration pass, no offline GPTQ. It is the same block format with the same kernel constraint, and it introduces the third aha, because the key tensor has a property the weight tensors did not. In every decoder-only model studied, a few fixed channels of the keys carry magnitudes far larger than the rest, the same channels for every token. The values show no such pattern. So the question is not just how big a block, but <em>which direction it runs in</em>.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">K</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>       <span class="c1"># 8 tokens (rows) × 8 channels (columns) of a key</span>
+</span></span><span class="line"><span class="cl"><span class="n">K</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">20</span><span class="p">;</span> <span class="n">K</span><span class="p">[:,</span> <span class="mi">5</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">15</span>                <span class="c1"># two outlier channels, the same ones for every token</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">q_int4</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>                        <span class="c1"># one absmax scale per row (axis=1) or per column (axis=0)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">M</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">/</span> <span class="mi">7</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">M</span> <span class="o">/</span> <span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;per-token   (one scale per row):   MSE&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">q_int4</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">K</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;per-channel (one scale per column): MSE&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">q_int4</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">K</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;token 0 per-token decoded:&#34;</span><span class="p">,</span> <span class="n">q_int4</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;token 0 original:         &#34;</span><span class="p">,</span> <span class="n">K</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">q_int4_asym</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>                   <span class="c1"># KIVI-style: min/max per group, 16 levels, zero point</span>
+</span></span><span class="line"><span class="cl">    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">M</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span> <span class="o">/</span> <span class="mi">15</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">((</span><span class="n">M</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span> <span class="o">+</span> <span class="n">lo</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;per-channel with a zero point (asymmetric): MSE&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">q_int4_asym</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">K</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>per-token   (one scale per row):   MSE 0.474
+per-channel (one scale per column): MSE 0.144
+token 0 per-token decoded: [  0.     0.    20.33  -0.     0.   -14.52  -0.     0.  ]
+token 0 original:          [  0.35   0.82  20.33  -1.3    0.91 -14.55  -0.54   0.58]
+per-channel with a zero point (asymmetric): MSE 0.0021
+</code></pre><p>A scale shared across the channels of one token is set by the outlier channel, and the token&rsquo;s six ordinary channels are erased, which is the first attempt&rsquo;s disaster repeated on every row. A scale shared across the <em>tokens</em> of one channel sees a stationary magnitude: channel 2 is always about 20, channel 0 is always about 1, and each gets its own grid. Add a zero point, because a channel that lives at 18.7 to 20.7 does not need levels at zero, and the error falls by two more orders of magnitude. KIVI (ICML 2024) is this observation as a product: keys quantized per channel in groups of 32 tokens, values per token in groups of 32 channels, 2-bit codes with a scale and zero point per group, no calibration at all, and the newest 128 tokens kept in fp16 until a full group has arrived. Its own ablation on Llama-2-13B at 2 bits tells the story in GSM8K accuracy: fp16 22.67; keys per channel with values per token, 12.21; keys per token, 4.55; any configuration with values per channel, essentially zero; the full method with its fp16 window, 20.77. One decision about which way to slice is worth three orders of magnitude on the task.</p>
+<p>Two more algorithms belong to this family as its limiting cases. When an outlier channel is too wild even for per-channel scales, or the outliers are scattered rather than channel-aligned, the <strong>escape hatch</strong> pulls them out: every vector gets a threshold, the top 1% of values skip the grid and ride in a sparse fp16 side list with their indices, and the remaining 99% get a grid with a tenth of the step. The cost is $3 + 0.01 \times (16 + \text{index bits}) \approx 3.3$ bits per element for a 3-bit base; KVQuant&rsquo;s 1% outliers take LLaMA-7B from 5.94 to 5.75 perplexity at 3 bits (fp16: 5.68). The price is a sparse gather on the GPU, which is the one thing a kernel hates, and it is partly why <a href="../vector-quantization/">coupled quantization</a>
+ exists. And at the far end, <strong>eviction</strong> is the degenerate block format: a two-level quantizer whose levels are &ldquo;full precision&rdquo; and &ldquo;nothing&rdquo;, chosen per token. Everything about rate and distortion still applies; what changes is that the distortion is a benchmark score and the choice of what to drop is the <a href="../attention-as-audience/">consumer model&rsquo;s</a>
+ job. The systems trap is memory: paged allocators free a block only when every token in it is gone, so evicting 14,400 of 16,000 tokens can leave 1,600 survivors spread across a thousand blocks and free almost nothing without a compaction pass. Quantization keeps the page layout intact, which is the unglamorous reason it is what production stacks actually ship.</p>
+<div class="map-lab" data-fighter="escape"><p class="lab-fail">Interactive lab (escape) needs JavaScript.</p></div>
+
+<div class="map-lab" data-fighter="evict"><p class="lab-fail">Interactive lab (evict) needs JavaScript.</p></div>
+
+<p>The other cure for outlier channels is to rotate them away before quantizing, so that every channel has the same statistics and per-token blocks become safe again; that is QuaRot and SpinQuant, and it belongs to the <a href="../rotations-and-rank/">rotations</a>
+ article. RoPE is the complication: it rotates channel pairs by a position-dependent angle, smearing an outlier channel&rsquo;s energy between two channels in a way that varies with the token, so per-channel statistics stop being stationary. Methods that quantize keys <em>before</em> RoPE and re-apply it after decoding (KVQuant, CQ, KVTC, TensorRT-LLM&rsquo;s <code>skip_rope_quantization</code>) are undoing a known transform so that the block quantizer sees a stationary signal.</p>
+<h2 id="connections">Connections</h2>
+<p><strong>Block floating point</strong> is a 1970s digital-signal-processing idea: a fixed-point FFT keeps one shared exponent for a whole block of samples and renormalises after each stage, so a cheap integer multiplier gets most of the dynamic range of a floating unit. <code>Q4_0</code> is block floating point with a 16-bit exponent and 4-bit mantissas, and NVFP4 is block floating point with a second, tiny exponent inside each element.</p>
+<p><strong>Floating point itself</strong> is the $n = 1$ case. An fp32 number is a 23-bit mantissa with its own 8-bit scale; by the formula above that is $23 + 8/1 = 31$ bits of storage per value for the mantissa and scale, the most outlier-robust and least amortised point on the curve. Every block format is an argument that neighbouring values can share an exponent.</p>
+<p><strong>JPEG&rsquo;s quantization table</strong> is a block format read the other way: one step size per DCT coefficient, shared across <em>all</em> the blocks of the image, so the block size along which the scale is amortised is the whole picture. The <a href="../scalar-quantization/">scalar quantization</a>
+ article&rsquo;s water-filling allocation and KVTC&rsquo;s per-component steps are the same shape.</p>
+<p>The <strong>Random Access Race</strong> exercise in the game is the second section as an experiment: fixed 8-bit codes against 5.1-bit Huffman codes with checkpoints, and the discovery that no checkpoint spacing wins on both bytes and decode steps. That is the trade this entire family accepts in advance.</p>
+<p><strong>In the game:</strong> Block int4 (blockint) and NVFP4 (fp4) hold the quantization stage in the LLM weights on a laptop task (GGUF Q4_K_M) and the KV cache resident in HBM task (KIVI); NVFP4 returns for the KV cache cold storage task (TensorRT-LLM cold-page NVFP4); Outlier escape (escape) and the Token eviction (evict) are the family&rsquo;s two limits, in the KV cache at 1–2 bits task and the KV token eviction task; and the empty entropy-coding stage in all of them is the reveal of the Random Access Race exercise.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=blockint" title="blockint"><img src="/compressionfight/img/fighters/blockint.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>blockint</span></a></li><li><a href="/compressionfight/#fighter=fp4" title="fp4"><img src="/compressionfight/img/fighters/fp4.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>fp4</span></a></li><li><a href="/compressionfight/#fighter=escape" title="escape"><img src="/compressionfight/img/fighters/escape.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>escape</span></a></li><li><a href="/compressionfight/#fighter=evict" title="evict"><img src="/compressionfight/img/fighters/evict.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>evict</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantization: placing the grid</a></li><li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations and rank: learned axes</a></li><li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The KV cache: same bytes, five tasks</a></li><li><a href="/compressionfight/map/zoo/attention-as-audience/">Attention as the audience: the softmax is the reader</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/vector-quantization/"><small>&larr; Previous</small>Vector quantization: the codebook</a>
+    <a class="next" href="/compressionfight/map/zoo/perceptual-models/"><small>Next &rarr;</small>Perceptual models: what the consumer cannot notice</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#first-attempt-one-scale-for-the-tensor">First attempt: one scale for the tensor</a></li>
+    <li><a href="#second-attempt-the-entropy-coding-stage-refused">Second attempt: the entropy-coding stage, refused</a></li>
+    <li><a href="#third-attempt-blocks">Third attempt: blocks</a></li>
+    <li><a href="#a-floating-grid-nvfp4">A floating grid: NVFP4</a></li>
+    <li><a href="#the-encoder-may-be-as-clever-as-it-likes">The encoder may be as clever as it likes</a></li>
+    <li><a href="#keys-values-and-which-way-to-slice">Keys, values, and which way to slice</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

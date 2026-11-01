@@ -6,14 +6,16 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 import matplotlib.image as mimg
 
-BG, FG, DIM = "#0b0714", "#ece6f5", "#8a7fa3"
-ACC1, ACC2, ACC3 = "#ffb454", "#5ad1ff", "#ff6b9d"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
+ACC1, ACC2, ACC3 = "#b8892e", "#246b66", "#b05a4c"
 plt.rcParams.update({
     "figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
     "text.color": FG, "axes.labelcolor": FG, "xtick.color": DIM, "ytick.color": DIM,
-    "axes.edgecolor": DIM, "grid.color": "#2a2240", "font.size": 13,
+    "axes.edgecolor": DIM, "grid.color": "#b89f78", "font.size": 13,
     "axes.titlesize": 15, "axes.titleweight": "bold",
 })
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -45,10 +47,10 @@ for u in range(8):
     for v in range(8):
         basis = np.outer(C8[u], C8[v])
         ax = axes[u, v]
-        ax.imshow(basis, cmap="magma", vmin=-0.25, vmax=0.25, interpolation="nearest")
+        ax.imshow(basis, cmap="YlGnBu", vmin=-0.25, vmax=0.25, interpolation="nearest")
         ax.set_xticks([]); ax.set_yticks([])
         for s in ax.spines.values():
-            s.set_edgecolor("#2a2240")
+            s.set_edgecolor("#b89f78")
 fig.suptitle("The 64 basis images of the 8×8 DCT-II. Row u = vertical frequency, column v = horizontal frequency.\n"
              "Top-left is the flat DC image; every pixel block is a weighted sum of exactly these 64 pictures.",
              fontsize=15, y=0.995)
@@ -73,7 +75,7 @@ fig, axes = plt.subplots(2, 3, figsize=(16, 9.6), gridspec_kw={"width_ratios": [
 for row, (B, X, label) in enumerate([(blk, Xb, "8×8 block from a picture"), (noise, Xn, "8×8 block of uniform noise")]):
     axes[row, 0].imshow(B, cmap="gray", vmin=0, vmax=255, interpolation="nearest")
     axes[row, 0].set_title(label); axes[row, 0].set_xticks([]); axes[row, 0].set_yticks([])
-    im = axes[row, 1].imshow(np.log10(np.abs(X) + 1), cmap="magma", vmin=0, vmax=3.3, interpolation="nearest")
+    im = axes[row, 1].imshow(np.log10(np.abs(X) + 1), cmap="YlGnBu", vmin=0, vmax=3.3, interpolation="nearest")
     axes[row, 1].set_title("log₁₀(|DCT coefficient| + 1)"); axes[row, 1].set_xticks(range(8)); axes[row, 1].set_yticks(range(8))
     for (u, vv), val in np.ndenumerate(X):
         axes[row, 1].text(vv, u, f"{val:.0f}", ha="center", va="center", fontsize=8,
@@ -126,7 +128,7 @@ n = np.arange(2 * N)
 w = np.sin(np.pi * (n + 0.5) / (2 * N))
 fig, axes = plt.subplots(2, 1, figsize=(16, 8), sharex=True)
 ax = axes[0]
-cols = [ACC1, ACC2, ACC3, "#9df27a", ACC1]
+cols = [ACC1, ACC2, ACC3, "#6f8f4e", ACC1]
 total = np.zeros(6 * N)
 for j in range(5):
     seg = slice(j * N, j * N + 2 * N)

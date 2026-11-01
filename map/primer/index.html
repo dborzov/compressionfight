@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <title> · Choose Your Codec</title>
 <meta name="description" content="Choose Your Codec: The Map">
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
@@ -18,8 +18,8 @@
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="top">
-  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">MENU</button>
-  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game"><span class="a">CHOOSE</span><span class="b">YOUR</span><span class="c">CODEC</span></a>
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
   <nav class="topnav" aria-label="Site">
     <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
     <a href="https://www.borzov.ca/compressionfight/map/primer/" aria-current="page">Primer</a>
@@ -33,124 +33,147 @@
   <a class="side-home" href="/compressionfight/map/">The Map</a>
   <a class="side-home on" href="/compressionfight/map/primer/">Primer</a>
   
+  
   <div class="side-sec">
     <div class="side-h">Foundations</div>
     <ul>
     
       
-      <li class="soon">Modeling and coding: bits are surprise</li>
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
     
       
-      <li class="soon">The anatomy of a job</li>
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
     
       
-      <li class="soon">Rate and distortion</li>
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Packer<small>entropy coders</small></div>
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
     <ul>
     
       
-      <li class="soon">Prefix codes</li>
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
     
       
-      <li class="soon">Fractional-bit coders</li>
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Oracle<small>prediction and modeling</small></div>
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
     <ul>
     
       
-      <li class="soon">Dictionary matchers: the LZ family</li>
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
     
       
-      <li class="soon">Linear and spatial predictors</li>
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
     
       
-      <li class="soon">Statistical context models</li>
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
     
       
-      <li class="soon">Temporal prediction: motion compensation</li>
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Lens<small>transforms and rearrangements</small></div>
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
     <ul>
     
       
-      <li class="soon">Frequency transforms</li>
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
     
       
-      <li class="soon">Rotations, projections and rank</li>
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
     
       
-      <li class="soon">Channel and layout transforms</li>
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
     
       
-      <li class="soon">Sorting transforms</li>
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
     
       
-      <li class="soon">Learned transforms</li>
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Butcher<small>quantizers</small></div>
+    <div class="side-h">Quantization (the only lossy stage)</div>
     <ul>
     
       
-      <li class="soon">Scalar quantizers</li>
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
     
       
-      <li class="soon">Vector quantizers</li>
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
     
       
-      <li class="soon">Block-scaled integer and float formats</li>
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Con Artist<small>consumer models</small></div>
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
     <ul>
     
       
-      <li class="soon">Human perceptual models</li>
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
     
       
-      <li class="soon">A transformer as the audience</li>
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">The Inside Man<small>shared priors and side information</small></div>
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
     <ul>
     
       
-      <li class="soon">Side information</li>
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
     
     </ul>
   </div>
   
   <div class="side-sec">
-    <div class="side-h">Jobs<small>the systems that pick the chairs</small></div>
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
     <ul>
     
       
-      <li class="soon">The five vaults of the KV cache</li>
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
     
       
-      <li class="soon">Codecs as pipelines: worked dissections</li>
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
     
     </ul>
   </div>
@@ -169,15 +192,11 @@
 <hr>
 <h2 id="part-0--the-one-idea-that-organizes-everything">Part 0 — The One Idea That Organizes Everything</h2>
 <p>Before the taxonomy, one unifying idea. Almost everything in this document is a corollary of it.</p>
-<blockquote>
-<p>[!Key] <strong>Compression = modeling + coding.</strong>
-A compressor is:</p>
+<aside class="callout callout-key"><div class="callout-h">Key</div><div class="callout-b"><p class="callout-lead"><strong>Compression = modeling + coding.</strong></p><p>A compressor is:</p>
 <ul>
 <li>a <em>model</em> that predicts the data</li>
 <li>a <em>coder</em> that turns good predictions into short bit strings.</li>
-</ul>
-</blockquote>
-<p>Shannon&rsquo;s result gives the exchange rate: if your model assigns probability <code>P</code> to the symbol that actually occurs, the optimal code spends <code>-log2(P)</code> bits on it. Predict well (high <code>P</code>) → pay few bits. Predict badly → pay many. A perfect coder attached to a model pays exactly the model&rsquo;s <em>cross-entropy</em> on the data — which is why &ldquo;how well can you compress X&rdquo; and &ldquo;how well can you predict X&rdquo; are literally the same question. (This is also why a modern LLM plus an arithmetic coder is, without any modification, a state-of-the-art text compressor.)</p>
+</ul></div></aside><p>Shannon&rsquo;s result gives the exchange rate: if your model assigns probability <code>P</code> to the symbol that actually occurs, the optimal code spends <code>-log2(P)</code> bits on it. Predict well (high <code>P</code>) → pay few bits. Predict badly → pay many. A perfect coder attached to a model pays exactly the model&rsquo;s <em>cross-entropy</em> on the data — which is why &ldquo;how well can you compress X&rdquo; and &ldquo;how well can you predict X&rdquo; are literally the same question. (This is also why a modern LLM plus an arithmetic coder is, without any modification, a state-of-the-art text compressor.)</p>
 <p>This splits the entire toolkit into three families of parts:</p>
 <ol>
 <li>
@@ -331,10 +350,8 @@ A compressor is:</p>
 <p>The pattern: the more prior knowledge both ends share, the fewer bits the wire needs. Dedup, rsync, dictionaries, and neural codecs are all points on this one spectrum.</p>
 <h3 id="stating-a-job-in-one-sentence">Stating a job in one sentence</h3>
 <p>Put the axes together and any job becomes a fill-in-the-blank:</p>
-<blockquote>
-<p><em>&ldquo;Compress data with redundancy profile ⟨R⟩ under fidelity contract ⟨F⟩, with access pattern ⟨A⟩, inside compute envelope ⟨C⟩, with prior knowledge living at ⟨K⟩.&rdquo;</em></p>
-</blockquote>
-<p>Worked contrast — the example from your question:</p>
+<blockquote><p><em>&ldquo;Compress data with redundancy profile ⟨R⟩ under fidelity contract ⟨F⟩, with access pattern ⟨A⟩, inside compute envelope ⟨C⟩, with prior knowledge living at ⟨K⟩.&rdquo;</em></p>
+</blockquote><p>Worked contrast — the example from your question:</p>
 <table>
 	<thead>
 			<tr>
@@ -738,7 +755,7 @@ A compressor is:</p>
 
   </main>
 </div>
-<footer class="foot">Choose Your Codec · <a href="/compressionfight/">play the game</a> · compression, taught by playing</footer>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
@@ -762,10 +779,10 @@ A compressor is:</p>
   window.addEventListener('load', function () { math(); });
   
   document.querySelectorAll('.highlight').forEach(function (h) {
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'COPY';
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
     b.addEventListener('click', function () {
       var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
-      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'COPIED'; setTimeout(function () { b.textContent = 'COPY'; }, 1500); });
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
     });
     h.appendChild(b);
   });
@@ -779,7 +796,7 @@ A compressor is:</p>
       try {
         var f = window.CYC && CYC.byId && CYC.byId[id];
         var t = document.createElement('div'); t.className = 'lab-title';
-        t.textContent = 'SPECIAL MOVE LAB' + (f ? ' · ' + f.name : '');
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
         el.textContent = ''; el.appendChild(t);
         var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
         if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);

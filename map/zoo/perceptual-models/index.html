@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Perceptual models: what the consumer cannot notice · Choose Your Codec</title>
+<meta name="description" content="If the error metric is wrong, every optimal codec is optimal for the wrong thing: what the ear and the eye actually fail to notice, how masking and chroma subsampling cash that in, and why a trained discriminator is a perceptual model nobody had to derive.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/" class="on" aria-current="page">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Perceptual model</span><span>/</span><span>Human perceptual models</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Perceptual model · Human perceptual models</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/perceptual-models.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Perceptual models: what the consumer cannot notice</h1>
+    <p class="summary">If the error metric is wrong, every optimal codec is optimal for the wrong thing: what the ear and the eye actually fail to notice, how masking and chroma subsampling cash that in, and why a trained discriminator is a perceptual model nobody had to derive.</p>
+    <div class="meta">14 min read</div>
+  </header>
+  
+  <div class="prose"><h1 id="perceptual-models-the-con-artist">Perceptual models: the con artist</h1>
+<p>Imagine Erlangen, 1989. An engineer at the Fraunhofer institute, call her Katrin, is wearing headphones in a listening booth, and the piece of music she is hearing has been crushed to one twelfth of its size by the group&rsquo;s experimental coder. Her job is to find the damage. She plays the original, then the coded version, then the original again. She cannot tell them apart. Down the corridor, the measurement rig says the coded signal has a signal-to-noise ratio of about 15 dB, which in a telephone line would be unusable hiss. The rig is not wrong. Her ears are not wrong. The two instruments are measuring different things, and the whole of this article is the gap between them.</p>
+<p>Then someone plays castanets. Each click, in the coded version, is preceded by a faint smear of noise, a ghost arriving a few milliseconds before the sound that caused it. The rig barely registers it. Katrin hears it on the first pass. (The story is invented; the problem it describes, the pre-echo on transient-heavy test tracks, is the real one the MP3 developers had to solve, and the broad lineage from Fraunhofer&rsquo;s work to MPEG-1 Layer III in 1993 is real too.)</p>
+<p>The question this stage exists to answer: <em>if the error metric is wrong, every &ldquo;optimal&rdquo; codec is optimal for the wrong thing, so what does the consumer actually not notice?</em> The <a href="../rate-and-distortion/">rate-distortion</a>
+ article ended by saying that mean squared error is a stand-in and that this stage&rsquo;s job is to replace it. Here is the replacement, for the ear, the eye, and finally for a consumer nobody can interview.</p>
+<h2 id="why-squared-error-lies">Why squared error lies</h2>
+<p>The quantization stage&rsquo;s trade is bits for distortion, and so far distortion has meant $\sum (x - \hat{x})^2$. That number treats every sample alike: a unit of noise in a silent passage costs the same as a unit of noise under a trumpet. The ear does not. Two of its properties break the metric at once. Loudness is logarithmic: the same absolute noise power is deafening next to silence and nothing next to a fortissimo, which is why audio is measured in decibels at all. And the ear is a bank of overlapping band-pass filters, roughly two dozen <strong>critical bands</strong> across the audible range, and what happens in one band is nearly independent of what happens three bands away. A metric that does not know about bands and does not know about levels will spend bits where nobody is listening.</p>
+<p>So the naive fix, &ldquo;weight the squared error by the ear&rsquo;s sensitivity curve,&rdquo; is the right instinct and not nearly enough, because the ear&rsquo;s sensitivity is not a fixed curve. It depends on what else is playing. That dependence is the heart of the matter.</p>
+<h2 id="masking-the-loud-tone-hides-its-neighbours">Masking: the loud tone hides its neighbours</h2>
+<p>Play a pure tone at 80 dB and, while it plays, try to hear a quieter tone nearby in frequency. You cannot, unless it is loud enough; and &ldquo;loud enough&rdquo; is much louder than it would need to be in silence. The loud tone has raised the <strong>threshold of audibility</strong> around itself, steeply on the low-frequency side and gently on the high-frequency side. The quiet tone is <strong>masked</strong>. This is <strong>simultaneous masking</strong>, and it is the single most valuable fact in audio coding, because quantization noise is a quiet signal nearby in frequency, and an encoder gets to choose how much of it to make in each band.</p>
+<p>Here is the toy. Twenty-four bands, one loud tone at 80 dB in band 8, a spreading function that falls 25 dB per band below the masker and 10 dB per band above it, and a masked threshold that sits 15 dB under the spread curve. The rest of the signal is a floor of quiet texture at 30 dB with three modest components.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">bands</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">tone_band</span><span class="p">,</span> <span class="n">tone_level</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="mf">80.0</span>                                  <span class="c1"># one loud tone, 80 dB in band 8</span>
+</span></span><span class="line"><span class="cl"><span class="n">spread</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bands</span> <span class="o">&lt;</span> <span class="n">tone_band</span><span class="p">,</span> <span class="o">-</span><span class="mf">25.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">tone_band</span> <span class="o">-</span> <span class="n">bands</span><span class="p">),</span> <span class="o">-</span><span class="mf">10.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">bands</span> <span class="o">-</span> <span class="n">tone_band</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">mask</span> <span class="o">=</span> <span class="n">tone_level</span> <span class="o">+</span> <span class="n">spread</span> <span class="o">-</span> <span class="mf">15.0</span>        <span class="c1"># masked threshold: the tone&#39;s level, spread, 15 dB down</span>
+</span></span><span class="line"><span class="cl"><span class="n">threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)</span>       <span class="c1"># never below the threshold in quiet (20 dB in this toy)</span>
+</span></span><span class="line"><span class="cl"><span class="n">signal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="mi">24</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">);</span> <span class="n">signal</span><span class="p">[</span><span class="n">tone_band</span><span class="p">]</span> <span class="o">=</span> <span class="mi">80</span><span class="p">;</span> <span class="n">signal</span><span class="p">[[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">20</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">42</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="n">free</span> <span class="o">=</span> <span class="n">signal</span> <span class="o">&lt;</span> <span class="n">threshold</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;threshold per band:&#34;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;free bands (signal already under the curve):&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">free</span><span class="p">),</span> <span class="s2">&#34;-&gt;&#34;</span><span class="p">,</span> <span class="n">free</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="s2">&#34;of 24&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">bits_masked</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">signal</span> <span class="o">-</span> <span class="n">threshold</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">6.02</span>          <span class="c1"># 6.02 dB of SNR per bit</span>
+</span></span><span class="line"><span class="cl"><span class="n">bits_quiet</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">signal</span> <span class="o">-</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">6.02</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;bits for the frame: masking&#34;</span><span class="p">,</span> <span class="n">bits_masked</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="s2">&#34; vs no masking&#34;</span><span class="p">,</span> <span class="n">bits_quiet</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;the tone itself: &#34;</span><span class="p">,</span> <span class="n">bits_quiet</span><span class="p">[</span><span class="n">tone_band</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="s2">&#34;-&gt;&#34;</span><span class="p">,</span> <span class="n">bits_masked</span><span class="p">[</span><span class="n">tone_band</span><span class="p">]</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="s2">&#34;bits&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>threshold per band: [20 20 20 20 20 20 20 40 65 55 45 35 25 20 20 20 20 20 20 20 20 20 20 20]
+free bands (signal already under the curve): [ 7  9 10 11] -&gt; 4 of 24
+bits for the frame: masking 41.5  vs no masking 56.5
+the tone itself:  10.0 -&gt; 2.5 bits
+</code></pre><p>Read the two savings separately, because they are different mechanisms. Four bands, the ones adjacent to the tone, hold content that is <em>already below</em> the masked threshold: whatever is there cannot be heard while the tone plays, so the encoder sends nothing for them. They are free. That is the obvious saving and it is the smaller one. The larger one is in the tone&rsquo;s own band. Without a masking model the encoder would need the noise 60 dB under the 80 dB tone to be sure it was inaudible, ten bits; with the model it knows the noise only needs to sit 15 dB under the tone, two and a half bits. The same holds in every band the curve touches. The masking model does not merely find silence to skip; it rewrites the required signal-to-noise ratio of every band from &ldquo;below the threshold in quiet&rdquo; to &ldquo;below the masked threshold,&rdquo; and since the <a href="../rate-and-distortion/">rate-distortion</a>
+ article&rsquo;s rule is 6.02 dB per bit, every 6 dB the threshold rises is one bit per band the encoder no longer owes.</p>
+<figure class="fig"><a href="/compressionfight/map/img/perceptual-models/masking-curve.png"><img src="/compressionfight/map/img/perceptual-models/masking-curve.png" alt="Top: 24 band levels as bars with one 80 dB masker in band 8; the masked threshold is a peaked white curve falling 25 dB per band to the left and 10 dB per band to the right; four bars next to the masker sit under it and are labelled free. Bottom: bits per band with and without the masking model." loading="lazy"></a><figcaption>The toy frame. The masked threshold is where quantization noise becomes audible; the encoder&rsquo;s job is to put noise just under the curve in every band. Four bands are free outright, and the masker&rsquo;s own band drops from 10 bits to 2.5.</figcaption></figure>
+
+<p>Now the definitions the toy was standing in for. The <strong>masking threshold</strong> $T(b)$ in band $b$ is the level below which an added signal is inaudible given everything else in the frame. It is built by taking each significant component (tonal or noise-like; tones mask less than noise of the same level), spreading its level across neighbouring bands with a <strong>spreading function</strong> (the asymmetric slopes above are a crude one; real models use curves fitted to listening tests on the Bark scale), subtracting a masking offset, and combining the contributions, floored by the <strong>threshold in quiet</strong>, the ear&rsquo;s sensitivity curve in silence. The quantity the encoder actually uses is the <strong>signal-to-mask ratio</strong> $\mathrm{SMR}(b) = L(b) - T(b)$, the number of decibels of noise suppression band $b$ needs, and the bit allocation follows from</p>
+$$
+R(b) \approx \max\!\left(0,\ \frac{\mathrm{SMR}(b)}{6.02}\right) \ \text{bits per sample},
+$$<p>iterated against the real quantizer until the frame&rsquo;s bit budget is met. In MP3 the encoder runs an FFT alongside the MDCT purely to compute this; the result steers per-band scale factors that set the quantizer step. That is the first aha, and it is the arithmetic behind the number everyone knows: MP3 at 128 kbit/s against 1,411 kbit/s for CD audio, eleven to one, is mostly noise placed under a curve that the listener cannot see over.</p>
+<p>Notice what is <em>not</em> in the bitstream. The threshold, the spreading function, the FFT: none of it is transmitted. The decoder receives scale factors and quantized coefficients and does arithmetic; it never runs the model and never knows why the encoder chose what it chose. The perceptual model is <strong>encoder-only</strong>. That is why two MP3 encoders at the same bitrate can sound different, why the format could be frozen in 1993 while encoders kept improving for twenty years, and why this stage never adds a byte of decoder complexity.</p>
+<div class="map-lab" data-fighter="psychoacoustic"><p class="lab-fail">Interactive lab (psychoacoustic) needs JavaScript.</p></div>
+
+<h2 id="pre-echo-and-time">Pre-echo, and time</h2>
+<p>Back to the castanets. Masking also works in time: a loud sound masks quieter sounds for some tens of milliseconds <em>after</em> it stops (<strong>post-masking</strong>), and, strangely, for a few milliseconds <em>before</em> it starts (<strong>pre-masking</strong>), because the auditory system takes time to register a sound. A few milliseconds is the key number. The MDCT in MP3 works on frames of 576 coefficients per granule, and the window it analyses spans about 26 ms at 44.1 kHz; the <a href="../block-transforms/">block transforms</a>
+ article explains why long windows are good (frequency resolution, and latency is free for a music file). But quantization noise in the transform domain spreads over the whole window in time. If a click happens at the end of the window, the noise it causes smears across the 20 ms of near-silence <em>before</em> it, far outside the few milliseconds pre-masking can hide. That is the ghost Katrin heard.</p>
+<p>The cure is <strong>block switching</strong>: a transient detector in the encoder (again, encoder-only) spots the click and switches that frame to three short windows of 192 coefficients each, each spanning roughly 9 ms instead of 26, confining the noise to a few milliseconds around the event, at the cost of frequency resolution for that frame. AAC, Opus&rsquo;s CELT mode and every later codec have some version of it. The lesson generalises: a perceptual model is a model of <em>when</em> as much as <em>what</em>, and the codec&rsquo;s structural dials, window length among them, are set by what the consumer can and cannot resolve.</p>
+<h2 id="the-eye-a-different-con-same-trick">The eye: a different con, same trick</h2>
+<p>The eye&rsquo;s version of the sensitivity curve is the <strong>contrast sensitivity function</strong>: how faint a sinusoidal grating can be and still be seen, as a function of its spatial frequency in cycles per degree of visual angle. It is band-pass. Sensitivity peaks near 4 to 8 cycles per degree, falls off gently for coarse gradients, and collapses for fine texture: on the standard fit below, sensitivity at 30 cycles per degree is about a fifth of the peak, and by 60 it is a few hundredths of it.</p>
+<figure class="fig"><a href="/compressionfight/map/img/perceptual-models/csf.png"><img src="/compressionfight/map/img/perceptual-models/csf.png" alt="A band-pass curve of relative contrast sensitivity against spatial frequency on a log axis, peaking near 8 cycles per degree and falling steeply above 16; the range an 8-by-8 DCT block covers at ordinary viewing distances is shaded." loading="lazy"></a><figcaption>The luminance contrast sensitivity function (the Mannos-Sakrison fit, normalised). An 8×8 DCT&rsquo;s high-frequency coefficients land on the falling right side, which is why JPEG&rsquo;s quantization table gives them steps six times coarser than the DC term.</figcaption></figure>
+
+<p>Lay this over the <a href="../block-transforms/">DCT</a>
+. Each of the 64 coefficients of an 8×8 block corresponds to a spatial frequency, and the high-order ones sit on the right-hand slope of the curve, where a given amount of error is invisible. JPEG&rsquo;s standard luminance quantization table is that curve compiled into step sizes: 16 for the DC term, rising to 99 in the bottom-right corner. Scaling the whole table by one factor is the quality slider, as the <a href="../scalar-quantization/">scalar quantization</a>
+ article showed; the <em>shape</em> of the table is this stage&rsquo;s contribution, and it is as encoder-chosen as a masking threshold, except that JPEG, unusually, ships the table in the file&rsquo;s header.</p>
+<p>The second thing the eye does badly is colour. The retina samples brightness at full resolution and colour at a fraction of it: the opponent-colour channels (red-versus-green, blue-versus-yellow) have their own contrast sensitivity functions that peak lower and fall off at far lower spatial frequencies than the luminance curve. So after the <a href="../channel-and-layout/">channel transform</a>
+ has split the image into a luma plane Y and two chroma planes Cb and Cr, the chroma planes can simply be sampled more coarsely.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">to_ycc</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>     <span class="c1"># JPEG&#39;s RGB -&gt; YCbCr</span>
+</span></span><span class="line"><span class="cl">    <span class="n">R</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">B</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="mf">0.299</span><span class="o">*</span><span class="n">R</span> <span class="o">+</span> <span class="mf">0.587</span><span class="o">*</span><span class="n">G</span> <span class="o">+</span> <span class="mf">0.114</span><span class="o">*</span><span class="n">B</span><span class="p">,</span> <span class="mi">128</span> <span class="o">-</span> <span class="mf">0.168736</span><span class="o">*</span><span class="n">R</span> <span class="o">-</span> <span class="mf">0.331264</span><span class="o">*</span><span class="n">G</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">B</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                     <span class="mi">128</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">R</span> <span class="o">-</span> <span class="mf">0.418688</span><span class="o">*</span><span class="n">G</span> <span class="o">-</span> <span class="mf">0.081312</span><span class="o">*</span><span class="n">B</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">to_rgb</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">Y</span><span class="p">,</span> <span class="n">Cb</span><span class="p">,</span> <span class="n">Cr</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">c</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">128</span><span class="p">,</span> <span class="n">c</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="mi">128</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">Y</span> <span class="o">+</span> <span class="mf">1.402</span><span class="o">*</span><span class="n">Cr</span><span class="p">,</span> <span class="n">Y</span> <span class="o">-</span> <span class="mf">0.344136</span><span class="o">*</span><span class="n">Cb</span> <span class="o">-</span> <span class="mf">0.714136</span><span class="o">*</span><span class="n">Cr</span><span class="p">,</span> <span class="n">Y</span> <span class="o">+</span> <span class="mf">1.772</span><span class="o">*</span><span class="n">Cb</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">subsample_420</span><span class="p">(</span><span class="n">block</span><span class="p">):</span>             <span class="c1"># keep 4 Y, average Cb and Cr over the 2×2</span>
+</span></span><span class="line"><span class="cl">    <span class="n">c</span> <span class="o">=</span> <span class="n">to_ycc</span><span class="p">(</span><span class="n">block</span><span class="p">);</span> <span class="n">c</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">();</span> <span class="n">c</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">();</span> <span class="k">return</span> <span class="n">to_rgb</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">skin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[[</span><span class="mi">200</span><span class="p">,</span> <span class="mi">180</span><span class="p">,</span> <span class="mi">170</span><span class="p">],</span> <span class="p">[</span><span class="mi">196</span><span class="p">,</span> <span class="mi">176</span><span class="p">,</span> <span class="mi">168</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">190</span><span class="p">,</span> <span class="mi">172</span><span class="p">,</span> <span class="mi">160</span><span class="p">],</span> <span class="p">[</span><span class="mi">185</span><span class="p">,</span> <span class="mi">168</span><span class="p">,</span> <span class="mi">158</span><span class="p">]]],</span> <span class="nb">float</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">edge</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[[</span><span class="mi">220</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="p">[</span><span class="mi">220</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">]],</span> <span class="p">[[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">220</span><span class="p">],</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">220</span><span class="p">]]],</span> <span class="nb">float</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">blk</span> <span class="ow">in</span> <span class="p">[(</span><span class="s2">&#34;skin&#34;</span><span class="p">,</span> <span class="n">skin</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;red/blue edge&#34;</span><span class="p">,</span> <span class="n">edge</span><span class="p">)]:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">err</span> <span class="o">=</span> <span class="n">subsample_420</span><span class="p">(</span><span class="n">blk</span><span class="p">)</span> <span class="o">-</span> <span class="n">blk</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">14s</span><span class="si">}</span><span class="s2"> 12 numbers -&gt; 6;  max |error| </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">6.2f</span><span class="si">}</span><span class="s2">;  per-pixel RMS&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">          <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">err</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</span></span></code></pre></div><pre tabindex="0"><code>skin           12 numbers -&gt; 6;  max |error|   1.55;  per-pixel RMS [[0.59, 0.96], [0.95, 0.83]]
+red/blue edge  12 numbers -&gt; 6;  max |error| 112.58;  per-pixel RMS [[79.53, 79.53], [79.53, 79.53]]
+</code></pre><p>A 2×2 block of skin tones is twelve numbers. Keep the four Y values, replace the four Cb values by their average and the four Cr values by theirs, and it is six numbers, with a worst-case error of 1.55 on a 0 to 255 scale, under one just-noticeable step. Half the data is gone before any transform or quantizer has run, which is why the game&rsquo;s card calls it the cheapest 2:1 in all of image coding, and why 4:2:0 is the default of JPEG and of essentially every consumer video format. The second aha is that the retina did the compression first: a codec that stores colour at full resolution is storing detail the eye threw away on the way in.</p>
+<figure class="fig"><a href="/compressionfight/map/img/perceptual-models/chroma-420.png"><img src="/compressionfight/map/img/perceptual-models/chroma-420.png" alt="Three 8-by-4 pixel grids. 4:4:4 has a colour sample at every pixel; 4:2:2 has one per horizontal pair; 4:2:0 has one per 2-by-2 block. The counts per 2-by-2 are 12, 8 and 6 numbers." loading="lazy"></a><figcaption>Chroma subsampling. The notation counts samples in a 4-wide reference row: 4:2:0 keeps all luma and one Cb and one Cr per 2×2 block, 6 numbers where 4:4:4 needs 12.</figcaption></figure>
+
+<p>The same snippet also shows where the con fails. A hard edge between saturated red and saturated blue, two red pixels above two blue ones, averages to a purple chroma for the whole block, and the per-pixel error is 80 on every pixel. The error is large <em>and</em> visible, because an edge is exactly where luminance and chrominance stop being independent: that pattern is red text on a blue background, a subtitle, a line in a chart. This is why screen content and pixel art ask for 4:4:4, and why the card&rsquo;s weakness line reads the way it does. A perceptual model is a model of typical content; the content that breaks it is the content the model did not expect.</p>
+<div class="map-lab" data-fighter="chroma"><p class="lab-fail">Interactive lab (chroma) needs JavaScript.</p></div>
+
+<h2 id="measuring-nobody-notices">Measuring &ldquo;nobody notices&rdquo;</h2>
+<p>Every curve in this article was measured on people, and the unit of measurement is worth a paragraph because it is the fidelity contract&rsquo;s actual definition. A <strong>just-noticeable difference</strong> is the smallest change in a stimulus that a listener or viewer detects reliably, conventionally at some fixed rate like 70 or 75 percent of trials. It is found with a <strong>staircase</strong>: present a difference, make it smaller after each correct detection (or, in the common 2-down-1-up variant, after two in a row), larger after each miss, and the stimulus level oscillates around the threshold; averaging the reversal points estimates it.</p>
+<figure class="fig"><a href="/compressionfight/map/img/perceptual-models/jnd-staircase.png"><img src="/compressionfight/map/img/perceptual-models/jnd-staircase.png" alt="A step plot of stimulus level against trial for a simulated listener: the level starts high, falls as differences are detected, then oscillates between about 2 and 4 with hits and misses marked and reversal points circled; a dashed line marks the listener&#39;s hidden detection level and a dotted line the estimate from the reversals." loading="lazy"></a><figcaption>A 2-down-1-up staircase on a simulated listener (labelled as such: there is no human behind this plot). The procedure converges on the level detected about 70.7% of the time; the estimate from the later reversals, 3.19, sits near the hidden value of 3.53.</figcaption></figure>
+
+<p>Weber&rsquo;s law, that the JND is roughly a constant <em>fraction</em> of the stimulus ($\Delta I / I \approx k$), is why both the ear and the eye are logarithmic, why decibels exist, and why a companded quantizer with relative rather than absolute steps matches them. &ldquo;Perceptually lossless&rdquo; means every quantization error in the file is below the relevant JND for the intended viewing or listening conditions. It is a real engineering statement with a measurement behind it, and it is also conditional: the conditions include the screen size, the viewing distance and the loudness, which is why a transparent 128 kbit/s file can stop being transparent on better headphones.</p>
+<p>The same conditionality explains why the field has never settled on a number. <strong>PSNR</strong>, $10 \log_{10}(255^2 / \mathrm{MSE})$, is squared error in decibels and inherits every blindness above; a slightly blurred image often scores higher than a slightly noisy one and looks worse. <strong>SSIM</strong> compares local means, variances and covariances of small windows and tracks structure rather than pixels, which is closer to what the eye reports. Learned metrics (LPIPS for images, VMAF for video, trained on human ratings) do better again. None of them is the consumer; all of them are models of the consumer, and a codec tuned hard against any one of them will eventually learn to fool the metric rather than the person.</p>
+<h2 id="a-perceptual-model-nobody-derived">A perceptual model nobody derived</h2>
+<p>Which brings the story to its end, and to a consumer that was never interviewed. Neural codecs replace the hand-built transform with a learned encoder and the hand-built decoder with a generator network, as the <a href="../learned-transforms/">learned transforms</a>
+ article describes. Train that pair on squared error and the output is blurry and muffled, and the reason is a theorem rather than a bug: the reconstruction that minimises expected squared error given the bitstream $z$ is the conditional mean,</p>
+$$
+\hat{x}^\star = \arg\min_{\hat{x}} \mathbb{E}\big[\|x - \hat{x}\|^2 \,\big|\, z\big] = \mathbb{E}[x \mid z],
+$$<p>and at 3 kbit/s the set of waveforms consistent with $z$ is large. The average of many plausible sharp outputs is one smooth output that resembles none of them. The ear and eye both object: a blurred face and a muffled voice are <em>obviously</em> wrong even though every pixel and sample is, on average, as close as it can be.</p>
+<p>The adversarial fix is to stop asking for closeness and ask for plausibility. A second network, the <strong>discriminator</strong>, is trained to tell the decoder&rsquo;s outputs from real data; the decoder is trained to fool it. At equilibrium the decoder must produce outputs the discriminator cannot distinguish from real speech or real photographs, which forces it to commit to one sharp, plausible reconstruction rather than the mean of many. <strong>Feature losses</strong> make the same move with less drama: compare the activations of a pretrained network on $x$ and $\hat{x}$ instead of the raw samples, so that error is measured in a space that already discards what the network, like the eye, does not care about. SoundStream and EnCodec train against multi-scale discriminators, on the waveform and on the STFT; HiFiC does it for images and produces photographs at a fraction of a bit per pixel that look like photographs.</p>
+<p>Here is the third aha. The discriminator <em>is a perceptual model</em>: a learned definition of what passes as real, which is what a masking curve or a contrast sensitivity function was all along, except that nobody sat in a booth to measure it. It never runs at inference, exactly like the psychoacoustic model; it shapes the decoder&rsquo;s weights during training and then goes away. And it changes the fidelity contract. MP3&rsquo;s contract was &ldquo;errors you cannot hear&rdquo;; the adversarially trained codec&rsquo;s contract is &ldquo;an output you would believe,&rdquo; and that is a different promise. Its failure mode is not a hiss or a smear but a confident substitution: a slightly different phoneme, a texture that was not there, detail hallucinated from the decoder&rsquo;s prior rather than the signal. The card&rsquo;s warning about medical and forensic data is this exactly; a con artist who is very good is a different kind of risk from one who is clumsy.</p>
+<div class="map-lab" data-fighter="gan"><p class="lab-fail">Interactive lab (gan) needs JavaScript.</p></div>
+
+<p>There is one more consumer on the map, and it does not have ears. When the reader of the data is a transformer attending over a KV cache, &ldquo;what it will not notice&rdquo; becomes &ldquo;what the softmax weights at nearly zero,&rdquo; and importance replaces masking as the model of irrelevance. That is the <a href="../attention-as-audience/">next article</a>
+, and it is this one with the booth replaced by an attention map.</p>
+<h2 id="connections">Connections</h2>
+<p>The <strong>Weber-Fechner law</strong> (perceived intensity grows with the logarithm of physical intensity) is the oldest result in psychophysics and the reason every curve here is drawn in decibels and log frequency. μ-law telephony, MP3&rsquo;s power-law quantizer and the JND staircase all descend from it.</p>
+<p>The <strong>JPEG quality slider</strong> is one scalar multiplying one table whose shape is the contrast sensitivity function; the slider is rate control, the table is this stage.</p>
+<p>The <strong>loudness war</strong> is masking&rsquo;s evil twin in mastering: dynamic-range compression pushes everything toward the loudest level because louder sounds &ldquo;better&rdquo; on first hearing, and in doing so it masks the quiet detail that a codec would otherwise have had to pay for. Heavily mastered music compresses more easily; it also has less in it.</p>
+<p><strong>Perceptual hashing</strong> (the pHash family) keeps only the lowest-frequency DCT coefficients of a downscaled greyscale image and thresholds them: it survives recompression, resizing and small edits because it keeps exactly the part of the image the contrast sensitivity function says a viewer sees, and throws away the rest. A fingerprint built from a perceptual model.</p>
+<p><strong>In the game:</strong> the Psychoacoustic model (psychoacoustic) sits in the perceptual-model stage for the Music distribution task (MP3), where the synergy &lsquo;Psychoacoustic model + companding&rsquo; pairs it with the μ-law companding; the Chroma subsampling (chroma) for the Photographs task (JPEG) and the Streaming video task (H.264/AV1), and the synergy &lsquo;Colour transform + chroma subsampling&rsquo; pairs it with the YCbCr / mid-side; the Adversarial loss (gan) for the Real-time speech task (SoundStream / EnCodec) and the Modern web images task&rsquo;s learned codecs, where the synergy &lsquo;Learned decoder + adversarial loss&rsquo; needs a learned decoder to train, and the conflict &lsquo;Adversarial loss without a learned network&rsquo; flags the case where there is none.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=psychoacoustic" title="psychoacoustic"><img src="/compressionfight/img/fighters/psychoacoustic.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>psychoacoustic</span></a></li><li><a href="/compressionfight/#fighter=chroma" title="chroma"><img src="/compressionfight/img/fighters/chroma.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>chroma</span></a></li><li><a href="/compressionfight/#fighter=gan" title="gan"><img src="/compressionfight/img/fighters/gan.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>gan</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion: the one irreversible stage</a></li><li><a href="/compressionfight/map/zoo/block-transforms/">Block transforms: which directions matter</a></li><li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms: autoencoders as codecs</a></li><li><a href="/compressionfight/map/zoo/attention-as-audience/">Attention as the audience: the softmax is the reader</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/block-float-formats/"><small>&larr; Previous</small>Block-scaled formats: int4 and NVFP4</a>
+    <a class="next" href="/compressionfight/map/zoo/attention-as-audience/"><small>Next &rarr;</small>Attention as the audience: the softmax is the reader</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#why-squared-error-lies">Why squared error lies</a></li>
+    <li><a href="#masking-the-loud-tone-hides-its-neighbours">Masking: the loud tone hides its neighbours</a></li>
+    <li><a href="#pre-echo-and-time">Pre-echo, and time</a></li>
+    <li><a href="#the-eye-a-different-con-same-trick">The eye: a different con, same trick</a></li>
+    <li><a href="#measuring-nobody-notices">Measuring &ldquo;nobody notices&rdquo;</a></li>
+    <li><a href="#a-perceptual-model-nobody-derived">A perceptual model nobody derived</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

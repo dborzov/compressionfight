@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Vector quantization: the codebook · Choose Your Codec</title>
+<meta name="description" content="Why quantizing two numbers together beats quantizing each alone (the gap is the mutual information a scalar grid pays twice), how product and residual codebooks dodge the exponential, and why a 2-bit index is meaningless until the decoder owns the codebook.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/" class="on" aria-current="page">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Quantization</span><span>/</span><span>Vector quantizers</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Quantization · Vector quantizers</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/vector-quantization.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Vector quantization: the codebook</h1>
+    <p class="summary">Why quantizing two numbers together beats quantizing each alone (the gap is the mutual information a scalar grid pays twice), how product and residual codebooks dodge the exponential, and why a 2-bit index is meaningless until the decoder owns the codebook.</p>
+    <div class="meta">15 min read</div>
+  </header>
+  
+  <div class="prose"><h1 id="vector-quantization-the-codebook">Vector quantization: the codebook</h1>
+<p>Three little piggies live on an island. Their houses sit close together, because they are brothers and like to visit, and the island&rsquo;s one postman has to tell the mainland post office where to deliver. The telegraph line is expensive: he is allowed a handful of symbols per week, and the mainland clerk owns nothing but a blank map.</p>
+<p>That is the whole problem of this article in miniature. Replace the houses with 768-dimensional embeddings and the postman with a search engineer, and the budget is still a handful of bits per item and the clerk still needs a map. Two questions decide everything: <em>why does describing several numbers together cost fewer bits than describing each one alone?</em> And <em>what must the decoder already own for a 2-bit message to mean anything at all?</em></p>
+<p>The <a href="../scalar-quantization/">scalar quantizer</a>
+ answered &ldquo;how many bits?&rdquo; one coordinate at a time. We are going to see that answering it for a whole vector at once is not a refinement of that; it is a different quantity being paid for.</p>
+<h2 id="three-houses-one-number">Three houses, one number</h2>
+<p>Here is the island as the postman sees it: kilometres east and north of the lighthouse.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">houses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.4</span><span class="p">,</span> <span class="mf">2.6</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.8</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">]])</span>   <span class="c1"># piggy houses: km east, km north</span>
+</span></span><span class="line"><span class="cl"><span class="n">c</span> <span class="o">=</span> <span class="n">houses</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;centroid&#34;</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="s2">&#34; total squared distance&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">houses</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">guess</span> <span class="ow">in</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">])]:</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;meet at&#34;</span><span class="p">,</span> <span class="n">guess</span><span class="p">,</span> <span class="s2">&#34;-&gt;&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">houses</span> <span class="o">-</span> <span class="n">guess</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>centroid [1.4 2.3]  total squared distance 0.5
+meet at [1. 2.] -&gt; 1.25
+meet at [1.5 2.5] -&gt; 0.65
+</code></pre><p>Six floats describe the three houses exactly. If the postman may send only one point, which point? The one that minimises how far, on average, a parcel delivered to it would have to be carried onward. With squared distance as the measure, that point is the mean: moving the meeting point to the first house costs 1.25, a reasonable-looking guess costs 0.65, the mean costs 0.5, and nothing beats it. This is the one calculus fact the article rests on:</p>
+$$
+\mathbf{c}^\star = \arg\min_{\mathbf{c}} \sum_{i=1}^{n} \|\mathbf{x}_i - \mathbf{c}\|^2 = \frac{1}{n}\sum_{i=1}^{n} \mathbf{x}_i ,
+$$<p>and we call $\mathbf{c}^\star$ the <strong>centroid</strong> of the set. Sending the centroid instead of the three houses is a lossy description with squared error 0.5, and it works <em>because</em> the brothers live near each other. Had they scattered across the island the centroid would be a useless point in the sea.</p>
+<h2 id="the-chickens-move-in">The chickens move in</h2>
+<p>A family of chickens settles on the far side of the island. Six houses now; one centroid lands in the water between the two families (total squared error 36.2). Obviously the postman wants two meeting points, one per family, and one bit per house to say which. But he does not know in advance which houses belong together, and in 768 dimensions nobody can look at a map. He needs a procedure, and the natural one is to alternate two obvious rules.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">houses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.4</span><span class="p">,</span> <span class="mf">2.6</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.8</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">],</span>      <span class="c1"># piggies</span>
+</span></span><span class="line"><span class="cl">                   <span class="p">[</span><span class="mf">6.1</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">],</span> <span class="p">[</span><span class="mf">6.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">5.8</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">]])</span>     <span class="c1"># chickens</span>
+</span></span><span class="line"><span class="cl"><span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.8</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">]])</span>   <span class="c1"># a bad start: both guesses inside the piggy cluster</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d</span> <span class="o">=</span> <span class="p">((</span><span class="n">houses</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">C</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>   <span class="c1"># 6×2 table of squared distances</span>
+</span></span><span class="line"><span class="cl">    <span class="n">a</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>                                            <span class="c1"># nearest codeword for each house</span>
+</span></span><span class="line"><span class="cl">    <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">houses</span><span class="p">[</span><span class="n">a</span> <span class="o">==</span> <span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)])</span>   <span class="c1"># move each codeword to its crowd</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="s2">&#34;assign&#34;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="s2">&#34;codebook&#34;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">d</span> <span class="o">=</span> <span class="p">((</span><span class="n">houses</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">C</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;total squared error K=2:&#34;</span><span class="p">,</span> <span class="n">d</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="s2">&#34; with one centroid:&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="p">((</span><span class="n">houses</span> <span class="o">-</span> <span class="n">houses</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>0 assign [0 1 1 1 1 1] codebook [[1.   2.  ]
+ [4.32 1.72]]
+1 assign [0 0 0 1 1 1] codebook [[1.4   2.3  ]
+ [6.133 1.233]]
+2 assign [0 0 0 1 1 1] codebook [[1.4   2.3  ]
+ [6.133 1.233]]
+total squared error K=2: 0.933  with one centroid: 36.247
+</code></pre><p>Even from a deliberately bad start, two rounds of &ldquo;assign each house to its nearest point, then move each point to the mean of its houses&rdquo; find the two families. Now the vocabulary, properly.</p>
+<p>A <strong>vector quantizer</strong> of dimension $d$ and size $K$ is a <strong>codebook</strong> $\mathcal{C} = \{\mathbf{c}_0, \dots, \mathbf{c}_{K-1}\} \subset \mathbb{R}^d$ together with the <strong>nearest-neighbour rule</strong> $q(\mathbf{x}) = \arg\min_k \|\mathbf{x} - \mathbf{c}_k\|^2$. The encoder sends the <strong>index</strong> $q(\mathbf{x})$, which costs $\lceil \log_2 K \rceil$ bits; the decoder outputs the <strong>codeword</strong> $\mathbf{c}_{q(\mathbf{x})}$. The set of inputs that map to codeword $k$ is its <strong>Voronoi cell</strong>. For a fixed codebook, the nearest-neighbour rule is the best possible encoder; for a fixed partition into cells, the centroid of each cell is the best possible codeword. <strong>Lloyd&rsquo;s algorithm</strong> (1957 for one dimension; <strong>k-means</strong> when the statisticians rediscovered it) alternates those two optimality conditions. Each step can only lower the total squared error, so it converges; to a local minimum, not necessarily the global one.</p>
+<figure class="fig"><a href="/compressionfight/map/img/vector-quantization/piggy-map.png"><img src="/compressionfight/map/img/vector-quantization/piggy-map.png" alt="Left: six houses on the island with two centroids and the dashed Voronoi boundary between them. Right: a four-entry codebook with its four Voronoi cells and a query point landing in cell 2." loading="lazy"></a><figcaption>Left: the island after Lloyd&rsquo;s algorithm. Every house pays one bit, the index of its family&rsquo;s centroid. Right: a four-entry codebook; every point in a cell decodes to that cell&rsquo;s X, so the index is all the decoder needs, provided it owns the X&rsquo;s.</figcaption></figure>
+
+<p>Two failure modes matter in practice. Start both codewords inside one family and a third family on the island might never attract either: the greedy update cannot move a codeword across a region with nobody in it. Random restarts and k-means++ seeding (pick each initial codeword with probability proportional to its squared distance from the ones chosen so far) are the standard cures. Worse, a codeword that is nearest to nothing never gets updated and stays dead forever; in neural codecs, where the codebook is trained by gradient descent, this is <strong>codebook collapse</strong>, and the usual fix is to re-seed dead entries from live data.</p>
+<div class="map-lab" data-fighter="vq"><p class="lab-fail">Interactive lab (vq) needs JavaScript.</p></div>
+
+<p>If you would rather watch the iteration than read it: the panel below runs Lloyd steps one at a time on three hundred points, with the scalar grid of the same bit budget drawn underneath for comparison. The correlated setting is the next section&rsquo;s argument in motion.</p>
+<div class="viz"><iframe src="/compressionfight/map/viz/vector-quantization-kmeans.html" height="460" loading="lazy" title="Interactive visualization" style="height:460px"></iframe></div>
+
+<h2 id="what-the-decoder-must-own">What the decoder must own</h2>
+<p>Take the four-entry codebook from the lab, $\{(-0.8,-0.6), (-0.2,0.7), (0.5,0.1), (0.9,-0.7)\}$, and a fresh point.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">codebook</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.8</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.6</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.9</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.7</span><span class="p">]])</span>
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">d</span> <span class="o">=</span> <span class="p">((</span><span class="n">codebook</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;squared distances&#34;</span><span class="p">,</span> <span class="n">d</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="s2">&#34; index&#34;</span><span class="p">,</span> <span class="n">d</span><span class="o">.</span><span class="n">argmin</span><span class="p">(),</span> <span class="s2">&#34; bits&#34;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">codebook</span><span class="p">))))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;decoder output&#34;</span><span class="p">,</span> <span class="n">codebook</span><span class="p">[</span><span class="n">d</span><span class="o">.</span><span class="n">argmin</span><span class="p">()],</span> <span class="s2">&#34; error&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">codebook</span><span class="p">[</span><span class="n">d</span><span class="o">.</span><span class="n">argmin</span><span class="p">()]</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>squared distances [2.08 0.61 0.02 1.06]  index 2  bits 2
+decoder output [0.5 0.1]  error [ 0.1 -0.1]
+</code></pre><p>The entire transmission is the bit string <code>10</code>. Hand that to a decoder without the codebook and it is the integer two; hand it to one with the <em>wrong</em> codebook and it is a confident, wrong point. The codebook is <strong>side information</strong>: knowledge the decoder holds before the first index arrives, and the only thing that gives the indices meaning. Where it lives is a design decision with consequences. In the CELP speech codecs inside every mobile phone the codebooks are printed in the standard, so the decoder is born with them. In a Faiss index the codebooks are trained on your vectors and written into the index file, so a different index cannot read your codes. In SoundStream the codebooks are part of the model checkpoint, versioned with the network that produced the vectors. Change the data distribution and the codebook is stale on both ends at once. The <a href="../side-information/">side information</a>
+ article follows this thread across the whole map; here, keep asking of any VQ system: how big is the codebook, who trained it, and how does the decoder get it?</p>
+<div class="map-lab" data-fighter="codebook"><p class="lab-fail">Interactive lab (codebook) needs JavaScript.</p></div>
+
+<h2 id="why-two-numbers-together-beat-two-numbers-alone">Why two numbers together beat two numbers alone</h2>
+<p>Now the question that gives this family its reason to exist. Suppose the two coordinates of each point are correlated: a weather station reports temperature at the top and bottom of a hill, or two channels of a key vector in a transformer move together. Here are sixteen such pairs, and a budget of two bits per pair. The scalar quantizer&rsquo;s natural move is one bit per coordinate: send the sign of $a$ and the sign of $b$, reconstruct each at its mean magnitude. The vector quantizer&rsquo;s natural move is a four-entry codebook over the pair.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span><span class="o">-</span><span class="mf">1.2</span><span class="p">,</span><span class="o">-</span><span class="mf">0.9</span><span class="p">,</span><span class="o">-</span><span class="mf">0.6</span><span class="p">,</span><span class="o">-</span><span class="mf">0.4</span><span class="p">,</span><span class="o">-</span><span class="mf">0.2</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">,</span> <span class="mf">1.6</span><span class="p">,</span> <span class="mf">2.1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">1.8</span><span class="p">,</span><span class="o">-</span><span class="mf">1.6</span><span class="p">,</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span><span class="o">-</span><span class="mf">1.1</span><span class="p">,</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="o">-</span><span class="mf">0.2</span><span class="p">,</span><span class="o">-</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.9</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>                       <span class="c1"># 16 correlated pairs</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># scalar: one bit per axis, reconstruct at ±(mean magnitude)</span>
+</span></span><span class="line"><span class="cl"><span class="n">rec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">v</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)],</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;sign grid, 2 bits/pair: MSE per pair&#34;</span><span class="p">,</span> <span class="p">((</span><span class="n">P</span> <span class="o">-</span> <span class="n">rec</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">cells</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">((</span><span class="n">P</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;grid cells actually used:&#34;</span><span class="p">,</span> <span class="p">{</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">c</span><span class="p">):</span> <span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">cells</span><span class="p">,</span> <span class="n">n</span><span class="p">)})</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># vector: one 2-bit index per pair, k-means with K=4</span>
+</span></span><span class="line"><span class="cl"><span class="n">C</span> <span class="o">=</span> <span class="n">P</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">]]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">asg</span> <span class="o">=</span> <span class="p">((</span><span class="n">P</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">C</span><span class="p">[</span><span class="kc">None</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">P</span><span class="p">[</span><span class="n">asg</span> <span class="o">==</span> <span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)])</span>
+</span></span><span class="line"><span class="cl"><span class="n">err</span> <span class="o">=</span> <span class="p">((</span><span class="n">P</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">C</span><span class="p">[</span><span class="kc">None</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;k-means K=4, 2 bits/pair: MSE per pair&#34;</span><span class="p">,</span> <span class="n">err</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="s2">&#34;</span><span class="se">\n</span><span class="s2">centroids&#34;</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>sign grid, 2 bits/pair: MSE per pair 0.761
+grid cells actually used: {(0, 0): 7, (0, 1): 1, (1, 0): 1, (1, 1): 7}
+k-means K=4, 2 bits/pair: MSE per pair 0.164 
+centroids [[-1.4  -1.38]
+ [-0.24 -0.22]
+ [ 0.62  0.6 ]
+ [ 1.67  1.6 ]]
+</code></pre><p>Same two bits per pair, and the error drops by a factor of 4.6. Look at where the scalar grid spent its budget: it has four cells, and fourteen of the sixteen points fell into two of them. The cells $(a<0, b\ge0)$ and $(a\ge0, b<0)$, the off-diagonal quadrants, each hold a single straggler. Half of the grid&rsquo;s resolution went to regions where the data almost never is. The codebook, by contrast, put all four of its codewords on the diagonal where the data lives, spaced out along it.</p>
+<figure class="fig"><a href="/compressionfight/map/img/vector-quantization/grid-vs-joint.png"><img src="/compressionfight/map/img/vector-quantization/grid-vs-joint.png" alt="Two panels with the same sixteen correlated points. Left: the sign grid&#39;s four reconstruction points, two of them serving one point each. Right: four k-means centroids strung along the diagonal with their Voronoi cells." loading="lazy"></a><figcaption>Two bits per pair, two ways. A scalar grid in d dimensions is a cube lattice, and correlated data does not fill a cube; it fills a thin diagonal slab. k-means puts the levels where the data is.</figcaption></figure>
+
+<p>That picture is the first aha, and the entropy view makes it exact. Quantize each coordinate into four bins and count:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span><span class="o">-</span><span class="mf">1.2</span><span class="p">,</span><span class="o">-</span><span class="mf">0.9</span><span class="p">,</span><span class="o">-</span><span class="mf">0.6</span><span class="p">,</span><span class="o">-</span><span class="mf">0.4</span><span class="p">,</span><span class="o">-</span><span class="mf">0.2</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">,</span> <span class="mf">1.6</span><span class="p">,</span> <span class="mf">2.1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">1.8</span><span class="p">,</span><span class="o">-</span><span class="mf">1.6</span><span class="p">,</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span><span class="o">-</span><span class="mf">1.1</span><span class="p">,</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="o">-</span><span class="mf">0.2</span><span class="p">,</span><span class="o">-</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.9</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">H</span><span class="p">(</span><span class="n">labels</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">_</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">);</span> <span class="n">p</span> <span class="o">=</span> <span class="n">n</span> <span class="o">/</span> <span class="n">n</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">-</span><span class="p">(</span><span class="n">p</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">p</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">qa</span><span class="p">,</span> <span class="n">qb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.7</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.7</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">])</span>   <span class="c1"># 4 bins per axis</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;H(a) =&#34;</span><span class="p">,</span> <span class="n">H</span><span class="p">(</span><span class="n">qa</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="s2">&#34; H(b) =&#34;</span><span class="p">,</span> <span class="n">H</span><span class="p">(</span><span class="n">qb</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="s2">&#34; H(a)+H(b) =&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">H</span><span class="p">(</span><span class="n">qa</span><span class="p">)</span> <span class="o">+</span> <span class="n">H</span><span class="p">(</span><span class="n">qb</span><span class="p">))</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;H(a,b) =&#34;</span><span class="p">,</span> <span class="n">H</span><span class="p">(</span><span class="n">qa</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> <span class="n">qb</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="s2">&#34; mutual information =&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">H</span><span class="p">(</span><span class="n">qa</span><span class="p">)</span> <span class="o">+</span> <span class="n">H</span><span class="p">(</span><span class="n">qb</span><span class="p">)</span> <span class="o">-</span> <span class="n">H</span><span class="p">(</span><span class="n">qa</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> <span class="n">qb</span><span class="p">))</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;joint cells occupied:&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">qa</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> <span class="n">qb</span><span class="p">)),</span> <span class="s2">&#34;of 16&#34;</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>H(a) = 1.977  H(b) = 1.977  H(a)+H(b) = 3.954
+H(a,b) = 2.352  mutual information = 1.602
+joint cells occupied: 6 of 16
+</code></pre><p>An ideal entropy coder behind a scalar quantizer pays $H(A) + H(B) \approx 3.95$ bits per pair, because it codes the two indices as if they were independent (a context model could recover some of this, but a fixed-length kernel-friendly code cannot). A coder that sees the pair as one symbol pays $H(A,B) \approx 2.35$ bits. The gap is not a tuning detail; it is a named quantity,</p>
+$$
+H(A) + H(B) - H(A,B) = I(A;B),
+$$<p>the <strong>mutual information</strong> between the coordinates, 1.6 bits here, and it is exactly what a scalar quantizer pays twice. The joint entropy can never exceed the sum of the marginals, with equality only when the coordinates are independent. So the vector quantizer&rsquo;s gain on correlated data is bounded below by nothing and above by the mutual information, and &ldquo;the channels of a key vector are correlated&rdquo; is a precise statement about how much a scalar grid is overpaying. (There is a second, smaller gain that exists even for independent coordinates: hexagons tile a plane more efficiently than squares, and the best lattices in high dimension beat the cube by up to 1.53 dB, about a quarter of a bit per coordinate. The correlation gain is the one that matters.)</p>
+<p>This is the thesis behind the game&rsquo;s newest vector algorithm. Coupled Quantization (Zhang et al., NeurIPS 2024) measured the key and value channels of LLaMA-7B and found what the sixteen pairs show: the sum of per-channel entropies grows linearly with the number of channels grouped, the joint entropy grows sub-linearly. So it quantizes groups of 4 or 8 contiguous channels with a 256-entry codebook per group per layer: 8 channels sharing 8 bits is <strong>one bit per channel</strong>. At that rate a scalar quantizer destroys the model (LLaMA-2-13B WikiText-2 perplexity 4,709 for 1-bit scalar, fp16 4.57); CQ-8c8b lands at 6.55. Two more things in that paper belong here. The codebooks are trained by k-means weighted by <strong>Fisher information</strong>, so that centroids sit where the <em>loss</em> is sensitive rather than where the squared error is: Fisher weighting raises raw MSE and lowers perplexity, which is the <a href="../perceptual-models/">perceptual stage&rsquo;s</a>
+ move, a distortion measure fitted to the consumer, applied to a reader that is a transformer. And the centroids total about 1% of the model&rsquo;s weights: a VQ codebook-sized codebook, shipped once per model, exactly as the previous section warned.</p>
+<div class="map-lab" data-fighter="coupled"><p class="lab-fail">Interactive lab (coupled) needs JavaScript.</p></div>
+
+<h2 id="the-exponential-and-two-ways-around-it">The exponential, and two ways around it</h2>
+<p>Back to the mainland. It is 2017 and imagine an engineer, call her Mara, who runs a search service over a billion image embeddings of 768 floats each. At 4 bytes a float that is 3,072 bytes per vector and 3 TB in total; her budget is one server with a few hundred gigabytes of RAM, so she needs about 32:1 and settles on 96 bytes per vector. Vector quantization is obviously the tool: the embeddings are heavily correlated across dimensions, which is precisely when the codebook beats the grid.</p>
+<p>Then she writes the number down. 96 bytes is 768 bits per vector, which means a codebook of $2^{768}$ entries. Not storable, not trainable, not searchable. The codebook size grows exponentially in the bits per vector, and her budget is a rounding error compared to what full VQ would need. This is the second aha: she cannot have one codebook, so she must <em>compose</em> small ones, and there are two ways to compose.</p>
+<p><strong>Product quantization</strong> splits the vector into sub-vectors and gives each its own small codebook.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">cb1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.8</span><span class="p">]])</span>   <span class="c1"># codebook for dims 0,1</span>
+</span></span><span class="line"><span class="cl"><span class="n">cb2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.6</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.7</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">]])</span>  <span class="c1"># codebook for dims 2,3</span>
+</span></span><span class="line"><span class="cl"><span class="n">i</span> <span class="o">=</span> <span class="p">((</span><span class="n">cb1</span> <span class="o">-</span> <span class="n">x</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">j</span> <span class="o">=</span> <span class="p">((</span><span class="n">cb2</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">:])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">xhat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">cb1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">cb2</span><span class="p">[</span><span class="n">j</span><span class="p">]])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;code (i, j) =&#34;</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">j</span><span class="p">)),</span> <span class="s2">&#34; 4 bits;  decoded&#34;</span><span class="p">,</span> <span class="n">xhat</span><span class="p">,</span> <span class="s2">&#34; error&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">xhat</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;stored centroids:&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">cb1</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">cb2</span><span class="p">),</span> <span class="s2">&#34; reachable 4-D points:&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">cb1</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">cb2</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>code (i, j) = (0, 1)  4 bits;  decoded [ 0.8  0.2 -0.4  0.7]  error [-0.1  0.1 -0.1 -0.1]
+stored centroids: 8  reachable 4-D points: 16
+</code></pre><p>Eight stored 2-D centroids give sixteen reachable 4-D points, because the decoder can combine any entry of the first codebook with any entry of the second. Mara&rsquo;s version: 768 dimensions cut into 96 sub-vectors of 8, each with a 256-entry codebook, one byte per sub-vector, 96 bytes per vector. She stores $96 \times 256 = 24{,}576$ centroids and can decode $256^{96} \approx 10^{231}$ distinct vectors. The exponential is still there; it has moved from the storage to the <em>reachable set</em>, which is where she wants it.</p>
+<figure class="fig"><a href="/compressionfight/map/img/vector-quantization/pq-split.png"><img src="/compressionfight/map/img/vector-quantization/pq-split.png" alt="Diagram: a four-float vector split in two halves, each half matched against its own four-entry codebook, producing the code (0,1); below, the four-by-four grid of the sixteen vectors the decoder can produce." loading="lazy"></a><figcaption>Product quantization composes codebooks by concatenation. The price is an assumption: the sub-vectors are quantized independently, so correlation across the split is paid twice, exactly the sin of the scalar grid at a coarser scale. The cure is to rotate first so the split cuts along weakly correlated directions.</figcaption></figure>
+
+<p>Two consequences made PQ the substrate of every billion-scale vector index. First, the assumption it makes is the same one the scalar grid made: the sub-vectors are quantized independently, so whatever mutual information crosses the split is paid twice. The fix is a rotation chosen so that the split separates nearly independent groups and balances their variance; that is OPQ, and it is why the Billion-scale vector search task pipeline has the <a href="../rotations-and-rank/">rotation algorithm</a>
+ in front of the splitter. Second, Mara never needs to decode. For a query $\mathbf{q}$, she computes, once, a table of the 256 squared distances from each query sub-vector to its codebook&rsquo;s entries ($96 \times 256$ floats), and the distance to any stored vector is then 96 table lookups and additions: $\|\mathbf{q} - \hat{\mathbf{x}}\|^2 = \sum_{m=1}^{96} T_m[\text{code}_m]$. This is <strong>asymmetric distance computation</strong>: the query stays exact, the database stays compressed, and the search runs in the compressed domain at memory-bandwidth speed. Fixed-length codes are the point: the 3,187th vector&rsquo;s code is at byte offset $96 \times 3187$, with no entropy coder in the way.</p>
+<div class="map-lab" data-fighter="pq"><p class="lab-fail">Interactive lab (pq) needs JavaScript.</p></div>
+
+<p><strong>Residual vector quantization</strong> composes the other way: by addition instead of concatenation. Quantize the vector with a small codebook, then quantize the <em>error</em> with a second codebook, then the error of that with a third.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">X</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">]])</span>   <span class="c1"># correlated 2-D cloud</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">kmeans</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="mi">30</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">C</span> <span class="o">=</span> <span class="n">P</span><span class="p">[:</span><span class="n">K</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">asg</span> <span class="o">=</span> <span class="p">((</span><span class="n">P</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="n">C</span><span class="p">[</span><span class="kc">None</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">P</span><span class="p">[</span><span class="n">asg</span> <span class="o">==</span> <span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">)])</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">C</span>
+</span></span><span class="line"><span class="cl"><span class="n">resid</span><span class="p">,</span> <span class="n">books</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="p">[],</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">stage</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>                       <span class="c1"># 3 stages × K=4 → 6 bits per vector</span>
+</span></span><span class="line"><span class="cl">    <span class="n">C</span> <span class="o">=</span> <span class="n">kmeans</span><span class="p">(</span><span class="n">resid</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span> <span class="n">books</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">idx</span> <span class="o">=</span> <span class="p">((</span><span class="n">resid</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="n">C</span><span class="p">[</span><span class="kc">None</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">total</span> <span class="o">+=</span> <span class="n">C</span><span class="p">[</span><span class="n">idx</span><span class="p">];</span> <span class="n">resid</span> <span class="o">=</span> <span class="n">X</span> <span class="o">-</span> <span class="n">total</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;after stage </span><span class="si">{</span><span class="n">stage</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: MSE </span><span class="si">{</span><span class="p">((</span><span class="n">X</span><span class="o">-</span><span class="n">total</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  (bits so far </span><span class="si">{</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">stage</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">)&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;centroids stored:&#34;</span><span class="p">,</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">books</span><span class="p">),</span> <span class="s2">&#34; reachable points:&#34;</span><span class="p">,</span> <span class="mi">4</span> <span class="o">**</span> <span class="mi">3</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>after stage 1: MSE 0.286  (bits so far 2)
+after stage 2: MSE 0.104  (bits so far 4)
+after stage 3: MSE 0.043  (bits so far 6)
+centroids stored: 12  reachable points: 64
+</code></pre><p>Twelve stored centroids, 64 reachable points, and a property PQ does not have: the stream is <strong>scalable</strong>. Stop reading after two bits and you have a coarse vector; after four, a better one; the later stages only refine. SoundStream and EnCodec run eight stages of 1,024 entries on each latent frame: 80 bits per frame from 8,192 stored centroids instead of $1024^8$, and a decoder that can drop the last stages when the network gets slow. Those 80-bit codes are the &ldquo;audio tokens&rdquo; that language models over sound are trained on, which is why the <a href="../learned-transforms/">learned transforms</a>
+ article treats this quantizer as the hinge of the neural codec. The cost is greed: each stage is optimal given the previous ones, not jointly, and the codebook-collapse problem returns at every stage.</p>
+<div class="map-lab" data-fighter="rvq"><p class="lab-fail">Interactive lab (rvq) needs JavaScript.</p></div>
+
+<p>Mara&rsquo;s final design, incidentally, is three vector quantizers stacked by role: a coarse k-means with a few thousand centroids to pick a cell to search (a plain VQ used as an index), an OPQ rotation, then PQ codes inside each cell. The game calls that pipeline the Billion-scale vector search task.</p>
+<h2 id="the-oldest-vq-you-already-use">The oldest VQ you already use</h2>
+<p>A GIF has at most 256 colours. The encoder takes the image&rsquo;s RGB triples (3-D vectors of bytes), runs a clustering algorithm over them, writes the 256 winners into the file&rsquo;s palette, and replaces every pixel by an 8-bit index. That is vector quantization with $d = 3$, $K = 256$, a 24-bit vector sent as 8 bits, and the palette is the codebook shipped in the header: side information travelling with the stream rather than installed in advance. The reason it looks fine on a logo and bad on a photo is the same reason the piggy centroid lands in the sea when the brothers scatter: VQ works when the data clusters.</p>
+<h2 id="connections">Connections</h2>
+<p>The algorithm at the centre of this article is better known as <strong>k-means clustering</strong>, and the two fields want different things from the same iteration. Clustering cares about the assignment (which family is this house in?); quantization cares about the centroid (what do I send?). The failure modes are shared, which is why k-means++ and restarts show up in both literatures.</p>
+<p>The Voronoi cells are the diagram you get by asking &ldquo;which post office is nearest to every point on the map&rdquo;: the nearest-neighbour rule <em>is</em> a Voronoi partition, and the centroid rule asks that each site sit at the centre of mass of its own cell. A codebook that satisfies both is a centroidal Voronoi tessellation.</p>
+<p>The <a href="../scalar-quantization/">scalar quantizer</a>
+ is the $d = 1$ case: Lloyd-Max levels for a Gaussian are a one-dimensional codebook found by the same algorithm, and the gain of VQ over it is the mutual-information term plus the small lattice term.</p>
+<p><strong>VQ-VAE</strong> and its descendants turn the codebook into a vocabulary. An encoder network maps an image or a sound to vectors, a codebook maps those to indices, and a transformer is trained to predict index sequences; the &ldquo;tokens&rdquo; of VQGAN-style image generators, AudioLM and MusicGen are vector-quantizer indices, and the codebook is the thing that makes a continuous signal discrete enough to put a language model on. Compression machinery became a representation.</p>
+<p>And at the far end of the map, <a href="../kv-cache-vaults/">coupled quantization</a>
+ is this article run on a KV cache: small groups of correlated channels, codebooks of 256, one bit per channel, Fisher weights instead of plain squared error, and a few megabytes of codebook per model that the decoder must own.</p>
+<p><strong>In the game:</strong> Vector quantization (vq), Product quantization (pq), Residual VQ (rvq), Coupled quantization (coupled) and the VQ codebook (codebook) who holds their keys; they take the field in the Billion-scale vector search task (Faiss IVF-OPQ-PQ), the Real-time speech task (SoundStream&rsquo;s residual codebooks) and the KV cache at 1–2 bits task (Coupled Quantization / CommVQ), and the conflict &lsquo;Vector quantization without a codebook&rsquo; is what happens when a VQ algorithm has no codebook in the shared-prior stage.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=vq" title="vq"><img src="/compressionfight/img/fighters/vq.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>vq</span></a></li><li><a href="/compressionfight/#fighter=rvq" title="rvq"><img src="/compressionfight/img/fighters/rvq.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>rvq</span></a></li><li><a href="/compressionfight/#fighter=pq" title="pq"><img src="/compressionfight/img/fighters/pq.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>pq</span></a></li><li><a href="/compressionfight/#fighter=coupled" title="coupled"><img src="/compressionfight/img/fighters/coupled.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>coupled</span></a></li><li><a href="/compressionfight/#fighter=codebook" title="codebook"><img src="/compressionfight/img/fighters/codebook.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>codebook</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations and rank: learned axes</a></li><li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms: autoencoders as codecs</a></li><li><a href="/compressionfight/map/zoo/side-information/">Side information: what the decoder knew before the first byte</a></li><li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantization: placing the grid</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/scalar-quantization/"><small>&larr; Previous</small>Scalar quantization: placing the grid</a>
+    <a class="next" href="/compressionfight/map/zoo/block-float-formats/"><small>Next &rarr;</small>Block-scaled formats: int4 and NVFP4</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#three-houses-one-number">Three houses, one number</a></li>
+    <li><a href="#the-chickens-move-in">The chickens move in</a></li>
+    <li><a href="#what-the-decoder-must-own">What the decoder must own</a></li>
+    <li><a href="#why-two-numbers-together-beat-two-numbers-alone">Why two numbers together beat two numbers alone</a></li>
+    <li><a href="#the-exponential-and-two-ways-around-it">The exponential, and two ways around it</a></li>
+    <li><a href="#the-oldest-vq-you-already-use">The oldest VQ you already use</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

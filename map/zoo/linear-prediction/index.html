@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Guess, then send the miss: linear prediction · Choose Your Codec</title>
+<meta name="description" content="A predictor does not change how many numbers you send; it changes their histogram into a spike at zero, and the choice of what to predict from decides whether the decoder can run in parallel.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/" class="on" aria-current="page">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Prediction</span><span>/</span><span>Linear and spatial predictors</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Prediction · Linear and spatial predictors</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/linear-prediction.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">Guess, then send the miss: linear prediction</h1>
+    <p class="summary">A predictor does not change how many numbers you send; it changes their histogram into a spike at zero, and the choice of what to predict from decides whether the decoder can run in parallel.</p>
+    <div class="meta">15 min read</div>
+  </header>
+  
+  <div class="prose"><h1 id="guess-then-send-the-miss-linear-prediction">Guess, then send the miss: linear prediction</h1>
+<p><em>If the next sample is almost the last one, why send it at all?</em></p>
+<h2 id="the-question">The question</h2>
+<p>Imagine an engineer in 2015, call her Mara, on the team that keeps a large company&rsquo;s monitoring database alive. Every server reports every metric every sixty seconds; the database ingests tens of millions of points a second and keeps the last day in RAM so that dashboards answer instantly. Each point is a 64-bit timestamp and a 64-bit float. Sixteen bytes a point, times a billion points, does not fit. Mara prints a few rows from one series:</p>
+<pre tabindex="0"><code>1700000000  1700000060  1700000120  1700000180  1700000240  1700000300
+</code></pre><p>Every one of those timestamps is 64 bits wide, and every one of them is the previous one plus sixty. She is spending 64 bits a point to transmit a number that anyone could have guessed to the second.</p>
+<p>This is the whole question of the predictor&rsquo;s stage. The data is <em>smooth</em>: not identical, so a copy will not do (<a href="../lz-family/">the LZ family</a>
+ finds exact repeats and nothing else), but each value is close to something the decoder already knows. What is the right way to spend bits on a number the receiver can nearly guess?</p>
+<h2 id="deltas-and-deltas-of-deltas">Deltas, and deltas of deltas</h2>
+<p>The first move anyone makes is to send differences.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl"><span class="n">np</span><span class="o">.</span><span class="n">set_printoptions</span><span class="p">(</span><span class="n">linewidth</span><span class="o">=</span><span class="mi">120</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">ts</span> <span class="o">=</span> <span class="mi">1700000000</span> <span class="o">+</span> <span class="mi">60</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">d1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">ts</span><span class="p">);</span> <span class="n">d2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">d1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">ts</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="n">d1</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="n">d2</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>[1700000000 1700000060 1700000120 1700000180 1700000240 1700000300]
+[60 60 60 60 60]
+[0 0 0 0]
+</code></pre><p>The five deltas are all 60, and the four deltas of the deltas are all zero. Mara&rsquo;s database does the second thing: it predicts that <em>the spacing stays the same</em>, and sends the miss, which is zero for a server that reports on schedule and a small number for one that reported a second late. This is the timestamp scheme of Facebook&rsquo;s Gorilla database, published in 2015, and the paper reports that the overwhelming majority of its timestamps end up costing a single bit: the bit that says &ldquo;the delta-of-delta was zero&rdquo;. Sixty-four bits became one, and no information was lost, because the decoder adds the miss back to its own guess and gets the exact timestamp.</p>
+<p>Pin the vocabulary down on this example before it grows. A <strong>predictor</strong> is a function $\hat{x}[n]$ of the samples the decoder already has, $x[n-1], x[n-2], \dots$. The <strong>residual</strong> is the miss, $e[n] = x[n] - \hat{x}[n]$. The encoder sends $e[n]$; the decoder computes the same $\hat{x}[n]$ from its own past output and recovers $x[n] = \hat{x}[n] + e[n]$ exactly. &ldquo;Delta coding&rdquo; is the predictor $\hat{x}[n] = x[n-1]$; &ldquo;delta-of-delta&rdquo; is $\hat{x}[n] = 2x[n-1] - x[n-2]$, which is a straight line through the last two points extended one step. Both are <strong>fixed</strong> predictors: no parameters, nothing to send, and both sides agree on the formula in advance.</p>
+<h2 id="aha-1-the-predictor-changes-the-histogram-not-the-count">Aha 1: the predictor changes the histogram, not the count</h2>
+<p>Here is the thing to be clear about, because it is the point where the predictor&rsquo;s stage meets the <a href="../modeling-and-coding/">modeling and coding</a>
+ split. Delta coding sends exactly as many numbers as there were samples. Six timestamps in, one timestamp and five residuals out. The <em>count</em> of symbols is untouched. What changed is which symbols they are: six values spread over a 64-bit range became one such value and five copies of <code>60</code>, or, one level up, five copies of <code>0</code>. The histogram went from flat and wide to a single spike.</p>
+<p>A spike is exactly what an entropy coder is for. A <a href="../prefix-codes/">Golomb-Rice code</a>
+ with a small parameter spends about one bit on a zero; a Huffman code built on the residual histogram does the same; an arithmetic coder does fractionally better. None of them could do anything with the raw timestamps, whose histogram is flat. The predictor saved no bits by itself. It <em>manufactured skew</em>, and the coder cashed it in. Every predictor in this article does only that, and the way to judge one is to look at the residual histogram it leaves behind.</p>
+<figure class="fig"><a href="/compressionfight/map/img/linear-prediction/histograms.png"><img src="/compressionfight/map/img/linear-prediction/histograms.png" alt="Four histograms of the same 65,534-sample signal: raw, after delta, after a fixed order-2 predictor, after a fitted order-2 predictor, with entropies 10.94, 9.23, 7.94 and 7.36 bits" loading="lazy"></a><figcaption>One resonant signal, four predictors. The sample count is identical in every panel; the order-0 entropy falls from 10.9 to 7.4 bits as the predictor improves.</figcaption></figure>
+
+<p>The figure runs the same 65,534-sample signal through four predictors and reports the order-0 entropy of what is left. Raw: 10.9 bits per sample. Plain delta: 9.2. The line-extrapolating order-2 predictor: 7.9. A predictor fitted to the signal: 7.4. Three and a half bits per sample, a third of the file, for the price of two multiplies per sample. The signal in that figure was chosen to be a resonance, and what a resonance is, and why fitting beats extrapolating, is the next scene.</p>
+<div class="map-lab" data-fighter="delta"><p class="lab-fail">Interactive lab (delta) needs JavaScript.</p></div>
+
+<h2 id="aha-2-signals-are-resonances">Aha 2: signals are resonances</h2>
+<p>Switch heroes: an audio archivist, 2001, trying to store a CD collection losslessly. Delta coding helps a little on music, and the line-extrapolating predictor helps a little more, but neither gets near half the size. Take a tiny piece of a real sound: a plucked string decaying, sampled sixteen times.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">100</span> <span class="o">*</span> <span class="mf">0.9</span><span class="o">**</span><span class="n">n</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">0.6</span> <span class="o">*</span> <span class="n">n</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">fixed</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">-</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>            <span class="c1"># x̂[n] = 2x[n-1] - x[n-2]</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">fixed</span><span class="p">,</span> <span class="s2">&#34;energy&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">fixed</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="s2">&#34;vs raw&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+</span></span></code></pre></div><pre tabindex="0"><code>[100  74  29 -17 -48 -58 -48 -23   4  25  33  30  17   1 -12 -19]
+[-19  -1  15  21  20  15   2  -6 -13 -11 -10  -3   3   6] energy 2137 vs raw 13056
+</code></pre><p>The sample is $x[n] = 100 \cdot 0.9^n \cos(0.6n)$, rounded to integers the way a 16-bit sample would be: a tone that rings and dies. The fixed order-2 predictor cuts the energy from 13,056 to 2,137, a factor of six, and the residual still has shape: it is itself a wobbling sinusoid, lagging the signal. The predictor assumed a straight line; the signal is curving. What predictor would assume the right thing?</p>
+<p>Ask what the signal <em>is</em>. A string, a vocal tract, a guitar body, a room: each is a resonator, a system that, hit once, rings at a frequency and decays. A damped cosine $r^n \cos(\omega n)$ obeys an exact two-term recurrence, which you can check with the cosine addition formula:</p>
+$$x[n] = 2r\cos\omega \cdot x[n-1] - r^2 \cdot x[n-2].$$<p>For $r = 0.9$ and $\omega = 0.6$ that is $x[n] = 1.4856\,x[n-1] - 0.81\,x[n-2]$, <em>exactly</em>, for every $n \ge 2$. The straight-line predictor was the special case $r = 1, \omega = 0$. The right predictor for this signal is still a weighted sum of the last two samples; only the weights are different. And we do not need to know $r$ and $\omega$ to find them. We can ask the block of samples which weights fit it best, by least squares:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>     <span class="c1"># rows: (x[n-1], x[n-2])</span>
+</span></span><span class="line"><span class="cl"><span class="n">a</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">rcond</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">res</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">-</span> <span class="n">A</span> <span class="o">@</span> <span class="n">a</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;a =&#34;</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span> <span class="s2">&#34; theory:&#34;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="mf">0.9</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">0.6</span><span class="p">),</span> <span class="mi">4</span><span class="p">),</span> <span class="o">-</span><span class="mf">0.81</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;residual&#34;</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="s2">&#34;energy&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">res</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>a = [ 1.4849 -0.8091]  theory: 1.4856 -0.81
+residual [ 0.03 -0.19  0.71 -0.48 -0.71  1.35 -0.68  0.45 -0.89  1.23 -0.85  0.03  0.27 -0.37] energy 7.0
+</code></pre><p>Fourteen equations, two unknowns, and the fit recovers the resonance&rsquo;s coefficients to three decimals from integer-rounded data. The residual energy is 7.0 against the fixed predictor&rsquo;s 2,137: what is left is the rounding noise we injected and nothing else. The predictor did not merely dent the signal. It explained it.</p>
+<figure class="fig"><a href="/compressionfight/map/img/linear-prediction/resonance.png"><img src="/compressionfight/map/img/linear-prediction/resonance.png" alt="Three stem plots: the damped cosine, the fixed order-2 residual (energy 2137) and the fitted residual (energy 7)" loading="lazy"></a><figcaption>The toy signal, the fixed predictor&rsquo;s miss, and the fitted predictor&rsquo;s miss. Two numbers fitted to the block turn a ringing tone into rounding noise.</figcaption></figure>
+
+<p>Now the general statement. A <strong>linear predictor of order $p$</strong> is</p>
+$$\hat{x}[n] = \sum_{k=1}^{p} a_k\, x[n-k],$$<p>and <strong>linear predictive coding</strong> (LPC) chooses the $a_k$ to minimise the residual energy $\sum_n e[n]^2$ over a block. Setting the gradient to zero gives the normal equations $\mathbf{R}\mathbf{a} = \mathbf{r}$, where $\mathbf{R}$ is the $p \times p$ matrix of autocorrelations $R(|i-j|)$ and $\mathbf{r}$ the vector $R(1), \dots, R(p)$. Because $\mathbf{R}$ is Toeplitz, the Levinson-Durbin recursion solves it in $O(p^2)$ instead of $O(p^3)$, building the order-$p$ solution from the order-$(p-1)$ one and producing along the way a set of <em>reflection coefficients</em> that are bounded in $[-1, 1]$ and quantise gracefully; that is the form speech codecs ship. The quantity to remember is the <strong>prediction gain</strong> $G = \sigma_x^2 / \sigma_e^2$, the ratio of signal variance to residual variance; at high resolution each factor of 4 in $G$ is one bit per sample saved, the same $6$ dB-per-bit exchange rate as in <a href="../rate-and-distortion/">rate and distortion</a>
+.</p>
+<p>The view that makes LPC more than a curve fit is the <em>source-filter</em> model. A signal with a flat residual is one that can be regenerated by driving an <strong>all-pole filter</strong> $1 / (1 - \sum a_k z^{-k})$ with a small, white excitation. The coefficients describe the resonator; the residual describes what hit it. In FLAC, that view is applied at the lossless fidelity contract: per block of 4,096 samples the encoder tries fixed predictors of orders 0 to 4 and fitted predictors up to order 32, quantises the chosen coefficients to integers, predicts from integers so that the decoder reproduces every residual bit-exactly, and sends 2 to 32 coefficients as side information ahead of Rice-coded residuals. In a speech codec the <em>same</em> math is applied at a different contract: estimate ten to sixteen coefficients per 20 ms frame, send those, and then send only a coarse description of the excitation, because the ear cares about the resonances (the vowel) far more than about the exact pulse train that excited them. FLAC and CELP are the same stage with different butchers behind it.</p>
+<div class="map-lab" data-fighter="lpc"><p class="lab-fail">Interactive lab (lpc) needs JavaScript.</p></div>
+
+<h2 id="the-same-move-sideways-pixels-and-their-neighbours">The same move sideways: pixels and their neighbours</h2>
+<p>Switch the axis from time to space. A pixel is nearly its left neighbour and nearly its upper neighbour. PNG, designed in 1996 for exactly the lossless-graphics job, does not fit predictors; it offers a menu of five fixed ones and lets the encoder pick one per row. Here is a $4 \times 4$ block that is mostly a gradient, with the pixel to the left ($a$), above ($b$) and above-left ($c$) read as zero outside the block, as PNG does at an image edge:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">19</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">              <span class="p">[</span><span class="mi">15</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">25</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">              <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">27</span><span class="p">,</span> <span class="mi">29</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">              <span class="p">[</span><span class="mi">25</span><span class="p">,</span> <span class="mi">29</span><span class="p">,</span> <span class="mi">31</span><span class="p">,</span> <span class="mi">34</span><span class="p">]])</span>
+</span></span><span class="line"><span class="cl"><span class="n">left</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">B</span><span class="p">);</span> <span class="n">left</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">B</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>         <span class="c1"># a: pixel to the left (0 outside)</span>
+</span></span><span class="line"><span class="cl"><span class="n">up</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">B</span><span class="p">);</span>   <span class="n">up</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="p">:]</span>   <span class="o">=</span> <span class="n">B</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>         <span class="c1"># b: pixel above</span>
+</span></span><span class="line"><span class="cl"><span class="n">ul</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">B</span><span class="p">);</span>   <span class="n">ul</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:]</span>  <span class="o">=</span> <span class="n">B</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>       <span class="c1"># c: above-left</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">paeth</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">p</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="o">-</span> <span class="n">c</span>                                        <span class="c1"># the &#34;plane&#34; guess</span>
+</span></span><span class="line"><span class="cl">    <span class="n">pa</span><span class="p">,</span> <span class="n">pb</span><span class="p">,</span> <span class="n">pc</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">a</span><span class="p">),</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">b</span><span class="p">),</span> <span class="nb">abs</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">a</span> <span class="k">if</span> <span class="n">pa</span> <span class="o">&lt;=</span> <span class="n">pb</span> <span class="ow">and</span> <span class="n">pa</span> <span class="o">&lt;=</span> <span class="n">pc</span> <span class="k">else</span> <span class="p">(</span><span class="n">b</span> <span class="k">if</span> <span class="n">pb</span> <span class="o">&lt;=</span> <span class="n">pc</span> <span class="k">else</span> <span class="n">c</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vectorize</span><span class="p">(</span><span class="n">paeth</span><span class="p">)(</span><span class="n">left</span><span class="p">,</span> <span class="n">up</span><span class="p">,</span> <span class="n">ul</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">pred</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&#34;None&#34;</span><span class="p">,</span> <span class="mi">0</span> <span class="o">*</span> <span class="n">B</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;Sub&#34;</span><span class="p">,</span> <span class="n">left</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;Up&#34;</span><span class="p">,</span> <span class="n">up</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;Average&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">left</span> <span class="o">+</span> <span class="n">up</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;Paeth&#34;</span><span class="p">,</span> <span class="n">P</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">8s</span><span class="si">}</span><span class="s2"> sum|residual| = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">B</span> <span class="o">-</span> <span class="n">pred</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">:</span><span class="s2">4d</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">B</span> <span class="o">-</span> <span class="n">P</span><span class="p">)</span>
+</span></span></code></pre></div><pre tabindex="0"><code>None     sum|residual| =  355
+Sub      sum|residual| =  107
+Up       sum|residual| =  119
+Average  sum|residual| =  114
+Paeth    sum|residual| =   62
+[[10  3  3  3]
+ [ 5  3  3  4]
+ [ 5  3  4  2]
+ [ 5  4  2  3]]
+</code></pre><p><strong>Sub</strong> predicts from the left, <strong>Up</strong> from above, <strong>Average</strong> from their mean. <strong>Paeth</strong> (after Alan Paeth, 1991) first computes $a + b - c$, the value the pixel would have if the three neighbours lay on a plane, and then returns whichever of $a$, $b$, $c$ is closest to that plane value. On the gradient, every filter except None collapses the interior to the small step sizes 2 to 4, and Paeth, by picking the neighbour that best continues the local plane, does best, 62 against 107. PNG&rsquo;s reference encoder chooses the filter per row with exactly this heuristic, the smallest sum of absolute residuals, and spends one byte per row to say which it chose. The residual rows then go to DEFLATE, whose Huffman stage sees a spike of small values where there had been a gradient.</p>
+<p>Video codecs take the menu idea further. An H.264 intra block chooses among nine prediction directions for $4 \times 4$ blocks (vertical, horizontal, DC, four diagonals, and two in between), HEVC among thirty-five; the encoder tries them, picks the one that leaves the cheapest residual, and sends the mode index. It is a menu of predictors chosen per block, PNG&rsquo;s filter byte with more entries, and the residual it leaves goes to a transform and a quantizer rather than to a lossless coder. The <a href="../motion-compensation/">motion compensation</a>
+ article is the same stage again with the prediction taken from the previous frame instead of the neighbouring pixels.</p>
+<div class="map-lab" data-fighter="spatial"><p class="lab-fail">Interactive lab (spatial) needs JavaScript.</p></div>
+
+<h2 id="residuals-have-a-sign-coders-want-a-magnitude">Residuals have a sign; coders want a magnitude</h2>
+<p>One mechanical detail before the last scene, because every residual coder needs it. Residuals are signed and centred on zero; a Rice code, and the bit-packing in Parquet, expect small <em>unsigned</em> integers. The <strong>zigzag mapping</strong> interleaves the two signs so that small magnitude becomes small index:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">r</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">r</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">r</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>[0 1 2 3 4 5 6]
+</code></pre><p>Zero stays zero, $-1$ becomes 1, $+1$ becomes 2, and so on; in two&rsquo;s complement it is the one-liner <code>(r &lt;&lt; 1) ^ (r &gt;&gt; 31)</code>. FLAC, Protocol Buffers, Parquet&rsquo;s delta encoding and Gorilla all do some version of this before handing residuals to a code that charges by magnitude.</p>
+<h2 id="aha-3-what-you-predict-from-decides-what-the-decoder-can-do">Aha 3: what you predict from decides what the decoder can do</h2>
+<p>Back to Mara, but with a 2024 problem. A transformer&rsquo;s KV cache is a long sequence of tokens, and in any one layer and channel, consecutive tokens have similar values. She wants to delta-code them before streaming the cache across a network, and the deltas will be <em>quantised</em>, because this is a lossy job. Ten values from one channel:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="mi">103</span><span class="p">,</span> <span class="mi">105</span><span class="p">,</span> <span class="mi">104</span><span class="p">,</span> <span class="mi">108</span><span class="p">,</span> <span class="mi">110</span><span class="p">,</span> <span class="mi">109</span><span class="p">,</span> <span class="mi">113</span><span class="p">,</span> <span class="mi">115</span><span class="p">,</span> <span class="mi">114</span><span class="p">]);</span> <span class="n">D</span> <span class="o">=</span> <span class="mi">4</span>
+</span></span><span class="line"><span class="cl"><span class="n">q</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">D</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">v</span> <span class="o">/</span> <span class="n">D</span><span class="p">)</span>                        <span class="c1"># uniform quantizer, step 4</span>
+</span></span><span class="line"><span class="cl"><span class="n">open_chain</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">q</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">x</span><span class="p">)))])</span>
+</span></span><span class="line"><span class="cl"><span class="n">closed</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span> <span class="n">closed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">closed</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">q</span><span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">closed</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+</span></span><span class="line"><span class="cl"><span class="n">anchor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">q</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])])</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&#34;open-loop chain&#34;</span><span class="p">,</span> <span class="n">open_chain</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;closed-loop chain&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">closed</span><span class="p">)),</span> <span class="p">(</span><span class="s2">&#34;anchor&#34;</span><span class="p">,</span> <span class="n">anchor</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">18s</span><span class="si">}</span><span class="s2"> error </span><span class="si">{</span><span class="p">(</span><span class="n">r</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span><span class="si">}</span><span class="s2">  max </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">r</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">())</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;chain deltas &#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="s2">&#34;   anchor deltas&#34;</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span></span></code></pre></div><pre tabindex="0"><code>open-loop chain    error [ 0  1 -1  0  0 -2 -1 -1 -3 -2]  max 3
+closed-loop chain  error [ 0  1 -1  0  0 -2 -1 -1  1  2]  max 2
+anchor             error [ 0  1 -1  0  0 -2 -1 -1  1  2]  max 2
+chain deltas  [ 3  2 -1  4  2 -1  4  2 -1]    anchor deltas [ 3  5  4  8 10  9 13 15 14]
+</code></pre><p>Three ways to do the obvious thing, and they are not the same.</p>
+<p>The <strong>open-loop chain</strong> takes the differences between consecutive <em>original</em> values, quantises each with step $\Delta = 4$, and lets the decoder add them up. Each quantised delta is off by up to $\Delta/2 = 2$, and the errors <em>add</em>: by the ninth token the reconstruction is off by 3, more than any single quantisation could cause, and over a long run the error is a random walk. The <strong>closed-loop chain</strong> fixes that by having the encoder predict from the previous <em>reconstructed</em> value, the same number the decoder will have, so each step&rsquo;s error is a fresh $\pm\Delta/2$ and nothing accumulates; this is what every lossy predictive codec since DPCM has done, and it is why a video encoder contains a full decoder. But look at what it costs: the encoder must now reconstruct token $n$ before it can code token $n+1$, and the decoder must do the same. The chain is sequential at both ends.</p>
+<p>The <strong>anchor</strong> scheme keeps the first value exactly and codes the others as quantised differences from <em>it</em>. Error bounded at $\Delta/2$, like the closed loop, but with no chain: every token&rsquo;s reconstruction is $x_0 + q(x_n - x_0)$, computable on its own thread without waiting for its neighbour. The price is in the last line of output: the chain&rsquo;s deltas are small (3, 2, −1, 4, …) and the anchor&rsquo;s grow with distance from the anchor (3, 5, 4, 8, 10, …, 14). Over these ten values the order-0 entropy is 1.9 bits for the chain&rsquo;s deltas and 3.2 bits for the anchor&rsquo;s. The anchor pays about a bit per value for parallel decode and bounded error.</p>
+<figure class="fig"><a href="/compressionfight/map/img/linear-prediction/anchor.png"><img src="/compressionfight/map/img/linear-prediction/anchor.png" alt="Reconstruction error over 200 tokens: the open-loop chain walks away to 21, the closed-loop chain and the anchor scheme stay within ±2" loading="lazy"></a><figcaption>Two hundred tokens of a wandering channel, step Δ = 4. Open-loop deltas drift to an error of 21; the closed loop and the anchor both stay inside ±2, and only the anchor does so without a sequential decoder.</figcaption></figure>
+
+<p>That is the dial behind a whole row of systems. A video GOP is an anchor scheme in time: an I-frame coded on its own, then frames predicted from it, so that a seek lands on an anchor instead of replaying a chain. CacheGen, streaming KV caches in 2024, groups tokens in tens, stores the first at 8 bits and the other nine as deltas from it, and decodes one token per CUDA thread; it measured 2.4 to 2.9 times lower variance in the deltas than in the raw values, which is the entropy saving, and it chose the anchor over the chain precisely so that the decoder would not be a loop. Parquet&rsquo;s delta encoding against a block minimum is the same choice made for a column store. Predicting from the previous reconstruction gives the smallest residuals and a decoder that must run in order; predicting from an anchor gives slightly larger residuals, a decoder that runs in parallel, and an error that cannot walk away.</p>
+<div class="map-lab" data-fighter="anchor_delta"><p class="lab-fail">Interactive lab (anchor_delta) needs JavaScript.</p></div>
+
+<h2 id="connections">Connections</h2>
+<p>The residual has an older name in statistics: the <strong>innovation</strong>. A Kalman filter predicts the next state from the current one, observes the measurement, and updates on the difference; the innovation sequence of an optimal filter is white, which is the same statement as &ldquo;a good predictor leaves a flat residual&rdquo;. An ARIMA model is a linear predictor with a name for each part: AR is exactly the $\sum a_k x[n-k]$ above, I is delta coding (difference until stationary), and MA models the residual&rsquo;s own short memory. The time-series field and the audio-coding field solved the same normal equations under different names: Yule-Walker in one, autocorrelation-method LPC in the other.</p>
+<p>The stage is also older than digital audio. Differential PCM, the closed-loop chain with a quantizer, was patented at Bell Labs in 1952 for telephony; the vocoder work of the 1960s and 70s turned LPC into the standard description of speech, and the GSM phone in a 1990s pocket ran an LPC analysis every 20 ms. Today the same code paths live in FLAC, in Opus&rsquo;s SILK layer, in PNG, in Parquet&rsquo;s <code>DELTA_BINARY_PACKED</code> columns, and in the delta stage of a KV-cache courier.</p>
+<p>And one connection forward: a linear predictor of order $p$ and a $p$-tap decorrelating transform are two answers to the same question, how to make correlated samples independent. <a href="../block-transforms/">Block transforms</a>
+ do it with a rotation applied to a whole block at once, which is the natural move when the samples are all available together and lossy; prediction does it one sample at a time, which is the natural move when the decoder must stay causal and exact. Video uses both, in that order: predict, then transform the miss.</p>
+<p><strong>In the game:</strong> <a href="/compressionfight/#fighter=delta">Delta coding</a>
+, <a href="/compressionfight/#fighter=lpc">Linear prediction (LPC)</a>
+, <a href="/compressionfight/#fighter=spatial">Spatial prediction</a>
+ and <a href="/compressionfight/#fighter=anchor_delta">Anchor delta coding</a>
+ hold the prediction stage in the Lossless audio task (FLAC), the Lossless images task (PNG), the Streaming video task (H.264&rsquo;s intra modes), the Modern web images task (WebP) and the KV cache over a network task (CacheGen); the <a href="../codec-dissections/">codec dissections</a>
+ show where each one sits in its pipeline.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=delta" title="delta"><img src="/compressionfight/img/fighters/delta.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>delta</span></a></li><li><a href="/compressionfight/#fighter=lpc" title="lpc"><img src="/compressionfight/img/fighters/lpc.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>lpc</span></a></li><li><a href="/compressionfight/#fighter=spatial" title="spatial"><img src="/compressionfight/img/fighters/spatial.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>spatial</span></a></li><li><a href="/compressionfight/#fighter=anchor_delta" title="anchor_delta"><img src="/compressionfight/img/fighters/anchor_delta.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>anchor_delta</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes: whole bits</a></li><li><a href="/compressionfight/map/zoo/block-transforms/">Block transforms: which directions matter</a></li><li><a href="/compressionfight/map/zoo/motion-compensation/">Motion compensation: predicting across frames</a></li><li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: twelve worked dissections</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/lz-family/"><small>&larr; Previous</small>Say it again: the LZ family</a>
+    <a class="next" href="/compressionfight/map/zoo/context-models/"><small>Next &rarr;</small>Context models: predicting the next symbol</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#the-question">The question</a></li>
+    <li><a href="#deltas-and-deltas-of-deltas">Deltas, and deltas of deltas</a></li>
+    <li><a href="#aha-1-the-predictor-changes-the-histogram-not-the-count">Aha 1: the predictor changes the histogram, not the count</a></li>
+    <li><a href="#aha-2-signals-are-resonances">Aha 2: signals are resonances</a></li>
+    <li><a href="#the-same-move-sideways-pixels-and-their-neighbours">The same move sideways: pixels and their neighbours</a></li>
+    <li><a href="#residuals-have-a-sign-coders-want-a-magnitude">Residuals have a sign; coders want a magnitude</a></li>
+    <li><a href="#aha-3-what-you-predict-from-decides-what-the-decoder-can-do">Aha 3: what you predict from decides what the decoder can do</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

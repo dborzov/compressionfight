@@ -3,10 +3,12 @@ Output: img/perceptual-models/chroma-420.png"""
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 from matplotlib.patches import Rectangle
 
-BG, INK, INK2, MUTED, GRID = "#0b0714", "#f0efec", "#c3c2b7", "#898781", "#2c2c2a"
-C = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181"]
+BG, INK, INK2, MUTED, GRID = "#f3eadb", "#2a211b", "#5a4a3d", "#5a4a3d", "#b89f78"
+C = ["#246b66", "#b8892e", "#b05a4c", "#6b4a7a", "#6f8f4e"]
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
     "text.color": INK, "font.size": 13, "axes.titlesize": 15})
 
@@ -19,7 +21,7 @@ for ax, (name, sx, sy, note) in zip(axes, schemes):
     ax.set_xlim(-0.3, W + 0.3); ax.set_ylim(-0.3, H + 0.3); ax.set_aspect("equal"); ax.axis("off")
     for x in range(W):
         for y in range(H):
-            ax.add_patch(Rectangle((x, y), 1, 1, facecolor="#1b1526", edgecolor=GRID, linewidth=1))
+            ax.add_patch(Rectangle((x, y), 1, 1, facecolor="#e0d2b6", edgecolor=GRID, linewidth=1))
             ax.scatter(x + 0.5, y + 0.5, s=50, color=INK, zorder=3)        # luma sample at every pixel
     for x in range(0, W, sx):
         for y in range(0, H, sy):

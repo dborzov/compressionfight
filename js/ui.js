@@ -1,5 +1,5 @@
 // Choose Your Codec: screens, modes, levels, catalog, live pipeline panel, results, tutor,
-// lessons, quizzes, side quests, explore (codecs / roster / jobs / matrix / duel / trade-offs).
+// lessons, checkpoints, exercises, explore (codecs / algorithms / tasks / matrix / compare / trade-offs).
 // Depends on CYC (data.js, curriculum.js, quests_data.js). Optional modules are guarded:
 // CYC.Engine, CYC.Rules, CYC.Viz, CYC.Demos, CYC.Quests. Missing ones show placeholders.
 
@@ -16,25 +16,27 @@ CYC.UI = (function () {
   const RANKS = ['D', 'C', 'B', 'A', 'S'];
   const PAYLOADS = ['json', 'prose', 'image', 'audio', 'video', 'vectors', 'weights', 'activations'];
   const STAT_ROWS = [
-    ['enc', 'ENC COST'], ['dec', 'DEC COST'], ['ratio', 'SQUEEZE'],
-    ['latency', 'DELAY'], ['mem', 'MEMORY'], ['ra', 'RANDOM ACCESS'],
+    ['enc', 'Encoder cost'], ['dec', 'Decoder cost'], ['ratio', 'Compression'],
+    ['latency', 'Delay'], ['mem', 'Memory'], ['ra', 'Random access'],
   ];
   const REQ_ROWS = [
-    ['lossless', 'LOSSLESS', 'bool'], ['latency', 'LATENCY TOLERANCE'], ['encBudget', 'ENCODER BUDGET'],
-    ['decBudget', 'DECODER BUDGET'], ['ra', 'RANDOM ACCESS'], ['bandwidth', 'BANDWIDTH PRESSURE'],
-    ['decMem', 'DECODER MEMORY'], ['priorOK', 'CAN SHIP SIDE INFO', 'bool'],
+    ['lossless', 'Lossless required', 'bool'], ['latency', 'Latency tolerance'], ['encBudget', 'Encoder compute'],
+    ['decBudget', 'Decoder compute'], ['ra', 'Random access'], ['bandwidth', 'Bandwidth pressure'],
+    ['decMem', 'Decoder memory'], ['priorOK', 'Side information allowed', 'bool'],
   ];
   const MATRIX_COLS = [
-    { label: 'NEEDS LOSSLESS', f: (s) => (s.lossless ? 2 : 0) },
-    { label: 'NEEDS LOW LATENCY', f: (s) => (s.latency <= 1 ? 2 : s.latency <= 3 ? 1 : 0) },
-    { label: 'CHEAP DECODER', f: (s) => (s.dec <= 1 ? 2 : s.dec <= 3 ? 1 : 0) },
-    { label: 'CHEAP ENCODER', f: (s) => (s.enc <= 1 ? 2 : s.enc <= 3 ? 1 : 0) },
-    { label: 'RANDOM ACCESS', f: (s) => (s.ra >= 4 ? 2 : s.ra >= 2 ? 1 : 0) },
-    { label: 'TIGHT BANDWIDTH', f: (s) => (s.ratio >= 4 ? 2 : s.ratio === 3 ? 1 : 0) },
-    { label: 'SMALL DECODER MEMORY', f: (s) => (s.mem <= 1 ? 2 : s.mem <= 3 ? 1 : 0) },
+    { label: 'Needs lossless', f: (s) => (s.lossless ? 2 : 0) },
+    { label: 'Needs low latency', f: (s) => (s.latency <= 1 ? 2 : s.latency <= 3 ? 1 : 0) },
+    { label: 'Cheap decoder', f: (s) => (s.dec <= 1 ? 2 : s.dec <= 3 ? 1 : 0) },
+    { label: 'Cheap encoder', f: (s) => (s.enc <= 1 ? 2 : s.enc <= 3 ? 1 : 0) },
+    { label: 'Random access', f: (s) => (s.ra >= 4 ? 2 : s.ra >= 2 ? 1 : 0) },
+    { label: 'Tight bandwidth', f: (s) => (s.ratio >= 4 ? 2 : s.ratio === 3 ? 1 : 0) },
+    { label: 'Small decoder memory', f: (s) => (s.mem <= 1 ? 2 : s.mem <= 3 ? 1 : 0) },
   ];
   const OK_COLOR = { ideal: 'var(--ok-ideal)', accept: 'var(--ok-accept)', meh: 'var(--ok-meh)', wrong: 'var(--ok-wrong)' };
+  const OK_LABEL = { ideal: 'Ideal', accept: 'Acceptable', meh: 'Weak', wrong: 'Wrong' };
   const EXPLORE_TABS = ['codecs', 'roster', 'jobs', 'matrix', 'duel', 'tradeoffs'];
+  const TUTOR_NAME = () => (CYC.TUTOR && CYC.TUTOR.name) || 'Tutor';
 
   const state = {
     mode: 'heist',          // 'heist' | 'explore'
@@ -47,6 +49,7 @@ CYC.UI = (function () {
     result: null,
     engineError: null,
     progress: loadProgress(),
+    linkUnlocked: new Set(),  // levels opened through a #heist= deep link (this session only)
     tutor: loadTutor(),
     chooser: { open: false, role: null, family: null, focus: null },
     exploreTab: 'codecs',
@@ -92,7 +95,16 @@ CYC.UI = (function () {
   const demosHas = (id) => { try { return !!(CYC.Demos && typeof CYC.Demos.render === 'function' && typeof CYC.Demos.has === 'function' && CYC.Demos.has(id)); } catch (e) { return false; } };
   const questsReady = () => !!(CYC.Quests && typeof CYC.Quests.render === 'function');
   const fighter = (id) => CYC.byId[id] || null;
-  const roleColor = (role) => (CYC.ROLES[role] && CYC.ROLES[role].color) || '#777';
+  const roleColor = (role) => (CYC.ROLES[role] && CYC.ROLES[role].color) || 'var(--line)';
+  const roleTitle = (role) => (CYC.ROLES[role] && CYC.ROLES[role].title) || role;
+  const roleArticle = (role) => (CYC.MAP && CYC.MAP.roles && CYC.MAP.roles[role]) || null;
+  const fighterArticle = (id) => (CYC.MAP && CYC.MAP.fighters && CYC.MAP.fighters[id]) || null;
+  const heistArticle = (h) => (CYC.MAP && (((CYC.MAP.heists || {})[h.id]) || CYC.MAP.defaultHeistArticle)) || null;
+  // Tutor / lesson text may contain Markdown links: [text](url). Everything else is trusted HTML from our data files.
+  const mdLinks = (s) => String(s == null ? '' : s).replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, text, url) => {
+    if (!/^(https?:\/\/|\.{0,2}\/|map\/|#)/.test(url)) return m;
+    return `<a href="${url.replace(/"/g, '&quot;')}">${text}</a>`;
+  });
   const heistsOf = (lv) => CYC.HEISTS.filter((h) => h.level === lv.id);
   const levelOf = (id) => CYC.LEVELS.find((l) => l.id === id) || CYC.LEVELS[0];
   const payloadLabel = (kind) => { try { return CYC.Engine && typeof CYC.Engine.payloadLabel === 'function' ? CYC.Engine.payloadLabel(kind) : kind; } catch (e) { return kind; } };
@@ -132,7 +144,7 @@ CYC.UI = (function () {
   const isSolved = (h) => !!state.progress.solved[h.id];
   const levelSolved = (lv) => heistsOf(lv).every(isSolved);
   function levelUnlocked(lv) {
-    if (state.progress.unlockedAll || lv.id === 1) return true;
+    if (state.progress.unlockedAll || lv.id === 1 || state.linkUnlocked.has(lv.id)) return true;
     const prev = CYC.LEVELS.find((l) => l.id === lv.id - 1);
     return !!prev && levelSolved(prev);
   }
@@ -151,9 +163,9 @@ CYC.UI = (function () {
     const s = $('topbar-status');
     if (!s) return;
     let txt = '';
-    if (state.screen === 'explore') txt = 'EXPLORE';
-    else if (state.screen === 'squad' || state.screen === 'results') txt = state.heist ? `${state.ctx === 'explore' ? 'EXPLORE' : 'LV ' + state.level.id} · ${state.heist.name}` : '';
-    else if (state.screen === 'heists' || state.screen === 'quiz' || state.screen === 'quest') txt = `LV ${state.level.id} · ${state.level.name}`;
+    if (state.screen === 'explore') txt = 'Explore';
+    else if (state.screen === 'squad' || state.screen === 'results') txt = state.heist ? `${state.ctx === 'explore' ? 'Explore' : 'Level ' + state.level.id} · ${state.heist.name}` : '';
+    else if (state.screen === 'heists' || state.screen === 'quiz' || state.screen === 'quest') txt = `Level ${state.level.id} · ${state.level.name}`;
     s.textContent = txt;
   }
   function setMode(mode) {
@@ -166,7 +178,7 @@ CYC.UI = (function () {
     else { renderLevels(); show('levels'); }
   }
 
-  // ---------------- THE FIXER (tutor) ----------------
+  // ---------------- tutor box ----------------
   function fixer(key, opts) {
     opts = opts || {};
     if (!state.tutor.on || !CYC.TUTOR || !CYC.TUTOR.lines) return;
@@ -189,9 +201,9 @@ CYC.UI = (function () {
     const cur = state.fixer.current;
     if (!cur) { box.hidden = true; document.body.classList.remove('fixer-open'); return; }
     const last = state.fixer.line >= cur.lines.length - 1 && state.fixer.queue.length === 0;
-    $('fixer-text').innerHTML = cur.lines[state.fixer.line];   // trusted content from curriculum.js
+    $('fixer-text').innerHTML = mdLinks(cur.lines[state.fixer.line]);   // trusted content from curriculum.js
     $('fixer-count').textContent = cur.lines.length > 1 ? `${state.fixer.line + 1}/${cur.lines.length}` : '';
-    $('btn-fixer-next').textContent = last ? 'GOT IT' : 'NEXT ▶';
+    $('btn-fixer-next').textContent = last ? 'Got it' : 'Next';
     box.hidden = false;
     document.body.classList.add('fixer-open');
   }
@@ -205,7 +217,7 @@ CYC.UI = (function () {
   function setTutorOn(on) {
     state.tutor.on = on; saveTutor();
     const b = $('btn-fixer');
-    b.textContent = `FIXER: ${on ? 'ON' : 'OFF'}`;
+    b.textContent = `Tutor: ${on ? 'on' : 'off'}`;
     b.setAttribute('aria-pressed', String(on));
     b.classList.toggle('is-on', on);
     if (!on) fixerDismiss();
@@ -214,7 +226,7 @@ CYC.UI = (function () {
   // ---------------- small components ----------------
   function portrait(f, extraClass) {
     const isEmpty = !f || f.id === 'none';
-    const color = isEmpty ? '#555' : roleColor(f.role);
+    const color = isEmpty ? 'var(--line)' : roleColor(f.role);
     const box = el('div', { class: `portrait ${extraClass || ''} ${isEmpty ? 'is-empty' : ''}`, style: { '--rc': color }, 'aria-hidden': 'true' },
       el('span', { class: 'initials', text: isEmpty ? '—' : initials(f.name) }));
     const img = el('img', { alt: '', src: `img/fighters/${isEmpty ? 'none' : f.id}.png`, loading: 'lazy', decoding: 'async' });
@@ -236,12 +248,12 @@ CYC.UI = (function () {
     return el('div', { class: 'segs', style: color ? { '--rc': color } : null, role: 'img', 'aria-label': `${v} of 5` },
       Array.from({ length: 5 }, (_, i) => el('i', { class: `seg ${i < v ? 'on' : ''}` })));
   }
-  function stamp(on) { return el('span', { class: `stamp ${on ? 'on' : 'off'}`, text: on ? 'ON' : 'OFF' }); }
+  function stamp(on) { return el('span', { class: `stamp ${on ? 'on' : 'off'}`, text: on ? 'Yes' : 'No' }); }
   function statBars(stats, color, compact) {
     return el('div', { class: `bars ${compact ? 'bars-compact' : ''}` },
       STAT_ROWS.map(([k, label]) => [el('span', { class: 'bar-label', text: label }), segs(stats[k], color)]));
   }
-  // Requirement bars with heist metaphors: metaphor label, real term, low/high ends, hint on hover/tap.
+  // Requirement bars: the real term as the label (CYC.METAPHORS[k].label), low/high ends, hint on hover/tap.
   function reqBars(req, compact) {
     const M = CYC.METAPHORS || {};
     return el('div', { class: `bars req-bars ${compact ? 'bars-compact' : ''}` },
@@ -254,25 +266,24 @@ CYC.UI = (function () {
           onclick: hintEl ? (e) => { e.stopPropagation(); hintEl.hidden = !hintEl.hidden; e.currentTarget.setAttribute('aria-expanded', String(!hintEl.hidden)); } : null,
         },
           el('span', { class: 'req-meta', text: m.label || label }),
-          el('span', { class: 'req-term', text: m.term || label.toLowerCase() }),
           hint ? el('span', { class: 'req-q', 'aria-hidden': 'true', text: '?' }) : null);
         const valueCell = kind === 'bool'
           ? el('div', { class: 'req-value' }, stamp(!!req[k]))
           : el('div', { class: 'req-value' },
-            segs(req[k], 'var(--gold)'),
+            segs(req[k], 'var(--teal)'),
             !compact && (m.low || m.high) ? el('div', { class: 'req-ends' }, el('span', { text: m.low || '' }), el('span', { text: m.high || '' })) : null);
         return [labelCell, el('div', { class: 'req-cell' }, valueCell, hintEl)];
       }));
   }
-  function levelBadge(f) { return el('span', { class: 'badge badge-level', text: `LV ${f.level}` }); }
-  function losslessBadge() { return el('span', { class: 'badge badge-lossless', text: 'LOSSLESS' }); }
+  function levelBadge(f) { return el('span', { class: 'badge badge-level', text: `Level ${f.level}` }); }
+  function losslessBadge() { return el('span', { class: 'badge badge-lossless', text: 'Lossless' }); }
   function chip(text, color, soft) { return el('span', { class: `chip ${soft ? 'chip-soft' : ''}`, style: color ? { '--rc': color } : null, text }); }
   function rankBadge(rank) { return el('span', { class: `rank-badge rank-${rank}`, text: rank }); }
 
   function fighterCard(f, opts) {
     opts = opts || {};
     const isEmpty = f.id === 'none';
-    const color = isEmpty ? '#555' : roleColor(f.role);
+    const color = isEmpty ? 'var(--line)' : roleColor(f.role);
     return el('button', {
       type: 'button',
       class: `fcard ${isEmpty ? 'fcard-empty' : ''} ${opts.picked ? 'is-picked' : ''} ${opts.locked ? 'is-locked' : ''}`,
@@ -281,24 +292,24 @@ CYC.UI = (function () {
       'aria-label': `${f.name}${opts.locked ? ', locked until level ' + f.level : ''}`,
       onclick: opts.onclick, onmouseenter: opts.onhover, onfocus: opts.onhover,
     },
-      opts.picked ? el('span', { class: 'fcard-pick', text: opts.pickIndex != null ? `#${opts.pickIndex + 1}` : '✔' }) : null,
+      opts.picked ? el('span', { class: 'fcard-pick', text: opts.pickIndex != null ? `${opts.pickIndex + 1}` : '✔' }) : null,
       portrait(f),
       el('div', { class: 'fcard-name', text: f.name }),
       el('div', { class: 'fcard-real', text: f.real }),
       el('div', { class: 'fcard-badges' },
-        opts.locked ? el('span', { class: 'badge badge-level badge-locked', text: `🔒 LV ${f.level}` }) : (opts.showLevel && !isEmpty ? levelBadge(f) : null),
+        opts.locked ? el('span', { class: 'badge badge-level badge-locked', text: `Locked until level ${f.level}` }) : (opts.showLevel && !isEmpty ? levelBadge(f) : null),
         f.stats && f.stats.lossless && !isEmpty ? losslessBadge() : null),
       opts.bars === false ? null : statBars(f.stats, color, true),
     );
   }
 
-  // Special Move lab (CYC.Demos) embedded lazily into a container.
+  // Interactive lab (CYC.Demos) embedded lazily into a container.
   function demoBox(fighterId, title) {
     if (!demosHas(fighterId)) return null;
     const f = fighter(fighterId);
-    const box = el('div', { class: 'demo-box', style: { '--role-color': f ? roleColor(f.role) : 'var(--hot)', '--rc': f ? roleColor(f.role) : 'var(--hot)' } });
+    const box = el('div', { class: 'demo-box', style: { '--role-color': f ? roleColor(f.role) : 'var(--gold)', '--rc': f ? roleColor(f.role) : 'var(--gold)' } });
     const mount = el('div', { class: 'demo-mount' });
-    box.append(el('h4', { class: 'demo-title', text: title || 'SPECIAL MOVE TRAINING' }), mount);
+    box.append(el('h4', { class: 'demo-title', text: title || 'Interactive lab' }), mount);
     requestAnimationFrame(() => {
       try { CYC.Demos.render(mount, fighterId); }
       catch (e) { if (window.console) console.error('CYC.Demos.render', e); mount.append(el('div', { class: 'callout callout-red', text: `Lab failed to load: ${e.message || e}` })); }
@@ -306,42 +317,46 @@ CYC.UI = (function () {
     return box;
   }
 
-  function mapLink(slug, label) {
+  function mapLink(slug, label, small) {
     if (!slug) return null;
-    return el('a', { class: 'map-link', href: `map/zoo/${slug}/`, text: label });
+    return el('a', {
+      class: `map-link ${small ? 'map-link-sm' : ''}`, href: `map/zoo/${slug}/`, text: label,
+      // links can sit inside clickable cards: do not let the click bubble into the card's handler
+      onclick: (e) => e.stopPropagation(), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); },
+    });
   }
 
   function detailCard(f, opts) {
     opts = opts || {};
     const isEmpty = f.id === 'none';
-    const color = isEmpty ? '#777' : roleColor(f.role);
+    const color = isEmpty ? 'var(--line)' : roleColor(f.role);
     const role = isEmpty ? null : CYC.ROLES[f.role];
     const fam = isEmpty ? null : CYC.FAMILIES[f.family];
     const actions = [];
     if (opts.pickable && !opts.locked) {
       actions.push(el('button', {
         type: 'button', class: `btn ${opts.picked ? 'btn-ghost' : 'btn-run'}`, id: 'btn-detail-pick',
-        text: opts.picked ? (isEmpty ? 'CHAIR IS EMPTY' : 'UNPICK') : (isEmpty ? 'LEAVE CHAIR EMPTY' : 'PICK THIS FIGHTER'),
+        text: opts.picked ? (isEmpty ? 'Stage is empty' : 'Unpick') : (isEmpty ? 'Leave this stage empty' : 'Pick this algorithm'),
         disabled: opts.picked && isEmpty, onclick: opts.onpick,
       }));
     }
-    if (opts.locked) actions.push(el('span', { class: 'badge badge-locked', text: `🔒 UNLOCKS AT LEVEL ${f.level}` }));
+    if (opts.locked) actions.push(el('span', { class: 'badge badge-locked', text: `Unlocks at level ${f.level}` }));
     return el('article', { class: 'detail', style: { '--rc': color } },
       el('div', { class: 'detail-top' },
         portrait(f),
         el('div', { class: 'stack' },
           el('div', { class: 'detail-name', text: f.name }),
           el('div', { class: 'detail-real', text: f.real }),
-          role ? el('div', { class: 'detail-fam', text: `${role.codename} · ${fam ? fam.name : ''}` }) : el('div', { class: 'detail-fam', text: 'ANY CHAIR' }),
+          role ? el('div', { class: 'detail-fam', text: `${role.title} · ${fam ? fam.name : ''}` }) : el('div', { class: 'detail-fam', text: 'Any stage' }),
           el('div', { class: 'row' }, isEmpty ? null : levelBadge(f), f.stats && f.stats.lossless && !isEmpty ? losslessBadge() : null),
         )),
-      el('h4', { text: 'SIGNATURE MOVE' }), el('p', { class: 'move', text: f.move }),
-      el('h4', { text: 'WHY IT WORKS' }), el('p', { text: f.why }),
-      f.usedIn && f.usedIn.length ? [el('h4', { text: 'USED IN' }), el('ul', { class: 'used' }, f.usedIn.map((u) => el('li', { text: u })))] : null,
-      f.weakness ? [el('h4', { text: 'WEAKNESS' }), el('p', { class: 'weakness', text: f.weakness })] : null,
-      el('h4', { text: 'STATS' }), statBars(f.stats, color, false),
-      f.domains && f.domains.length ? [el('h4', { text: 'DOMAINS' }), el('div', { class: 'chips' }, f.domains.map((d) => chip(d, null, true)))] : null,
-      mapLink(CYC.MAP && CYC.MAP.fighters && CYC.MAP.fighters[f.id], 'READ THE INTRO \u2192'),
+      el('h4', { text: 'Key idea' }), el('p', { class: 'move', text: f.move }),
+      el('h4', { text: 'Why it works' }), el('p', { text: f.why }),
+      f.usedIn && f.usedIn.length ? [el('h4', { text: 'Used in' }), el('ul', { class: 'used' }, f.usedIn.map((u) => el('li', { text: u })))] : null,
+      f.weakness ? [el('h4', { text: 'Limits' }), el('p', { class: 'weakness', text: f.weakness })] : null,
+      el('h4', { text: 'Stats' }), statBars(f.stats, color, false),
+      f.domains && f.domains.length ? [el('h4', { text: 'Domains' }), el('div', { class: 'chips' }, f.domains.map((d) => chip(d, null, true)))] : null,
+      mapLink(fighterArticle(f.id), 'Read the introduction \u2192'),
       actions.length ? el('div', { class: 'detail-actions' }, actions) : null,
       isEmpty ? null : demoBox(f.id),
     );
@@ -363,12 +378,12 @@ CYC.UI = (function () {
         onclick: () => enterLevel(lv),
       },
         unlocked ? null : el('span', { class: 'lock', 'aria-hidden': 'true', text: '🔒' }),
-        quiz && quiz.passed ? el('span', { class: 'cleared-stamp', text: 'CLEARED' }) : null,
-        el('div', { class: 'level-num', text: `LV ${lv.id}` }),
+        quiz && quiz.passed ? el('span', { class: 'cleared-stamp', text: 'Checkpoint passed' }) : null,
+        el('div', { class: 'level-num', text: `Level ${lv.id}` }),
         el('div', { class: 'level-name', text: lv.name }),
         el('div', { class: 'level-tag', text: lv.tagline }),
-        el('div', { class: 'level-roles' }, lv.roles.map((r) => chip(CYC.ROLES[r].codename, roleColor(r)))),
-        el('div', { class: 'level-progress', text: unlocked ? `${solved} / ${hs.length} HEISTS SOLVED${quests.length ? ` · ${qdone}/${quests.length} SIDE QUESTS` : ''}` : `SOLVE ALL OF LEVEL ${lv.id - 1} TO UNLOCK` }),
+        el('div', { class: 'level-roles' }, lv.roles.map((r) => chip(roleTitle(r), roleColor(r)))),
+        el('div', { class: 'level-progress', text: unlocked ? `${solved} / ${hs.length} tasks solved${quests.length ? ` · ${qdone}/${quests.length} exercises` : ''}` : `Solve all of level ${lv.id - 1} to unlock` }),
       ));
     }
   }
@@ -380,40 +395,41 @@ CYC.UI = (function () {
     fixer(`level_intro:${lv.id}`);
   }
 
-  // ---------------- heist select (heists / side quests / notebook) ----------------
+  // ---------------- task select (tasks / exercises / lessons) ----------------
   function heistCard(h, opts) {
     opts = opts || {};
     const solved = state.progress.solved[h.id];
-    const showCodec = opts.showCodec || !!solved;
     return el('article', { class: 'heist-card', id: `heist-${h.id}${opts.idSuffix || ''}` },
       poster(h),
       el('div', { class: 'row' },
         el('div', { class: 'heist-name', text: h.name }),
-        opts.showLevel ? el('span', { class: 'badge badge-level', text: `LV ${h.level}` }) : null,
+        opts.showLevel ? el('span', { class: 'badge badge-level', text: `Level ${h.level}` }) : null,
         solved ? rankBadge(solved) : null),
-      el('div', { class: `heist-codec ${showCodec ? '' : 'hidden-codec'}`, text: showCodec ? `THE REAL CREW: ${h.codec}` : 'THE REAL CREW: ??? (solve to reveal)' }),
+      el('div', { class: 'heist-codec', text: `The real codec: ${h.codec}` }),
       el('p', { class: 'heist-brief', text: h.brief }),
       reqBars(h.req, true),
       el('details', { class: 'briefing' },
-        el('summary', { text: 'BRIEFING' }),
-        el('ul', {}, (h.reqNotes || []).map((n) => el('li', { text: n })))),
+        el('summary', { text: 'Briefing' }),
+        el('ul', {}, (h.reqNotes || []).map((n) => el('li', { text: n }))),
+        mapLink(heistArticle(h), 'Read the background →', true)),
       el('div', { class: 'heist-foot' },
-        el('button', { type: 'button', class: 'btn btn-run', text: opts.buttonText || 'TAKE THE JOB', onclick: () => opts.onopen(h) }),
-        el('span', { class: 'dim', text: `sample: ${payloadLabel(h.payload)}` })),
+        el('button', { type: 'button', class: 'btn btn-run', text: opts.buttonText || 'Take the task', onclick: () => opts.onopen(h) }),
+        el('span', { class: 'dim', text: `Sample: ${payloadLabel(h.payload)}` })),
     );
   }
   function setHeistTab(tab) { state.heistTab = tab; renderHeists(); }
   function renderHeists() {
     const lv = state.level;
-    $('heists-title').textContent = `LV ${lv.id} · ${lv.name}`;
+    $('heists-title').textContent = `Level ${lv.id} · ${lv.name}`;
     $('heists-tagline').textContent = lv.tagline;
     const quests = (CYC.SIDEQUESTS || []).filter((q) => q.level <= lv.id);
     const lessons = (CYC.LESSONS && CYC.LESSONS[lv.id]) || [];
     document.querySelectorAll('#heists-subtabs .tab').forEach((b) => {
       const on = b.dataset.tab === state.heistTab;
       b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on));
-      if (b.dataset.tab === 'quests') b.textContent = `SIDE QUESTS (${quests.length})`;
-      if (b.dataset.tab === 'notebook') b.textContent = `THE FIXER'S NOTEBOOK (${lessons.length})`;
+      if (b.dataset.tab === 'heists') b.textContent = `Tasks (${heistsOf(lv).length})`;
+      if (b.dataset.tab === 'quests') b.textContent = `Exercises (${quests.length})`;
+      if (b.dataset.tab === 'notebook') b.textContent = `Lessons (${lessons.length})`;
     });
     const body = clearEl($('heists-body'));
     if (state.heistTab === 'quests') body.append(renderQuestRow(quests));
@@ -423,40 +439,41 @@ CYC.UI = (function () {
       body.append(grid);
       const quiz = state.progress.quiz[lv.id];
       if (CYC.QUIZZES && CYC.QUIZZES[lv.id] && levelSolved(lv)) {
-        body.append(el('div', { class: 'checkpoint-strip' },
-          el('span', { class: 'pix', text: quiz && quiz.passed ? `CHECKPOINT CLEARED · ${quiz.score}/${CYC.QUIZZES[lv.id].length}` : (quiz ? `CHECKPOINT: ${quiz.score}/${CYC.QUIZZES[lv.id].length} · RETAKE?` : 'ALL HEISTS SOLVED: THE CHECKPOINT IS OPEN') }),
-          el('button', { type: 'button', class: 'btn btn-gold', id: 'btn-checkpoint', text: quiz ? 'RETAKE CHECKPOINT' : 'TAKE THE CHECKPOINT', onclick: () => startQuiz(lv) })));
+        body.append(el('div', { class: 'checkpoint-strip ornate' },
+          el('span', { class: 'eyebrow', text: quiz && quiz.passed ? `Checkpoint passed · ${quiz.score}/${CYC.QUIZZES[lv.id].length}` : (quiz ? `Checkpoint: ${quiz.score}/${CYC.QUIZZES[lv.id].length} · retake?` : 'All tasks solved: the checkpoint is open') }),
+          el('button', { type: 'button', class: 'btn btn-gold', id: 'btn-checkpoint', text: quiz ? 'Retake the checkpoint' : 'Take the checkpoint', onclick: () => startQuiz(lv) })));
       }
     }
   }
   function renderQuestRow(quests) {
-    if (!quests.length) return el('div', { class: 'placeholder', text: 'NO SIDE QUESTS AT THIS LEVEL' });
+    if (!quests.length) return el('div', { class: 'placeholder', text: 'No exercises at this level' });
     return el('div', { class: 'stack' },
-      el('p', { class: 'tagline', text: 'Hands-on jobs that teach one mechanism each. Play them in any order; a stamp marks the ones you finished.' }),
+      el('p', { class: 'tagline', text: 'Hands-on exercises that teach one mechanism each. Do them in any order; a mark shows the ones you have finished.' }),
       el('div', { class: 'quest-grid' }, quests.map((q) => {
         const done = state.progress.quests[q.id];
         return el('button', { type: 'button', class: 'quest-card', id: `quest-${q.id}`, onclick: () => openQuest(q) },
-          done != null ? el('span', { class: 'cleared-stamp', text: `DONE · ${done}` }) : null,
-          el('div', { class: 'row' }, el('span', { class: 'quest-name', text: q.name }), el('span', { class: 'badge badge-level', text: `LV ${q.level}` })),
+          done != null ? el('span', { class: 'cleared-stamp', text: `Done · ${done}` }) : null,
+          el('div', { class: 'row' }, el('span', { class: 'quest-name', text: q.name }), el('span', { class: 'badge badge-level', text: `Level ${q.level}` })),
           el('div', { class: 'quest-concept', text: q.concept }),
           el('div', { class: 'mini-squad' }, (q.fighters || []).map(fighter).filter(Boolean).map((f) => el('span', { class: 'mini' }, portrait(f), el('span', { class: 'mini-name', text: f.name })))),
         );
       })));
   }
   function renderNotebook(lessons) {
-    if (!lessons.length) return el('div', { class: 'placeholder', text: 'THE NOTEBOOK IS EMPTY FOR THIS LEVEL' });
+    if (!lessons.length) return el('div', { class: 'placeholder', text: 'No lessons for this level' });
     return el('div', { class: 'stack' },
-      el('p', { class: 'tagline', text: 'The Fixer\'s notes for this level: the theory behind the chairs, each with a lab where one exists.' }),
+      el('p', { class: 'tagline', text: 'The theory behind the stages of this level, each with an interactive lab where one exists.' }),
       el('div', { class: 'lesson-list' }, lessons.map((L, i) => el('article', { class: 'lesson', id: `lesson-${L.id}` },
-        el('div', { class: 'lesson-head' }, el('span', { class: 'lesson-num', text: String(i + 1).padStart(2, '0') }), el('h3', { class: 'h-pixel', text: L.title })),
-        el('div', { class: 'lesson-body', html: L.body }),
-        L.takeaway ? el('div', { class: 'takeaway' }, el('span', { class: 'pix-sm', text: 'TAKEAWAY' }), el('span', { text: L.takeaway })) : null,
-        L.demo ? (demoBox(L.demo, `LAB: ${(fighter(L.demo) || {}).name || L.demo}`) || el('p', { class: 'dim', text: `Lab for ${(fighter(L.demo) || {}).name || L.demo}: loading (js/demos.js).` })) : null,
-        L.duel != null && CYC.DUELS && CYC.DUELS[L.duel] ? el('button', { type: 'button', class: 'btn btn-cyan', text: 'STAGE THE DUEL', onclick: () => openDuelPreset(L.duel) }) : null,
+        el('div', { class: 'lesson-head' }, el('span', { class: 'lesson-num', text: String(i + 1).padStart(2, '0') }), el('h3', { class: 'h-display', text: L.title })),
+        el('div', { class: 'lesson-body', html: mdLinks(L.body) }),
+        L.takeaway ? el('div', { class: 'takeaway' }, el('span', { class: 'eyebrow', text: 'Takeaway' }), el('span', { text: L.takeaway })) : null,
+        L.demo ? (demoBox(L.demo, `Interactive lab: ${(fighter(L.demo) || {}).name || L.demo}`) || el('p', { class: 'dim', text: `Lab for ${(fighter(L.demo) || {}).name || L.demo}: loading (js/demos.js).` })) : null,
+        L.demo ? mapLink(fighterArticle(L.demo), `Read the introduction to ${(fighter(L.demo) || {}).name || L.demo} →`) : null,
+        L.duel != null && CYC.DUELS && CYC.DUELS[L.duel] ? el('div', {}, el('button', { type: 'button', class: 'btn', text: 'Open the comparison', onclick: () => openDuelPreset(L.duel) })) : null,
       ))));
   }
 
-  // ---------------- squad room ----------------
+  // ---------------- pipeline builder ----------------
   function openHeist(h, opts) {
     opts = opts || {};
     state.ctx = opts.ctx || 'heist';
@@ -473,22 +490,22 @@ CYC.UI = (function () {
   }
   function renderSquadRoom() {
     const h = state.heist;
-    $('squad-title').textContent = state.codec ? `SQUAD ROOM · ${state.codec.name}` : `SQUAD ROOM · ${h.name}`;
-    $('btn-back-heists').textContent = state.ctx === 'explore' ? '← EXPLORE' : '← HEISTS';
+    $('squad-title').textContent = state.codec ? `Pipeline builder · ${state.codec.name}` : `Pipeline builder · ${h.name}`;
+    $('btn-back-heists').textContent = state.ctx === 'explore' ? '← Explore' : '← Tasks';
     const job = clearEl($('squad-job'));
     job.append(
       el('div', { class: 'stack' },
         el('div', { class: 'job-meta' },
-          el('span', { class: 'pix', style: { color: 'var(--gold)' }, text: h.name }),
-          el('span', { class: 'badge badge-level', text: `LV ${h.level}` }),
-          state.ctx === 'explore' ? el('span', { class: 'badge badge-level', text: `CODEC: ${h.codec}` }) : null,
-          el('span', { class: 'dim', text: `sample payload: ${payloadLabel(h.payload)}` })),
+          el('span', { class: 'job-title', text: h.name }),
+          el('span', { class: 'badge badge-level', text: `Level ${h.level}` }),
+          el('span', { class: 'badge badge-level', text: `The real codec: ${h.codec}` })),
+        el('div', { class: 'dim', text: `Sample data: ${payloadLabel(h.payload)}` }),
         el('p', { class: 'heist-brief', text: h.brief }),
-        el('details', { class: 'briefing' }, el('summary', { text: 'BRIEFING' }), el('ul', {}, (h.reqNotes || []).map((n) => el('li', { text: n }))),
-          mapLink(CYC.MAP && ((CYC.MAP.heists || {})[h.id] || CYC.MAP.defaultHeistArticle), 'READ THE BACKGROUND \u2192')),
+        el('details', { class: 'briefing' }, el('summary', { text: 'Briefing' }), el('ul', {}, (h.reqNotes || []).map((n) => el('li', { text: n }))),
+          mapLink(heistArticle(h), 'Read the background \u2192')),
         state.codec ? el('p', { class: 'dim', text: state.codec.notes }) : null,
       ),
-      el('div', {}, el('div', { class: 'pix', style: { color: 'var(--ink-dim)', marginBottom: '6px' }, text: 'JOB SHEET' }), reqBars(h.req, false)),
+      el('div', {}, el('div', { class: 'eyebrow eyebrow-lg', style: { marginBottom: '8px' }, text: 'Requirements' }), reqBars(h.req, false)),
     );
     renderChairs();
     renderCombos();
@@ -500,42 +517,40 @@ CYC.UI = (function () {
       const ids = state.squad[role] || [];
       const seats = [];
       if (ids.length === 1 && ids[0] === 'none') {
-        seats.push(el('div', { class: 'seat seat-open seat-empty' }, portrait(CYC.EMPTY), el('span', { text: 'EMPTY CHAIR (ON PURPOSE)' })));
+        seats.push(el('div', { class: 'seat seat-open seat-empty' }, portrait(CYC.EMPTY), el('span', { text: 'Left empty on purpose' })));
       } else {
         const real = ids.filter((id) => id !== 'none' && fighter(id));
         for (const id of real) {
           const f = fighter(id);
           seats.push(el('div', { class: 'seat' }, portrait(f), el('span', { class: 'seat-name', text: f.name })));
         }
-        if (!real.length) seats.push(el('div', { class: 'seat seat-open' }, el('span', { text: 'OPEN CHAIR\nCLICK TO CHOOSE' })));
-        else if (real.length === 1) seats.push(el('div', { class: 'seat seat-open' }, el('span', { text: '+ ONE MORE?' })));
+        if (!real.length) seats.push(el('div', { class: 'seat seat-open' }, el('span', { text: 'Empty stage\nClick to choose' })));
+        else if (real.length === 1) seats.push(el('div', { class: 'seat seat-open' }, el('span', { text: 'Add a second?' })));
       }
       row.append(el('div', {
         class: 'chair', id: `chair-${role}`, role: 'button', tabindex: '0',
         style: { '--rc': roleColor(role) },
-        'aria-label': `${R.codename}, ${R.title}. ${ids.length ? 'Filled' : 'Open chair'}. Click to choose fighters.`,
+        'aria-label': `${R.title}. ${ids.length ? 'Filled' : 'Empty stage'}. Click to choose an algorithm.`,
         onclick: () => openChooser(role),
-        onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChooser(role); } },
+        onkeydown: (e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChooser(role); } },
       },
-        el('div', { class: 'chair-stripe' }),
         el('span', { class: 'chair-order', 'aria-hidden': 'true', text: String(i + 1) }),
-        el('div', { class: 'chair-code', text: R.codename }),
-        el('div', { class: 'chair-title', text: R.title }),
+        el('div', { class: 'chair-title', text: `Stage ${i + 1}` }),
+        el('div', { class: 'chair-code', text: R.title }),
         el('div', { class: 'chair-q', text: R.question }),
+        el('div', { class: 'chair-link' }, mapLink(roleArticle(role), 'About this stage →', true)),
         el('div', { class: 'chair-seats' }, seats),
       ));
     });
   }
   function comboColors(ids) {
     const cols = [...new Set(ids.map((id) => fighter(id)).filter(Boolean).map((f) => roleColor(f.role)))];
-    if (!cols.length) return 'var(--hot)';
-    if (cols.length === 1) return cols[0];
-    return `linear-gradient(90deg, ${cols.join(', ')})`;
+    return cols.length === 1 ? cols[0] : 'var(--sage)';
   }
   function comboBanner(c, kind) {
     const ids = (c.needs || []);
-    return el('div', { class: `combo ${kind === 'anti' ? 'combo-anti' : 'combo-tag'}`, style: { '--combo-bg': kind === 'anti' ? 'var(--red)' : comboColors(ids) } },
-      el('div', { class: 'combo-flash', text: kind === 'anti' ? 'FRIENDLY FIRE' : 'TAG TEAM!' }),
+    return el('div', { class: `combo ${kind === 'anti' ? 'combo-anti' : 'combo-tag'}`, style: { '--combo-bg': kind === 'anti' ? 'var(--rose)' : comboColors(ids) } },
+      el('div', { class: 'combo-flash', text: kind === 'anti' ? 'Conflict' : 'Synergy' }),
       el('div', { class: 'combo-body' },
         el('div', { class: 'row' }, el('span', { class: 'combo-name', text: c.name }), ids.map(fighter).filter(Boolean).map((f) => portrait(f, 'portrait-xs'))),
         el('p', { class: 'combo-text', text: c.text })));
@@ -606,7 +621,7 @@ CYC.UI = (function () {
     const lvl = maxLevel();
 
     const roleBox = clearEl($('fighter-overlay-role'));
-    roleBox.append(chip(R.codename, color), el('span', { text: R.title }), el('span', { class: 'pix-sm', text: `· ${picked.length}/2 PICKED (a 3rd pick replaces the oldest)` }));
+    roleBox.append(chip(R.title, color), el('span', { class: 'q', text: R.question }), el('span', { class: 'eyebrow-sm eyebrow', text: `· ${picked.length}/2 picked (a third pick replaces the oldest)` }), mapLink(roleArticle(role), 'About this stage →', true));
 
     const col = clearEl($('family-col'));
     for (const fam of familiesFor(role)) {
@@ -618,20 +633,20 @@ CYC.UI = (function () {
         onclick: () => { state.chooser.family = fam.id; renderChooser(); },
       },
         el('span', { class: 'fam-name', text: fam.name }),
-        el('span', { class: 'fam-count', text: `${fighters.filter((f) => f.level <= lvl).length}/${fighters.length} AVAILABLE` }),
-        nPicked ? el('span', { class: 'fam-pick', text: ` · ${nPicked} PICKED` }) : null,
+        el('span', { class: 'fam-count', text: `${fighters.filter((f) => f.level <= lvl).length}/${fighters.length} available` }),
+        nPicked ? el('span', { class: 'fam-pick', text: ` · ${nPicked} picked` }) : null,
         el('span', { class: 'fam-note', text: fam.note }),
       ));
     }
     col.append(el('button', {
-      type: 'button', class: `family-btn ${chairEmpty ? 'is-on' : ''}`, id: 'fam-empty', style: { '--rc': '#777' },
+      type: 'button', class: `family-btn ${chairEmpty ? 'is-on' : ''}`, id: 'fam-empty', style: { '--rc': 'var(--line)' },
       onclick: () => { state.chooser.focus = 'none'; renderDetailCol(); },
-    }, el('span', { class: 'fam-name', text: 'EMPTY CHAIR' }), el('span', { class: 'fam-note', text: CYC.EMPTY.move })));
+    }, el('span', { class: 'fam-name', text: 'Leave the stage empty' }), el('span', { class: 'fam-note', text: CYC.EMPTY.move })));
 
     const grid = clearEl($('fighter-grid'));
     const fam = CYC.FAMILIES[family];
     if (fam) {
-      grid.append(el('div', { class: 'fam-head', style: { '--rc': color } }, el('div', { class: 'pix-md', text: fam.name }), el('p', { text: fam.note })));
+      grid.append(el('div', { class: 'fam-head', style: { '--rc': color } }, el('div', { class: 'fam-title', text: fam.name }), el('p', { text: fam.note })));
       for (const f of CYC.FIGHTERS.filter((x) => x.family === family)) {
         const locked = f.level > lvl;
         const idx = picked.indexOf(f.id);
@@ -696,11 +711,10 @@ CYC.UI = (function () {
     const canvas = el('canvas', { width: '320', height: '150', 'aria-label': `${st.title || f.name} visualization (${st.viz && st.viz.type ? st.viz.type : 'none'})`, role: 'img' });
     canvas._viz = st.viz;
     return el('article', { class: 'stage', style: { '--rc': color }, id: `stage-${i}` },
-      el('div', { class: 'stage-stripe' }),
       el('div', { class: 'stage-head' },
         portrait(f),
         el('div', {},
-          el('div', { class: 'stage-role', text: `${i + 1}. ${R ? R.codename : st.role}` }),
+          el('div', { class: 'stage-role', text: `${i + 1}. ${R ? R.title : st.role}` }),
           el('div', { class: 'stage-name', text: f.name }),
           el('div', { class: 'stage-title', text: st.title || '' }))),
       canvas,
@@ -708,11 +722,15 @@ CYC.UI = (function () {
       metrics.length ? el('div', { class: 'stage-metrics' }, metrics) : null,
     );
   }
-  function hbar(label, value, max, color, valueText, over) {
+  // horizontal meter: teal fill on a paper track; `mark` (0..max) draws the entropy-bound marker in rose
+  function hbar(label, value, max, color, valueText, over, mark) {
     const pct = max > 0 ? Math.max(value > 0 ? 0.5 : 0, Math.min(100, (value / max) * 100)) : 0;
+    const markPct = mark != null && max > 0 ? Math.max(0, Math.min(100, (mark / max) * 100)) : null;
     return el('div', { class: 'hbar-row' },
       el('span', { class: 'hbar-label', text: label }),
-      el('div', { class: `hbar ${over ? 'over' : ''}`, role: 'img', 'aria-label': `${label}: ${valueText}` }, el('i', { style: { width: `${pct}%`, '--hc': color } })),
+      el('div', { class: `hbar ${over ? 'over' : ''}`, role: 'img', 'aria-label': `${label}: ${valueText}${markPct != null ? '; entropy bound marked' : ''}` },
+        el('i', { style: { width: `${pct}%`, '--hc': color } }),
+        markPct != null ? el('b', { class: 'mark', style: { left: `${markPct}%` } }) : null),
       el('span', { class: 'hbar-val', text: valueText }));
   }
   function sideInfoLabel(bytes) {
@@ -725,28 +743,32 @@ CYC.UI = (function () {
     const ratio = r.finalBits > 0 ? r.rawBits / r.finalBits : 0;
     const side = r.sideInfoBytes || 0;
     const sideFrac = side > 0 ? Math.max(0.03, Math.min(1, Math.log10(side) / 8)) : 0; // log scale, 100 MB = full
+    const bits = (b) => `${fmtBits(b)} · ${Math.round(b || 0).toLocaleString()} bits`;
     return el('div', { class: 'meters' },
       el('div', { class: 'meter-box' },
-        el('div', { class: 'meter-title' }, el('span', { text: 'SIZE METER' }), el('span', { class: 'ratio', text: ratio ? `RATIO ×${ratio.toFixed(2)}` : 'RATIO —' })),
-        hbar('RAW', r.rawBits, max, 'var(--ink-faint)', `${fmtBits(r.rawBits)} · ${Math.round(r.rawBits || 0).toLocaleString()} bits`),
-        hbar('ENTROPY BOUND', r.entropyBoundBits, max, 'var(--gold)', `${fmtBits(r.entropyBoundBits)} · ${Math.round(r.entropyBoundBits || 0).toLocaleString()} bits`),
-        hbar('FINAL', r.finalBits, max, r.finalBits > r.rawBits ? 'var(--red)' : 'var(--acid)', `${fmtBits(r.finalBits)} · ${Math.round(r.finalBits || 0).toLocaleString()} bits`, r.finalBits > r.rawBits),
-        el('p', { class: 'dim', style: { marginTop: '6px', marginBottom: 0 }, text: 'Entropy bound = order-0 Shannon entropy of the symbols that reached the Packer. Final = the honest output stream incl. header/table overhead. Side info is not counted here.' }),
+        el('div', { class: 'meter-title' }, el('span', { text: 'Size' }), el('span', { class: 'ratio', text: ratio ? `Ratio ×${ratio.toFixed(2)}` : 'Ratio —' })),
+        hbar('Raw', r.rawBits, max, 'var(--line)', bits(r.rawBits)),
+        hbar('Final', r.finalBits, max, r.finalBits > r.rawBits ? 'var(--bad)' : 'var(--teal)', bits(r.finalBits), r.finalBits > r.rawBits, r.entropyBoundBits),
+        el('div', { class: 'hbar-row' },
+          el('span', { class: 'hbar-label', text: 'Entropy bound' }),
+          el('span', { class: 'dim', style: { fontSize: '14px' } }, el('i', { class: 'legend-mark', 'aria-hidden': 'true' }), 'the rose marker on the Final bar'),
+          el('span', { class: 'hbar-val', text: bits(r.entropyBoundBits) })),
+        el('p', { class: 'dim', style: { marginTop: '8px', marginBottom: 0, fontSize: '14.5px' }, text: 'Entropy bound = order-0 Shannon entropy of the symbols that reached the entropy coder: what a perfect coder would pay for them. Final = the output stream including header and table overhead. Side information is not counted here.' }),
       ),
       el('div', { class: 'stack' },
         el('div', { class: 'meter-box' },
-          el('div', { class: 'meter-title' }, el('span', { text: 'SIDE INFO' }), el('span', { class: 'dim', text: 'decoder must already hold' })),
+          el('div', { class: 'meter-title' }, el('span', { text: 'Side information the decoder holds' })),
           el('div', { class: 'hbar-row' },
-            el('span', { class: 'hbar-label', text: 'LOG SCALE' }),
-            el('div', { class: 'hbar', role: 'img', 'aria-label': `side info ${sideInfoLabel(side)}` }, el('i', { style: { width: `${sideFrac * 100}%`, '--hc': 'var(--orange)' } })),
+            el('span', { class: 'hbar-label', text: 'Log scale' }),
+            el('div', { class: 'hbar', role: 'img', 'aria-label': `side information ${sideInfoLabel(side)}` }, el('i', { style: { width: `${sideFrac * 100}%`, '--hc': 'var(--copper)' } })),
             el('span', { class: 'hbar-val', text: side ? fmtBytes(side) : '0 B' })),
-          el('p', { class: 'dim', style: { marginBottom: 0 }, text: sideInfoLabel(side) })),
+          el('p', { class: 'dim', style: { marginBottom: 0, fontSize: '14.5px' }, text: sideInfoLabel(side) })),
         el('div', { class: 'meter-box' },
-          el('div', { class: 'meter-title' }, el('span', { text: 'DISTORTION' })),
+          el('div', { class: 'meter-title' }, el('span', { text: 'Distortion' })),
           r.lossless
-            ? el('div', { class: 'row' }, el('span', { class: 'badge badge-exact', text: 'BIT-EXACT' }), el('span', { class: 'dim', text: 'no quantizer ran, nothing was thrown away' }))
+            ? el('div', { class: 'row' }, el('span', { class: 'badge badge-exact', text: 'Bit-exact' }), el('span', { class: 'dim', text: 'no quantizer ran; nothing was discarded' }))
             : el('div', { class: 'row' },
-              el('span', { class: 'badge badge-lossy', text: 'LOSSY' }),
+              el('span', { class: 'badge badge-lossy', text: 'Lossy' }),
               r.distortion ? el('span', { class: 'distortion-val', text: distortionText(r) }) : el('span', { class: 'dim', text: 'distortion not measured' })),
         )),
     );
@@ -757,8 +779,8 @@ CYC.UI = (function () {
   }
   function enginePlaceholder() {
     return el('div', {},
-      el('div', { class: 'placeholder', text: 'ENGINE LOADING…' }),
-      el('p', { class: 'dim', style: { marginTop: '8px' }, text: 'CYC.Engine is not available yet (js/engine.js). The pipeline panel comes alive as soon as it loads; the squad can be built in the meantime.' }));
+      el('div', { class: 'placeholder', text: 'Engine loading…' }),
+      el('p', { class: 'dim', style: { marginTop: '8px' }, text: 'CYC.Engine is not available yet (js/engine.js). The pipeline panel comes alive as soon as it loads; the pipeline can be assembled in the meantime.' }));
   }
   function renderPipeline() {
     const panel = clearEl($('pipeline'));
@@ -766,12 +788,12 @@ CYC.UI = (function () {
     if (!h) return;
     const r = state.result;
     panel.append(el('div', { class: 'pipeline-head' },
-      el('h3', { class: 'h-pixel', text: 'LIVE PIPELINE' }),
+      el('h3', { class: 'h-section', text: 'Live pipeline' }),
       el('span', { class: 'pipeline-sub', text: `${payloadLabel(h.payload)}${r ? ` · ${r.stages.length} stage${r.stages.length === 1 ? '' : 's'}` : ''}` })));
     if (!engineReady()) { panel.append(enginePlaceholder()); return; }
     if (state.engineError) { panel.append(warningsBlock([`Engine error: ${state.engineError.message || state.engineError}`], 'callout-red')); return; }
-    if (!r) { panel.append(el('div', { class: 'placeholder', text: 'RUNNING…' })); return; }
-    if (!r.stages || !r.stages.length) panel.append(el('div', { class: 'placeholder', text: 'EMPTY SQUAD: RAW FIXED-LENGTH BITS PASS STRAIGHT THROUGH' }));
+    if (!r) { panel.append(el('div', { class: 'placeholder', text: 'Running…' })); return; }
+    if (!r.stages || !r.stages.length) panel.append(el('div', { class: 'placeholder', text: 'Empty pipeline: raw fixed-length bits pass straight through' }));
     else panel.append(el('div', { class: 'stage-row' }, r.stages.map(stageCard)));
     panel.append(metersBlock(r), warningsBlock(r.warnings));
     requestAnimationFrame(drawCanvases);
@@ -828,19 +850,20 @@ CYC.UI = (function () {
   function verdictCard(v) {
     const f = v.fighterId ? fighter(v.fighterId) : null;
     const R = CYC.ROLES[v.role];
-    return el('article', { class: 'verdict', style: { '--vc': OK_COLOR[v.ok] || 'var(--ink-faint)', '--rc': roleColor(v.role) } },
+    return el('article', { class: 'verdict', style: { '--vc': OK_COLOR[v.ok] || 'var(--line)', '--rc': roleColor(v.role) } },
       el('div', { class: 'verdict-head' },
         portrait(f || CYC.EMPTY),
-        el('div', {}, el('div', { class: 'verdict-role', text: R ? R.codename : v.role }), el('div', { class: 'verdict-fighter', text: f ? f.name : 'EMPTY CHAIR' })),
-        el('span', { class: 'verdict-ok', text: String(v.ok || '').toUpperCase() })),
-      el('p', { class: 'verdict-text', text: v.text || '' }));
+        el('div', {}, el('div', { class: 'verdict-role', text: R ? R.title : v.role }), el('div', { class: 'verdict-fighter', text: f ? f.name : 'Empty stage' })),
+        el('span', { class: 'verdict-ok', text: OK_LABEL[v.ok] || String(v.ok || '') })),
+      el('p', { class: 'verdict-text', text: v.text || '' }),
+      f ? mapLink(fighterArticle(f.id), `Read about ${f.name} →`, true) : null);
   }
   function comboVerdictCard(v) {
     const list = v.combo ? (CYC.COMBOS || []) : (CYC.ANTICOMBOS || []);
     const c = list.find((x) => x.id === (v.combo || v.anticombo));
     if (c) return comboBanner(c, v.anticombo ? 'anti' : 'tag');
-    return el('div', { class: `combo ${v.ok === 'wrong' ? 'combo-anti' : 'combo-tag'}`, style: { '--combo-bg': v.ok === 'wrong' ? 'var(--red)' : 'var(--hot)' } },
-      el('div', { class: 'combo-flash', text: v.ok === 'wrong' ? 'FRIENDLY FIRE' : 'TAG TEAM!' }),
+    return el('div', { class: `combo ${v.ok === 'wrong' ? 'combo-anti' : 'combo-tag'}`, style: { '--combo-bg': v.ok === 'wrong' ? 'var(--rose)' : 'var(--sage)' } },
+      el('div', { class: 'combo-flash', text: v.ok === 'wrong' ? 'Conflict' : 'Synergy' }),
       el('div', { class: 'combo-body' }, el('p', { class: 'combo-text', text: v.text })));
   }
   function renderResults(score, error, unlockedLevel) {
@@ -848,46 +871,47 @@ CYC.UI = (function () {
     const h = state.heist;
     const r = state.result;
     if (!score) {
-      box.append(el('div', { class: 'results-hero' },
-        el('div', { class: 'rank-letter', text: '?' }),
+      box.append(el('div', { class: 'results-hero ornate' },
+        el('div', { class: 'grade' }, el('span', { class: 'eyebrow', text: 'Grade' }), el('div', { class: 'rank-letter', text: '?' })),
         el('div', {},
-          el('div', { class: 'results-headline', text: error ? 'THE JUDGE TRIPPED' : 'JUDGE LOADING…' }),
+          el('div', { class: 'results-headline', text: error ? 'The scorer failed' : 'Scorer loading…' }),
           el('p', { class: 'dim', text: error ? `CYC.Rules.score threw: ${error.message || error}` : 'CYC.Rules is not available yet (js/rules.js). Scoring appears once it loads.' }))));
     } else {
       const solved = state.progress.solved[h.id];
       const verdicts = score.verdicts || [];
       const chairV = verdicts.filter((v) => v.role !== 'combo');
       const comboV = verdicts.filter((v) => v.role === 'combo');
-      box.append(el('div', { class: 'results-hero' },
-        el('div', { class: `rank-letter rank-${score.rank}`, text: score.rank, 'aria-label': `Rank ${score.rank}` }),
+      box.append(el('div', { class: 'results-hero ornate' },
+        el('div', { class: 'grade' }, el('span', { class: 'eyebrow', text: 'Grade' }), el('div', { class: `rank-letter rank-${score.rank}`, text: score.rank, 'aria-label': `Grade ${score.rank}` })),
         el('div', {},
           el('div', { class: 'results-headline', text: score.headline || '' }),
-          el('div', { class: 'results-score', text: `SCORE ${Math.round(score.score)} / 100 · ${h.name}` }),
+          el('div', { class: 'results-score', text: `Score ${Math.round(score.score)} / 100 · ${h.name}` }),
           el('div', { class: 'results-solved row' },
             state.ctx === 'heist'
               ? (rankIdx(score.rank) >= rankIdx('B')
-                ? el('span', { class: 'badge badge-exact', text: `HEIST SOLVED${solved && solved !== score.rank ? ` · BEST RANK ${solved}` : ''}` })
-                : el('span', { class: 'badge badge-lossy', text: 'RANK B OR BETTER SOLVES THE HEIST' }))
-              : el('span', { class: 'badge badge-level', text: 'EXPLORE MODE: NO PROGRESSION' }),
-            unlockedLevel ? el('span', { class: 'badge badge-exact blink', text: `LEVEL ${unlockedLevel.id} ${unlockedLevel.name} UNLOCKED` }) : null,
-            state.pendingQuiz ? el('span', { class: 'badge badge-gold', text: 'CHECKPOINT UNLOCKED' }) : null))));
+                ? el('span', { class: 'badge badge-exact', text: `Task solved${solved && solved !== score.rank ? ` · best grade ${solved}` : ''}` })
+                : el('span', { class: 'badge badge-lossy', text: 'Grade B or better solves the task' }))
+              : el('span', { class: 'badge badge-level', text: 'Explore mode: no progression' }),
+            unlockedLevel ? el('span', { class: 'badge badge-exact', text: `Level ${unlockedLevel.id}, ${unlockedLevel.name}, unlocked` }) : null,
+            state.pendingQuiz ? el('span', { class: 'badge badge-gold', text: 'Checkpoint unlocked' }) : null))));
       if (comboV.length) {
-        box.append(el('h3', { class: 'h-pixel', text: 'SQUAD CHEMISTRY' }));
+        box.append(el('h3', { class: 'h-section', text: 'Pipeline interactions' }));
         box.append(el('div', { class: 'combo-list' }, comboV.map(comboVerdictCard)));
       }
-      box.append(el('h3', { class: 'h-pixel', text: 'PER-CHAIR VERDICTS' }));
+      box.append(el('h3', { class: 'h-section', text: 'Stage verdicts' }));
       box.append(el('div', { class: 'verdicts' }, chairV.map(verdictCard)));
     }
-    if (r) { box.append(el('h3', { class: 'h-pixel', text: 'THE TAKE' }), metersBlock(r), warningsBlock(r.warnings)); }
+    if (r) { box.append(el('h3', { class: 'h-section', text: 'Results' }), metersBlock(r), warningsBlock(r.warnings)); }
     if (score || state.ctx === 'explore') {
-      box.append(el('section', { class: 'reveal' },
-        el('h3', { class: 'h-pixel', text: 'THE REAL CREW' }),
+      box.append(el('section', { class: 'reveal ornate' },
+        el('h3', { class: 'h-section', text: 'The real codec' }),
         el('div', { class: 'codec', text: h.codec }),
-        el('p', { text: h.reveal })));
+        el('p', { text: h.reveal }),
+        mapLink(heistArticle(h), 'Read the background →')));
     }
-    const nextLabel = state.ctx === 'explore' ? 'BACK TO EXPLORE' : state.pendingQuiz ? 'TAKE THE CHECKPOINT' : 'NEXT HEIST';
+    const nextLabel = state.ctx === 'explore' ? 'Back to Explore' : state.pendingQuiz ? 'Take the checkpoint' : 'Next task';
     box.append(el('div', { class: 'results-actions' },
-      el('button', { type: 'button', class: 'btn btn-ghost btn-big', id: 'btn-try-again', text: 'TRY AGAIN', onclick: () => { show('squad'); requestAnimationFrame(drawCanvases); } }),
+      el('button', { type: 'button', class: 'btn btn-ghost btn-big', id: 'btn-try-again', text: 'Try again', onclick: () => { show('squad'); requestAnimationFrame(drawCanvases); } }),
       el('button', { type: 'button', class: `btn ${state.pendingQuiz ? 'btn-gold' : 'btn-run'} btn-big`, id: 'btn-next-heist', text: nextLabel, onclick: nextHeist })));
   }
 
@@ -906,24 +930,24 @@ CYC.UI = (function () {
     if (!Q) return;
     const qs = CYC.QUIZZES[Q.level.id];
     box.append(el('div', { class: 'screen-head' },
-      el('button', { type: 'button', class: 'btn btn-small btn-ghost', text: '← HEISTS', onclick: () => enterLevel(Q.level) }),
-      el('h2', { class: 'h-pixel', text: `CHECKPOINT · LV ${Q.level.id} ${Q.level.name}` })));
+      el('button', { type: 'button', class: 'btn btn-small btn-ghost', text: '← Tasks', onclick: () => enterLevel(Q.level) }),
+      el('h2', { class: 'h-display', text: `Checkpoint · Level ${Q.level.id}, ${Q.level.name}` })));
     if (Q.done) {
       const passed = Q.correct >= 3;
-      box.append(el('div', { class: 'quiz-card quiz-final' },
+      box.append(el('div', { class: 'quiz-card quiz-final ornate' },
         el('div', { class: `rank-letter ${passed ? 'rank-A' : 'rank-C'}`, text: `${Q.correct}/${qs.length}` }),
         el('div', { class: 'stack' },
-          el('div', { class: 'results-headline', text: passed ? 'LEVEL CLEARED' : 'NOT YET: READ THE WHYS AND RETAKE' }),
-          el('p', { class: 'dim', text: passed ? 'The Fixer stamps your file. The checkpoint teaches; the next level was already unlocked by the heists.' : 'Three of four clears the checkpoint. Nothing is gated on it: the next level is open either way.' }),
+          el('div', { class: 'results-headline', text: passed ? 'Checkpoint passed' : 'Not yet: read the explanations and retake' }),
+          el('p', { class: 'dim', text: passed ? 'The checkpoint teaches; the next level was already unlocked by the tasks.' : 'Three of four passes the checkpoint. Nothing is gated on it: the next level is open either way.' }),
           el('div', { class: 'row' },
-            passed ? null : el('button', { type: 'button', class: 'btn btn-gold', text: 'RETAKE', onclick: () => startQuiz(Q.level) }),
-            el('button', { type: 'button', class: 'btn btn-run', text: 'CONTINUE', onclick: () => { renderLevels(); show('levels'); } })))));
+            passed ? null : el('button', { type: 'button', class: 'btn btn-gold', text: 'Retake', onclick: () => startQuiz(Q.level) }),
+            el('button', { type: 'button', class: 'btn btn-run', text: 'Continue', onclick: () => { renderLevels(); show('levels'); } })))));
       return;
     }
     const q = qs[Q.i];
     box.append(el('div', { class: 'quiz-progress' }, qs.map((_, i) => el('i', { class: `qdot ${i < Q.i ? 'done' : i === Q.i ? 'now' : ''}` }))));
     const card = el('div', { class: 'quiz-card' },
-      el('div', { class: 'pix-sm dim', text: `QUESTION ${Q.i + 1} OF ${qs.length}` }),
+      el('div', { class: 'eyebrow', text: `Question ${Q.i + 1} of ${qs.length}` }),
       el('p', { class: 'quiz-q', text: q.q }),
       el('div', { class: 'quiz-options' }, q.options.map((opt, k) => el('button', {
         type: 'button', id: `quiz-opt-${k}`,
@@ -935,9 +959,9 @@ CYC.UI = (function () {
     if (Q.picked != null) {
       const right = Q.picked === q.answer;
       card.append(el('div', { class: `quiz-why ${right ? 'right' : 'wrong'}` },
-        el('div', { class: 'pix', text: right ? 'CORRECT' : 'INCORRECT' }),
-        el('p', { text: q.why })),
-        el('button', { type: 'button', class: 'btn btn-run', id: 'btn-quiz-next', text: Q.i + 1 < qs.length ? 'NEXT QUESTION' : 'FINISH', onclick: () => {
+        el('div', { class: 'eyebrow', text: right ? 'Correct' : 'Incorrect' }),
+        el('p', { html: mdLinks(q.why) })),
+        el('button', { type: 'button', class: 'btn btn-run', id: 'btn-quiz-next', text: Q.i + 1 < qs.length ? 'Next question' : 'Finish', onclick: () => {
           if (Q.i + 1 < qs.length) { Q.i++; Q.picked = null; renderQuiz(); }
           else {
             Q.done = true;
@@ -953,7 +977,7 @@ CYC.UI = (function () {
     box.append(card);
   }
 
-  // ---------------- side quests ----------------
+  // ---------------- exercises ----------------
   function openQuest(q) {
     state.quest = { id: q.id, q, step: 0, done: false, result: null };
     renderQuest();
@@ -967,37 +991,37 @@ CYC.UI = (function () {
     const howto = q.howto || [];
     const atWatch = S.step >= howto.length;
     box.append(el('div', { class: 'screen-head' },
-      el('button', { type: 'button', class: 'btn btn-small btn-ghost', text: '← SIDE QUESTS', onclick: () => enterLevel(state.level, 'quests') }),
-      el('h2', { class: 'h-pixel', text: q.name }),
+      el('button', { type: 'button', class: 'btn btn-small btn-ghost', text: '← Exercises', onclick: () => enterLevel(state.level, 'quests') }),
+      el('h2', { class: 'h-display', text: q.name }),
       el('span', { class: 'dim', text: q.concept })));
-    const fixerBox = el('div', { class: 'quest-fixer' },
-      el('div', { class: 'portrait portrait-fixer', style: { '--rc': '#777' } }, el('span', { class: 'initials', text: 'F' }), el('img', { alt: '', src: (CYC.TUTOR && CYC.TUTOR.portrait) || 'img/fighters/none.png', onerror: (e) => e.target.remove() })),
+    const fixerBox = el('div', { class: 'quest-fixer ornate' },
+      el('div', { class: 'portrait portrait-fixer', style: { '--rc': 'var(--line)' } }, el('span', { class: 'initials', text: TUTOR_NAME().slice(0, 1) }), el('img', { alt: '', src: (CYC.TUTOR && CYC.TUTOR.portrait) || 'img/fighters/none.png', onerror: (e) => e.target.remove() })),
       el('div', { class: 'stack' },
-        el('div', { class: 'pix', style: { color: 'var(--gold)' }, text: (CYC.TUTOR && CYC.TUTOR.name) || 'THE FIXER' }),
+        el('div', { class: 'fixer-name', text: TUTOR_NAME() }),
         atWatch
-          ? el('p', { class: 'quest-watch', html: `<b>WATCH:</b> ${q.watch || ''}` })
-          : el('p', { class: 'quest-line', html: howto[S.step] }),
+          ? el('p', { class: 'quest-watch', html: `<b>Watch:</b> ${mdLinks(q.watch || '')}` })
+          : el('p', { class: 'quest-line', html: mdLinks(howto[S.step]) }),
         atWatch ? null : el('div', { class: 'row' },
-          el('span', { class: 'pix-sm dim', text: `${S.step + 1}/${howto.length}` }),
-          el('button', { type: 'button', class: 'btn btn-small', id: 'btn-quest-next', text: S.step + 1 < howto.length ? 'NEXT ▶' : 'GOT IT', onclick: () => { S.step++; renderQuest(); } }))));
+          el('span', { class: 'eyebrow', text: `${S.step + 1}/${howto.length}` }),
+          el('button', { type: 'button', class: 'btn btn-small', id: 'btn-quest-next', text: S.step + 1 < howto.length ? 'Next' : 'Got it', onclick: () => { S.step++; renderQuest(); } }))));
     box.append(fixerBox);
     const field = el('div', { class: 'quest-field cyc-quest', id: 'quest-field', style: { '--role-color': roleColor((fighter((q.fighters || [])[0]) || {}).role || 'predict') } });
     box.append(field);
     if (S.done && S.result) {
       const res = S.result;
       box.append(el('div', { class: 'quest-result' },
-        el('div', { class: 'row' }, el('span', { class: 'pix', style: { color: 'var(--gold)' }, text: 'DEBRIEF' }), el('span', { class: `rank-badge ${res.score >= 50 ? 'rank-A' : 'rank-C'}`, text: String(Math.round(res.score)) })),
+        el('div', { class: 'row' }, el('h3', { class: 'h-section', style: { flex: '1 1 auto', margin: 0 }, text: 'Results' }), el('span', { class: `rank-badge ${res.score >= 50 ? 'rank-A' : 'rank-C'}`, text: String(Math.round(res.score)) })),
         res.summary ? el('p', { class: 'body-lg', text: res.summary }) : null,
-        el('p', { html: q.debrief || '' }),
+        el('p', { html: mdLinks(q.debrief || '') }),
         res.score < 50 && q.fail ? el('div', { class: 'callout', text: q.fail }) : null,
         el('div', { class: 'row' },
-          el('button', { type: 'button', class: 'btn btn-ghost', text: 'PLAY AGAIN', onclick: () => openQuest(q) }),
-          el('button', { type: 'button', class: 'btn btn-run', text: 'BACK TO SIDE QUESTS', onclick: () => enterLevel(state.level, 'quests') }))));
+          el('button', { type: 'button', class: 'btn btn-ghost', text: 'Try again', onclick: () => openQuest(q) }),
+          el('button', { type: 'button', class: 'btn btn-run', text: 'Back to exercises', onclick: () => enterLevel(state.level, 'quests') }))));
     }
     if (!S.mounted) {
       S.mounted = true;
       if (!questsReady()) {
-        field.append(el('div', { class: 'placeholder', text: 'QUEST MODULE LOADING…' }), el('p', { class: 'dim', text: 'CYC.Quests is not available yet (js/quests.js). The playfield appears once it loads.' }));
+        field.append(el('div', { class: 'placeholder', text: 'Exercise module loading…' }), el('p', { class: 'dim', text: 'CYC.Quests is not available yet (js/quests.js). The exercise appears once it loads.' }));
       } else {
         requestAnimationFrame(() => {
           try {
@@ -1012,7 +1036,7 @@ CYC.UI = (function () {
             } });
           } catch (e) {
             if (window.console) console.error('CYC.Quests.render', e);
-            field.append(el('div', { class: 'callout callout-red', text: `Quest failed to load: ${e.message || e}` }));
+            field.append(el('div', { class: 'callout callout-red', text: `Exercise failed to load: ${e.message || e}` }));
           }
         });
       }
@@ -1053,7 +1077,7 @@ CYC.UI = (function () {
   }
   function renderCodecs() {
     return el('div', { class: 'stack' },
-      el('p', { class: 'tagline', text: 'Every real codec is a squad. Click one to load it into the squad room on its own heist, with the live pipeline running. All chairs are visible in Explore mode and you can swap fighters freely.' }),
+      el('p', { class: 'tagline', text: 'Every real codec is a pipeline. Click one to load it into the pipeline builder on its own task, with the live pipeline running. All stages are visible in Explore mode and you can swap algorithms freely.' }),
       el('div', { class: 'codec-grid' }, CYC.CODECS.map((c) => {
         const h = CYC.HEISTS.find((x) => x.id === c.heist);
         const members = ROLE_ORDER.flatMap((role) => (c.squad[role] || []).map((id) => fighter(id)).filter(Boolean));
@@ -1064,19 +1088,19 @@ CYC.UI = (function () {
           el('div', { class: 'row' }, el('span', { class: 'codec-name', text: c.name }), el('span', { class: 'codec-year', text: String(c.year) })),
           members.length
             ? el('div', { class: 'mini-squad' }, members.map((f) => el('span', { class: 'mini' }, portrait(f), el('span', { class: 'mini-name', text: f.name }))))
-            : el('div', { class: 'empty-squad', text: 'Nobody at the table.' }),
+            : el('div', { class: 'empty-squad', text: 'No stages filled: raw bits pass through.' }),
           el('p', { class: 'codec-notes', text: c.notes }),
-          h ? el('div', { class: 'codec-heist', text: `HEIST: ${h.name} · ${payloadLabel(h.payload)}` }) : null,
+          h ? el('div', { class: 'codec-heist', text: `Task: ${h.name} · ${payloadLabel(h.payload)}` }) : null,
         );
       })));
   }
   function renderRoster() {
     return el('div', { class: 'stack' },
-      el('p', { class: 'tagline', text: 'Every fighter in the roster, grouped by chair and family. Click a card for the full fighter file and its Special Move training lab.' }),
+      el('p', { class: 'tagline', text: 'Every algorithm, grouped by pipeline stage and family. Click a card for its details and its interactive lab.' }),
       ROLE_ORDER.map((role) => {
         const R = CYC.ROLES[role];
         return el('section', { class: 'roster-role', style: { '--rc': R.color }, id: `roster-${role}` },
-          el('div', { class: 'roster-role-head' }, el('h3', { class: 'h-pixel', text: R.codename }), el('span', { class: 'role-title', text: `${R.title} · "${R.question}"` })),
+          el('div', { class: 'roster-role-head' }, el('h3', { class: 'h-section', text: R.title }), el('span', { class: 'role-title', text: R.question }), mapLink(roleArticle(role), 'About this stage →', true)),
           el('p', { class: 'roster-blurb', text: R.blurb }),
           el('div', { class: 'chips' }, (R.jargon || []).map((j) => chip(j, null, true))),
           familiesFor(role).map((fam) => el('div', { class: 'roster-fam' },
@@ -1088,9 +1112,9 @@ CYC.UI = (function () {
   }
   function renderJobs() {
     return el('div', { class: 'stack' },
-      el('p', { class: 'tagline', text: 'All heists side by side: the requirement profile is the job\'s stat sheet, and the real crew is named. Open any one in the squad room with all chairs visible.' }),
+      el('p', { class: 'tagline', text: 'All tasks side by side: each requirement profile and the real codec that serves it. Open any one in the pipeline builder with all stages visible.' }),
       el('div', { class: 'heist-grid' }, CYC.HEISTS.map((h) => heistCard(h, {
-        showCodec: true, showLevel: true, idSuffix: '-job', buttonText: 'OPEN SQUAD ROOM',
+        showLevel: true, idSuffix: '-job', buttonText: 'Open in the builder',
         onopen: (hh) => openHeist(hh, { ctx: 'explore' }),
       }))));
   }
@@ -1099,20 +1123,20 @@ CYC.UI = (function () {
     const rows = [];
     for (const role of ROLE_ORDER) {
       const R = CYC.ROLES[role];
-      rows.push(el('tr', { class: 'role-row', style: { '--rc': R.color } }, el('td', { colspan: String(MATRIX_COLS.length + 1), text: `${R.codename} · ${R.title}` })));
+      rows.push(el('tr', { class: 'role-row', style: { '--rc': R.color } }, el('td', { colspan: String(MATRIX_COLS.length + 1), text: R.title })));
       for (const f of CYC.FIGHTERS.filter((x) => x.role === role)) {
         rows.push(el('tr', {},
-          el('td', { class: 'rowhead' }, f.name, el('small', { text: `${f.real} · LV ${f.level}` })),
+          el('td', { class: 'rowhead' }, f.name, el('small', { text: `${f.real} · level ${f.level}` })),
           MATRIX_COLS.map((c) => el('td', {}, mark(c.f(f.stats))))));
       }
     }
     return el('div', { class: 'stack' },
-      el('p', { class: 'tagline', text: 'Which fighter properties satisfy which job requirements, derived from the stat sheets. ✔ satisfies, ~ partly, ✘ does not.' }),
+      el('p', { class: 'tagline', text: 'Which algorithm properties satisfy which task requirements, derived from the stats. ✔ satisfies, ~ partly, ✘ does not.' }),
       el('div', { class: 'matrix-wrap' },
         el('table', { class: 'matrix' },
-          el('thead', {}, el('tr', {}, el('th', { class: 'rowhead', text: 'FIGHTER' }), MATRIX_COLS.map((c) => el('th', { text: c.label })))),
+          el('thead', {}, el('tr', {}, el('th', { class: 'rowhead', text: 'Algorithm' }), MATRIX_COLS.map((c) => el('th', { text: c.label })))),
           el('tbody', {}, rows)),
-        el('div', { class: 'matrix-legend', text: 'Derivation: lossless ← stats.lossless · low latency ← DELAY ≤1 ✔, 2–3 ~ · cheap decoder ← DEC COST ≤1 ✔, 2–3 ~ · cheap encoder ← ENC COST ≤1 ✔, 2–3 ~ · random access ← RANDOM ACCESS ≥4 ✔, 2–3 ~ · tight bandwidth ← SQUEEZE ≥4 ✔, 3 ~ · small decoder memory ← MEMORY ≤1 ✔, 2–3 ~.' })));
+        el('div', { class: 'matrix-legend', text: 'Derivation: lossless ← the lossless stat · low latency ← Delay ≤1 ✔, 2–3 ~ · cheap decoder ← Decoder cost ≤1 ✔, 2–3 ~ · cheap encoder ← Encoder cost ≤1 ✔, 2–3 ~ · random access ← Random access ≥4 ✔, 2–3 ~ · tight bandwidth ← Compression ≥4 ✔, 3 ~ · small decoder memory ← Memory ≤1 ✔, 2–3 ~.' })));
   }
   function openDetail(f) {
     const body = clearEl($('detail-body'));
@@ -1126,7 +1150,7 @@ CYC.UI = (function () {
     document.body.style.overflow = '';
   }
 
-  // ---------------- explore: DUEL ----------------
+  // ---------------- explore: COMPARE ----------------
   function duelFromPreset(idx) {
     const p = (CYC.DUELS || [])[idx];
     if (!p) return null;
@@ -1151,39 +1175,39 @@ CYC.UI = (function () {
   }
   function renderDuel() {
     const D = ensureDuel();
-    const roleFighters = [{ value: 'none', label: 'EMPTY CHAIR' }].concat(CYC.FIGHTERS.filter((f) => f.role === D.role).map((f) => ({ value: f.id, label: `${f.name} (${f.real})` })));
+    const roleFighters = [{ value: 'none', label: 'Empty stage' }].concat(CYC.FIGHTERS.filter((f) => f.role === D.role).map((f) => ({ value: f.id, label: `${f.name} (${f.real})` })));
     const change = (patch) => { Object.assign(D, patch); D.preset = null; D.lesson = ''; renderExplore(); };
     const controls = el('div', { class: 'duel-controls' },
-      el('label', { class: 'ctl' }, el('span', { class: 'pix-sm', text: 'PAYLOAD' }), select('duel-payload', PAYLOADS.map((p) => ({ value: p, label: payloadLabel(p) })), D.payload, (v) => change({ payload: v }))),
-      el('label', { class: 'ctl' }, el('span', { class: 'pix-sm', text: 'CHAIR' }), select('duel-role', ROLE_ORDER.map((r) => ({ value: r, label: `${CYC.ROLES[r].codename} · ${CYC.ROLES[r].title}` })), D.role, (v) => {
+      el('label', { class: 'ctl' }, el('span', { class: 'eyebrow', text: 'Sample data' }), select('duel-payload', PAYLOADS.map((p) => ({ value: p, label: payloadLabel(p) })), D.payload, (v) => change({ payload: v }))),
+      el('label', { class: 'ctl' }, el('span', { class: 'eyebrow', text: 'Stage' }), select('duel-role', ROLE_ORDER.map((r) => ({ value: r, label: roleTitle(r) })), D.role, (v) => {
         const fs = CYC.FIGHTERS.filter((f) => f.role === v);
         change({ role: v, a: fs[0] ? fs[0].id : 'none', b: fs[1] ? fs[1].id : 'none', squadBase: {} });
       })),
-      el('label', { class: 'ctl' }, el('span', { class: 'pix-sm', text: 'FIGHTER A' }), select('duel-a', roleFighters, D.a, (v) => change({ a: v }))),
-      el('label', { class: 'ctl' }, el('span', { class: 'pix-sm', text: 'FIGHTER B' }), select('duel-b', roleFighters, D.b, (v) => change({ b: v }))),
+      el('label', { class: 'ctl' }, el('span', { class: 'eyebrow', text: 'Algorithm A' }), select('duel-a', roleFighters, D.a, (v) => change({ a: v }))),
+      el('label', { class: 'ctl' }, el('span', { class: 'eyebrow', text: 'Algorithm B' }), select('duel-b', roleFighters, D.b, (v) => change({ b: v }))),
     );
     const baseIds = ROLE_ORDER.flatMap((r) => (D.squadBase[r] || []).filter((id) => r !== D.role)).map(fighter).filter(Boolean);
     const presets = el('div', { class: 'preset-row' },
-      el('span', { class: 'pix-sm dim', text: 'PRESETS:' }),
+      el('span', { class: 'eyebrow', text: 'Presets:' }),
       (CYC.DUELS || []).map((p, i) => el('button', {
         type: 'button', class: `btn btn-small ${D.preset === i ? '' : 'btn-ghost'}`, id: `duel-preset-${i}`,
         text: `${(fighter(p.a) || {}).name || p.a} vs ${(fighter(p.b) || {}).name || p.b} · ${p.payload}`,
         onclick: () => { state.duel = duelFromPreset(i); renderExplore(); },
       })));
     const out = el('div', { class: 'stack' },
-      el('p', { class: 'tagline', text: 'Same chair, same data, two fighters. The rest of the squad stays fixed; only one seat changes.' }),
+      el('p', { class: 'tagline', text: 'Same stage, same data, two algorithms. The rest of the pipeline stays fixed; only one stage changes.' }),
       controls, presets,
-      baseIds.length ? el('div', { class: 'row' }, el('span', { class: 'pix-sm dim', text: 'FIXED SQUAD:' }), baseIds.map((f) => el('span', { class: 'mini' }, portrait(f, 'portrait-xs'), el('span', { class: 'mini-name', text: f.name })))) : el('p', { class: 'dim', text: 'Fixed squad: nobody else at the table.' }),
-      D.lesson ? el('div', { class: 'callout callout-lesson', text: D.lesson }) : null);
+      baseIds.length ? el('div', { class: 'row' }, el('span', { class: 'eyebrow', text: 'Fixed stages:' }), baseIds.map((f) => el('span', { class: 'mini row' }, portrait(f, 'portrait-xs'), el('span', { class: 'mini-name', text: f.name })))) : el('p', { class: 'dim', text: 'Fixed stages: none; the compared stage runs alone.' }),
+      D.lesson ? el('div', { class: 'callout callout-lesson', html: mdLinks(D.lesson) }) : null);
     if (!engineReady()) { out.append(enginePlaceholder()); return out; }
     const squadA = Object.assign({}, D.squadBase, { [D.role]: [D.a] });
     const squadB = Object.assign({}, D.squadBase, { [D.role]: [D.b] });
     const ra = runSquad(D.payload, squadA), rb = runSquad(D.payload, squadB);
-    const column = (f, run, tag) => el('div', { class: 'duel-col', style: { '--rc': f && f.id !== 'none' ? roleColor(f.role) : '#777' } },
-      el('div', { class: 'duel-col-head' }, portrait(f || CYC.EMPTY), el('div', {}, el('div', { class: 'pix-sm dim', text: `FIGHTER ${tag}` }), el('div', { class: 'stage-name', text: f ? f.name : '?' }))),
+    const column = (f, run, tag) => el('div', { class: 'duel-col', style: { '--rc': f && f.id !== 'none' ? roleColor(f.role) : 'var(--line)' } },
+      el('div', { class: 'duel-col-head' }, portrait(f || CYC.EMPTY), el('div', {}, el('div', { class: 'eyebrow', text: `Algorithm ${tag}` }), el('div', { class: 'stage-name', text: f ? f.name : '?' }))),
       run.error ? warningsBlock([`Engine error: ${run.error.message || run.error}`], 'callout-red')
         : run.result && run.result.stages.length ? el('div', { class: 'stage-stack' }, run.result.stages.map(stageCard))
-          : el('div', { class: 'placeholder', text: 'NO STAGES' }),
+          : el('div', { class: 'placeholder', text: 'No stages' }),
       run.result ? warningsBlock(run.result.warnings) : null);
     const fa = fighter(D.a) || CYC.EMPTY, fb = fighter(D.b) || CYC.EMPTY;
     out.append(el('div', { class: 'duel-cols' }, column(fa, ra, 'A'), column(fb, rb, 'B')));
@@ -1195,13 +1219,13 @@ CYC.UI = (function () {
       const more = (x, y) => (x === y ? null : x > y ? 'a' : 'b');
       const ratioA = A.finalBits ? A.rawBits / A.finalBits : 0, ratioB = B.finalBits ? B.rawBits / B.finalBits : 0;
       out.append(el('div', { class: 'matrix-wrap' }, el('table', { class: 'matrix duel-table' },
-        el('thead', {}, el('tr', {}, el('th', { text: 'METRIC' }), el('th', { text: fa.name }), el('th', { text: fb.name }))),
+        el('thead', {}, el('tr', {}, el('th', { text: 'Metric' }), el('th', { text: fa.name }), el('th', { text: fb.name }))),
         el('tbody', {},
-          row('ENTROPY BOUND', `${fmtBits(A.entropyBoundBits)} · ${Math.round(A.entropyBoundBits).toLocaleString()} bits`, `${fmtBits(B.entropyBoundBits)} · ${Math.round(B.entropyBoundBits).toLocaleString()} bits`, less(A.entropyBoundBits, B.entropyBoundBits)),
-          row('FINAL BITS', `${fmtBits(A.finalBits)} · ${Math.round(A.finalBits).toLocaleString()} bits`, `${fmtBits(B.finalBits)} · ${Math.round(B.finalBits).toLocaleString()} bits`, less(A.finalBits, B.finalBits)),
-          row('RATIO', `×${ratioA.toFixed(2)}`, `×${ratioB.toFixed(2)}`, more(ratioA, ratioB)),
-          row('DISTORTION', A.lossless ? 'BIT-EXACT' : distortionText(A), B.lossless ? 'BIT-EXACT' : distortionText(B), null),
-          row('SIDE INFO', sideInfoLabel(A.sideInfoBytes), sideInfoLabel(B.sideInfoBytes), less(A.sideInfoBytes || 0, B.sideInfoBytes || 0)),
+          row('Entropy bound', `${fmtBits(A.entropyBoundBits)} · ${Math.round(A.entropyBoundBits).toLocaleString()} bits`, `${fmtBits(B.entropyBoundBits)} · ${Math.round(B.entropyBoundBits).toLocaleString()} bits`, less(A.entropyBoundBits, B.entropyBoundBits)),
+          row('Final bits', `${fmtBits(A.finalBits)} · ${Math.round(A.finalBits).toLocaleString()} bits`, `${fmtBits(B.finalBits)} · ${Math.round(B.finalBits).toLocaleString()} bits`, less(A.finalBits, B.finalBits)),
+          row('Ratio', `×${ratioA.toFixed(2)}`, `×${ratioB.toFixed(2)}`, more(ratioA, ratioB)),
+          row('Distortion', A.lossless ? 'Bit-exact' : distortionText(A), B.lossless ? 'Bit-exact' : distortionText(B), null),
+          row('Side information', sideInfoLabel(A.sideInfoBytes), sideInfoLabel(B.sideInfoBytes), less(A.sideInfoBytes || 0, B.sideInfoBytes || 0)),
         ))));
       requestAnimationFrame(drawCanvases);
     }
@@ -1212,14 +1236,14 @@ CYC.UI = (function () {
   function renderTradeoffs() {
     const T = state.tradeoff;
     const axes = CYC.TRADEOFF_AXES || [];
-    const axis = (id) => axes.find((a) => a.id === id) || { id, label: id.toUpperCase(), hi: '' };
+    const axis = (id) => axes.find((a) => a.id === id) || { id, label: id, hi: '' };
     const ax = axis(T.x), ay = axis(T.y);
     const opts = axes.map((a) => ({ value: a.id, label: a.label }));
     const controls = el('div', { class: 'duel-controls' },
-      el('label', { class: 'ctl' }, el('span', { class: 'pix-sm', text: 'X AXIS' }), select('tf-x', opts, T.x, (v) => { T.x = v; T.note = null; renderExplore(); })),
-      el('label', { class: 'ctl' }, el('span', { class: 'pix-sm', text: 'Y AXIS' }), select('tf-y', opts, T.y, (v) => { T.y = v; T.note = null; renderExplore(); })));
+      el('label', { class: 'ctl' }, el('span', { class: 'eyebrow', text: 'X axis' }), select('tf-x', opts, T.x, (v) => { T.x = v; T.note = null; renderExplore(); })),
+      el('label', { class: 'ctl' }, el('span', { class: 'eyebrow', text: 'Y axis' }), select('tf-y', opts, T.y, (v) => { T.y = v; T.note = null; renderExplore(); })));
     const presets = el('div', { class: 'preset-row' },
-      el('span', { class: 'pix-sm dim', text: 'PRESETS:' }),
+      el('span', { class: 'eyebrow', text: 'Presets:' }),
       (CYC.TRADEOFF_PRESETS || []).map((p, i) => el('button', {
         type: 'button', class: `btn btn-small ${T.note === p.note ? '' : 'btn-ghost'}`, id: `tf-preset-${i}`, text: p.title,
         onclick: () => { T.x = p.x; T.y = p.y; T.note = p.note; renderExplore(); },
@@ -1241,14 +1265,14 @@ CYC.UI = (function () {
     }
     const plot = el('div', { class: 'tf-plot' },
       el('div', { class: 'tf-area' }, pts),
-      el('div', { class: 'tf-xlab' }, el('span', { class: 'pix-sm', text: `${ax.label} →` }), el('span', { class: 'dim', text: ax.hi })),
-      el('div', { class: 'tf-ylab' }, el('span', { class: 'pix-sm', text: `${ay.label} ↑` }), el('span', { class: 'dim', text: ay.hi })));
+      el('div', { class: 'tf-xlab' }, el('span', { class: 'eyebrow', text: `${ax.label} →` }), el('span', { class: 'dim', text: ax.hi })),
+      el('div', { class: 'tf-ylab' }, el('span', { class: 'eyebrow', text: `${ay.label} ↑` }), el('span', { class: 'dim', text: ay.hi })));
     return el('div', { class: 'stack' },
-      el('p', { class: 'tagline', text: 'Every fighter plotted on two stats (0 to 5). Hover or focus a portrait for the name; click it for the fighter file.' }),
+      el('p', { class: 'tagline', text: 'Every algorithm plotted on two stats (0 to 5). Hover or focus a portrait for the name; click it for the details.' }),
       controls, presets,
-      T.note ? el('div', { class: 'callout callout-lesson', text: T.note }) : null,
+      T.note ? el('div', { class: 'callout callout-lesson', html: mdLinks(T.note) }) : null,
       plot,
-      el('div', { class: 'chips' }, ROLE_ORDER.map((r) => chip(CYC.ROLES[r].codename, roleColor(r)))));
+      el('div', { class: 'chips' }, ROLE_ORDER.map((r) => chip(roleTitle(r), roleColor(r)))));
   }
 
   // ---------------- init ----------------
@@ -1286,8 +1310,14 @@ CYC.UI = (function () {
     window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(drawCanvases, 150); });
 
     setTutorOn(state.tutor.on);
+    const nameEl = $('fixer-name');
+    if (nameEl) nameEl.textContent = TUTOR_NAME();
+    const tutorInitial = document.querySelector('#fixer .fixer-portrait .initials');
+    if (tutorInitial) tutorInitial.textContent = TUTOR_NAME().slice(0, 1);
+    const tutorImg = document.querySelector('#fixer .fixer-portrait img');
+    if (tutorImg && CYC.TUTOR && CYC.TUTOR.portrait) tutorImg.src = CYC.TUTOR.portrait;
     const note = $('title-engine-note');
-    const missing = [!engineReady() && 'engine (js/engine.js)', !rulesReady() && 'rules (js/rules.js)', !(CYC.Demos && CYC.Demos.render) && 'labs (js/demos.js)', !questsReady() && 'side quests (js/quests.js)'].filter(Boolean);
+    const missing = [!engineReady() && 'engine (js/engine.js)', !rulesReady() && 'rules (js/rules.js)', !(CYC.Demos && CYC.Demos.render) && 'labs (js/demos.js)', !questsReady() && 'exercises (js/quests.js)'].filter(Boolean);
     if (missing.length) { note.hidden = false; note.textContent = `Still loading: ${missing.join(', ')}. Those parts show a placeholder until they arrive.`; }
 
     show('title');
@@ -1295,15 +1325,32 @@ CYC.UI = (function () {
     window.addEventListener('hashchange', applyHash);
   }
 
-  // #fighter=<id> deep link (from the /map articles): open that fighter's card in Explore -> Roster
+  // Deep links from the /map articles:
+  //   #fighter=<id>  opens that algorithm's details in Explore -> Algorithms
+  //   #heist=<id>    opens that task's pipeline builder, with its level unlocked for this session
   function applyHash() {
-    const m = /fighter=([\w-]+)/.exec(location.hash || '');
-    const f = m && CYC.byId && CYC.byId[m[1]];
-    if (!f) return;
-    state.exploreTab = 'roster';
-    setMode('explore');
-    setExploreTab('roster');
-    openDetail(f);
+    const hash = location.hash || '';
+    const fm = /fighter=([\w-]+)/.exec(hash);
+    const f = fm && CYC.byId && CYC.byId[fm[1]];
+    if (f) {
+      if (state.chooser.open) closeChooser();
+      state.exploreTab = 'roster';
+      setMode('explore');
+      setExploreTab('roster');
+      openDetail(f);
+      return;
+    }
+    const hm = /heist=([\w-]+)/.exec(hash);
+    const h = hm && CYC.HEISTS.find((x) => x.id === hm[1]);
+    if (h) {
+      if (state.chooser.open) closeChooser();
+      closeDetail();
+      state.linkUnlocked.add(h.level);
+      state.mode = 'heist';
+      $('mode-heist').classList.add('is-on'); $('mode-explore').classList.remove('is-on');
+      $('mode-heist').setAttribute('aria-pressed', 'true'); $('mode-explore').setAttribute('aria-pressed', 'false');
+      openHeist(h, { ctx: 'heist' });
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

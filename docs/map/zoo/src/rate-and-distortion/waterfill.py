@@ -6,13 +6,15 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 
-BG, FG, DIM = "#0b0714", "#ece6f7", "#8a81a3"
-ORANGE, PURPLE, CYAN, GREEN, YELLOW = "#ff6a3d", "#d05cff", "#38d6ff", "#4dff7c", "#ffe23d"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
+ORANGE, PURPLE, CYAN, GREEN, YELLOW = "#b05a4c", "#6b4a7a", "#246b66", "#6f8f4e", "#b8892e"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
                      "axes.edgecolor": DIM, "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
                      "text.color": FG, "font.size": 15, "axes.titlesize": 18, "axes.spines.top": False,
-                     "axes.spines.right": False, "grid.color": "#2a2140", "grid.linestyle": ":"})
+                     "axes.spines.right": False, "grid.color": "#b89f78", "grid.linestyle": ":"})
 
 var = np.array([64, 32, 16, 8, 4, 2, 1, 0.5]); theta = 2.0
 R = np.maximum(0, 0.5 * np.log2(var / theta)); D = np.minimum(var, theta)
@@ -21,7 +23,7 @@ idx = np.arange(8); labels = [f"σ²={v:g}" for v in var]
 
 fig, axes = plt.subplots(1, 2, figsize=(16, 7.6), dpi=100, gridspec_kw={"width_ratios": [1.25, 1]})
 ax = axes[0]
-ax.bar(idx, var, color="#3a2d55", edgecolor=DIM, width=0.72, label="coordinate variance σ²")
+ax.bar(idx, var, color="#e0d2b6", edgecolor=DIM, width=0.72, label="coordinate variance σ²")
 ax.bar(idx, D, color=CYAN, alpha=0.75, width=0.72, label="distortion left: min(σ², θ)")
 ax.axhline(theta, color=YELLOW, lw=2.5, ls="--")
 ax.text(7.45, theta * 0.62, "water level θ = 2", color=YELLOW, ha="right", fontsize=14)

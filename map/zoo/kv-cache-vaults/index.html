@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>The KV cache: same bytes, five tasks · Choose Your Codec</title>
+<meta name="description" content="One tensor of keys and values, 40 GiB for a long context, needs five different codecs depending on whether it sits in HBM, crosses PCIe, parks on NVMe, travels over a network or gets burned; bandwidth is the stat, random access is the switch that removes or restores the entropy coder, and the biggest shrinks happened before any codec, at model-design time.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/compressionfight/map/css/map.bundle.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+</head>
+<body class="is-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <button class="menu-btn" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle the map menu">Menu</button>
+  <a class="wordmark" href="/compressionfight/" aria-label="Choose Your Codec: back to the game">Choose Your Codec</a>
+  <nav class="topnav" aria-label="Site">
+    <a href="https://www.borzov.ca/compressionfight/map/">Map</a>
+    <a href="https://www.borzov.ca/compressionfight/map/primer/">Primer</a>
+    <a class="play" href="/compressionfight/">Play the game</a>
+  </nav>
+</header>
+
+<div class="shell">
+  
+<nav id="sidebar" class="side" aria-label="Map taxonomy">
+  <a class="side-home" href="/compressionfight/map/">The Map</a>
+  <a class="side-home" href="/compressionfight/map/primer/">Primer</a>
+  
+  
+  <div class="side-sec">
+    <div class="side-h">Foundations</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/modeling-and-coding/">Modeling and coding: bits are surprise</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a job</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rate-and-distortion/">Rate and distortion</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Entropy coding (symbols &#43; probabilities → bits; always the last stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/prefix-codes/">Prefix codes</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/arithmetic-and-ans/">Fractional-bit coders</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Prediction and modeling (expose structure; lower the entropy; produce no bits)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/lz-family/">Dictionary matchers: the LZ family</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/linear-prediction/">Linear and spatial predictors</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/context-models/">Statistical context models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/motion-compensation/">Temporal prediction: motion compensation</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Transforms and rearrangements (save nothing alone; set up the other stages)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-transforms/">Frequency transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations, projections and rank</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/channel-and-layout/">Channel and layout transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/sorting-transforms/">Sorting transforms</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/learned-transforms/">Learned transforms</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Quantization (the only lossy stage)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/scalar-quantization/">Scalar quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/vector-quantization/">Vector quantizers</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled integer and float formats</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Perceptual and consumer models (what will the reader not notice?)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/perceptual-models/">Human perceptual models</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/attention-as-audience/">A transformer as the audience</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Shared priors and side information (what the decoder already holds)</div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/side-information/">Side information</a></li>
+      
+    
+    </ul>
+  </div>
+  
+  <div class="side-sec">
+    <div class="side-h">Tasks<small>the systems that pick the stages</small></div>
+    <ul>
+    
+      
+      <li><a href="/compressionfight/map/zoo/kv-cache-vaults/" class="on" aria-current="page">The five vaults of the KV cache</a></li>
+      
+    
+      
+      <li><a href="/compressionfight/map/zoo/codec-dissections/">Codecs as pipelines: worked dissections</a></li>
+      
+    
+    </ul>
+  </div>
+  
+</nav>
+
+  <main id="main">
+  
+
+
+
+<div class="cols">
+<article class="article">
+  
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/compressionfight/map/">The Map</a><span>/</span><span>Tasks</span><span>/</span><span>Jobs: the KV cache</span></nav>
+  <header class="art-head">
+    <div class="eyebrow">Tasks · Jobs: the KV cache</div>
+    
+    <img class="hero" src="/compressionfight/map/img/hero/kv-cache-vaults.jpg" width="1280" height="480" alt="" decoding="async" onerror="this.remove()">
+    <h1 class="title">The KV cache: same bytes, five tasks</h1>
+    <p class="summary">One tensor of keys and values, 40 GiB for a long context, needs five different codecs depending on whether it sits in HBM, crosses PCIe, parks on NVMe, travels over a network or gets burned; bandwidth is the stat, random access is the switch that removes or restores the entropy coder, and the biggest shrinks happened before any codec, at model-design time.</p>
+    <div class="meta">20 min read</div>
+  </header>
+  
+  <div class="prose"><h2 id="one-tensor-40-gib">One tensor, 40 GiB</h2>
+<p>Imagine a serving team in 2025, at a company we will call Lantern. They run a 70-billion-parameter model with 80 layers and 8 key-value heads of 128 dimensions each, in bf16, and a customer wants 128k-token contexts. The lead engineer, Teo, has the whole problem on one line of a whiteboard before the meeting starts:</p>
+$$
+\text{bytes per token} = 2 \times \text{layers} \times \text{kv\_heads} \times \text{head\_dim} \times 2\ \text{B} = 2 \times 80 \times 8 \times 128 \times 2 = 327{,}680\ \text{B} = 320\ \text{KiB}.
+$$<p>That is what every token leaves behind, once it has been read, for the rest of the conversation: its key and its value in every layer. At 131,072 tokens it is 40 GiB, for one user, with the model&rsquo;s weights not yet counted. Teo&rsquo;s team has one tensor and, over the next six months, will walk it through six rooms of the building: the GPU, the parking lot, cold storage, the network, the furnace, and finally the architects&rsquo; office. In each room the same bytes get a different codec, and by the end of the walk every stage on <a href="../../">the map</a>
+ will have been sat in and vacated at least once. The question is the one the <a href="../anatomy-of-a-job/">anatomy of a job</a>
+ article promised would be answerable: <em>one tensor; why does it need five different codecs depending on where it sits?</em></p>
+<p>Before the rooms, the number that rules them all.</p>
+<h2 id="bandwidth-is-the-stat">Bandwidth is the stat</h2>
+<p>Here is what a decode step does. To produce one new token, every layer&rsquo;s attention reads <em>every</em> cached key and value, computes the softmax, and takes the weighted sum. Then the next token does it again. The cache is not read once; it is re-read per generated token. So the bytes per token of cache are not a storage cost, they are a time cost, paid every step:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">KiB</span><span class="p">,</span> <span class="n">GiB</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">,</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">3</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">bytes_per_token</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span> <span class="n">kv_heads</span><span class="p">,</span> <span class="n">head_dim</span><span class="p">,</span> <span class="n">nbytes</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span> <span class="k">return</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">layers</span> <span class="o">*</span> <span class="n">kv_heads</span> <span class="o">*</span> <span class="n">head_dim</span> <span class="o">*</span> <span class="n">nbytes</span>
+</span></span><span class="line"><span class="cl"><span class="n">b70</span> <span class="o">=</span> <span class="n">bytes_per_token</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span>                       <span class="c1"># Llama-3-70B, bf16</span>
+</span></span><span class="line"><span class="cl"><span class="n">ctx</span> <span class="o">=</span> <span class="mi">131072</span>
+</span></span><span class="line"><span class="cl"><span class="n">cache</span> <span class="o">=</span> <span class="n">b70</span> <span class="o">*</span> <span class="n">ctx</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;per token: </span><span class="si">%d</span><span class="s2"> B = </span><span class="si">%d</span><span class="s2"> KiB;  128k context: </span><span class="si">%.0f</span><span class="s2"> GiB&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">b70</span><span class="p">,</span> <span class="n">b70</span> <span class="o">//</span> <span class="n">KiB</span><span class="p">,</span> <span class="n">cache</span> <span class="o">/</span> <span class="n">GiB</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;time to read it once at 4.8 TB/s (H200): </span><span class="si">%.1f</span><span class="s2"> ms  -&gt; the floor on time-per-token, before any weight is read&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">cache</span> <span class="o">/</span> <span class="mf">4.8e12</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;bandwidth needed for 50 tok/s with this cache: </span><span class="si">%.1f</span><span class="s2"> TB/s per request&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">cache</span> <span class="o">*</span> <span class="mi">50</span> <span class="o">/</span> <span class="mf">1e12</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">free</span> <span class="o">=</span> <span class="mf">141e9</span> <span class="o">-</span> <span class="mf">70e9</span>                                      <span class="c1"># H200 HBM minus 70B weights at 8 bits</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;tokens of cache that fit beside the weights: </span><span class="si">%d</span><span class="s2"> at bf16, </span><span class="si">%d</span><span class="s2"> at 4 bits&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">free</span> <span class="o">/</span> <span class="n">b70</span><span class="p">,</span> <span class="n">free</span> <span class="o">/</span> <span class="p">(</span><span class="n">b70</span> <span class="o">/</span> <span class="mi">4</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl"><span class="n">mla</span> <span class="o">=</span> <span class="mi">61</span> <span class="o">*</span> <span class="mi">576</span> <span class="o">*</span> <span class="mi">2</span>                                       <span class="c1"># DeepSeek-V3: one 576-element latent per layer, shared by K and V</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;DeepSeek-V3 (MLA): </span><span class="si">%d</span><span class="s2"> B = </span><span class="si">%.1f</span><span class="s2"> KiB per token, </span><span class="si">%.1f</span><span class="s2"> GiB at 128k&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">mla</span><span class="p">,</span> <span class="n">mla</span> <span class="o">/</span> <span class="n">KiB</span><span class="p">,</span> <span class="n">mla</span> <span class="o">*</span> <span class="n">ctx</span> <span class="o">/</span> <span class="n">GiB</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>per token: 327680 B = 320 KiB;  128k context: 40 GiB
+time to read it once at 4.8 TB/s (H200): 8.9 ms  -&gt; the floor on time-per-token, before any weight is read
+bandwidth needed for 50 tok/s with this cache: 2.1 TB/s per request
+tokens of cache that fit beside the weights: 216674 at bf16, 866699 at 4 bits
+DeepSeek-V3 (MLA): 70272 B = 68.6 KiB per token, 8.6 GiB at 128k
+</code></pre><p>Nine milliseconds just to stream the cache past the compute units, on a GPU with 4.8 TB/s of memory bandwidth; a single 128k request at 50 tokens per second would want 2.1 TB/s of HBM to itself. This is the first aha, and everything in the five rooms follows from it:</p>
+<blockquote><p><strong>Bandwidth is the stat.</strong> Decode re-reads the cache every token, so bytes per token <em>is</em> time per token. And because the GPU&rsquo;s memory is shared by every concurrent request, bytes per token also caps how many users fit: capacity is batch size, and batch size is throughput.</p>
+</blockquote><figure class="fig"><a href="/compressionfight/map/img/kv-cache-vaults/bytes_per_token.png"><img src="/compressionfight/map/img/kv-cache-vaults/bytes_per_token.png" alt="Horizontal bar chart on a log scale of KV-cache bytes per token: Llama-3-70B with all 64 heads would be 2,560 KiB; Llama-2-7B 512 KiB; Llama-3-70B with GQA 320 KiB; Llama-3-8B 128 KiB; GLM-5.1 about 100 KB (reported); DeepSeek-V3 MLA 68.6 KiB; Llama-3-70B at 2-bit about 60 KiB; DeepSeek-V3.2 FP8 latent 39 KiB; DeepSeek-V4 about 10 KiB (derived from 9.62 GiB per million tokens). A top axis converts to GiB at 131,072 tokens." loading="lazy"></a><figcaption>Bytes per token across models and formats, derived from the public formula and configs except where labelled reported. The two largest drops, 2,560 to 320 KiB and 320 to 69 KiB, are architecture decisions, not codecs.</figcaption></figure>
+
+<p>One more thing the figure shows, and it will matter in the last room. The gap between the top bar and the bars below it is not made by any codec. It is the difference between keeping 64 key-value heads and keeping 8, and between keeping 8 heads and keeping one 576-element latent. Hold that thought.</p>
+<h2 id="six-rooms-six-stat-sheets">Six rooms, six stat sheets</h2>
+<p>The <a href="../anatomy-of-a-job/">anatomy of a job</a>
+ article says that five axes pin a compression problem down before any algorithm is chosen: the fidelity contract and its consumer, the redundancy profile, the access pattern (symmetry, latency, random access, errors), the compute envelope, and where the prior lives. The KV cache is the best demonstration of that claim on the whole map, because the data never changes and the stat sheet changes completely from room to room.</p>
+<figure class="fig"><a href="/compressionfight/map/img/kv-cache-vaults/stat_sheets.png"><img src="/compressionfight/map/img/kv-cache-vaults/stat_sheets.png" alt="Seven small bar charts side by side, one per job, each showing latency tolerance, encoder budget, decoder budget, random access, bandwidth pressure and decoder memory on a 0 to 5 scale, with lossless and side-information flags: the KV compression by architecture task (all zero except random access 5, bandwidth 4), the KV cache resident in HBM task (random access 5, bandwidth 3, no side info), the KV cache at 1–2 bits task (random access 5, bandwidth 5, side info allowed), the KV cache offload to host memory task (latency 1, encoder 2, random access 5, bandwidth 5, memory 2), the KV cache cold storage task (latency 3, encoder 2, decoder 2, random access 1, bandwidth 5, memory 3), the KV cache over a network task (latency 2, encoder 3, decoder 2, random access 2, bandwidth 5, memory 3) and the KV token eviction task (random access 5, bandwidth 3, no side info)." loading="lazy"></a><figcaption>The game&rsquo;s requirement stats for the KV-cache tasks, from js/data.js. Same payload in every column. Watch the random-access row: it is 5 in every room where attention reads the stored form and drops to 1 or 2 the moment the cache is parked or shipped.</figcaption></figure>
+
+<p>Read the random-access row first. In five of the seven columns it is pinned at 5: attention must read any token&rsquo;s key and value by index, inside a GPU kernel, without decoding its neighbours. In two it collapses to 1 or 2. That stat is the switch this article keeps returning to; walk the rooms and watch it flip.</p>
+<figure class="fig"><a href="/compressionfight/map/img/kv-cache-vaults/tiers.png"><img src="/compressionfight/map/img/kv-cache-vaults/tiers.png" alt="Horizontal bars on a log time axis showing how long it takes to move the whole 40 GiB cache through each pipe: HBM at 4.8 TB/s, 8.9 ms; NVLink-C2C at 900 GB/s, 48 ms; PCIe Gen5 nominal 64 GB/s, 0.67 s; PCIe with a GPU gather kernel at 37 GB/s, 1.2 s; NVMe at 6 GB/s, 7.2 s; a 10 Gbit/s network, 34 s; PCIe with per-entry cudaMemcpyAsync at 0.79 GB/s, 54 s. Dashed lines mark a 30 ms decode-step deadline and the 3.1 s KVTC reports for recomputing a batch of prefixes on a 12B model." loading="lazy"></a><figcaption>The same 40 GiB through five pipes. Only HBM beats the per-step deadline; everything else must either move a tiny selected fraction per step or move the whole cache once, off the critical path, and that choice is the job.</figcaption></figure>
+
+<h2 id="room-1-the-gpu-the-kv-cache-resident-in-hbm-task">Room 1: the GPU (the KV cache resident in HBM task)</h2>
+<p>The cache lives in HBM. New tokens arrive one at a time, each must be encoded the instant it is produced, and attention reads every token every step. Stat sheet: latency 0, encoder budget 0, decoder budget 0, random access 5. The decoder here is not a program; it is the attention kernel, and a GPU thread must find its element by arithmetic on an index. That one fact bans every variable-length code on the map. No Huffman, no arithmetic coder, no ANS, no Rice. The entropy-coding stage is empty, by law, in this room; the <a href="../block-float-formats/">block formats</a>
+ article explains why fixed-length codes with a per-block scale are what survive.</p>
+<p>So the whole game in HBM is played by the transform stage and the quantization stage, and the first thing Teo learns is that keys and values are different animals. The key tensor has a handful of channels, fixed per head, whose magnitudes are far larger than the rest and stable from token to token; the value tensor has no such pattern. A quantizer whose scale is shared across the channels of one token is wrecked by the outlier channel; a scale shared across tokens of one channel sees a stationary magnitude. KIVI&rsquo;s ablation on Llama-2-13B at 2 bits says it in one row of a table: keys per-channel and values per-token gives GSM8K 12.21 (20.77 with its fp16 window for the newest 128 tokens, which is the sink &amp; window exemption from <a href="../attention-as-audience/">attention as the audience</a>
+); keys per-token drops to 4.55; put values per-channel and the score is 0.00. The cheapest decision in the field, <em>which way to slice</em>, is worth three orders of magnitude.</p>
+<p>The second thing he learns is that the model itself has scrambled the keys. RoPE rotates each pair of key channels by an angle that depends on the token&rsquo;s position, so the outlier channel&rsquo;s energy leaks between the two channels of its pair by a different amount at every position, and the per-channel statistics stop being stationary. Three fixes exist, all from the <a href="../rotations-and-rank/">rotations and rank</a>
+ article. Undo the rotation before quantizing and re-apply it inside the kernel: KVQuant stores pre-RoPE keys and takes 3-bit LLaMA-7B perplexity from 7.05 to 6.23 with that move alone. Rotate queries and keys by the same Hadamard <em>after</em> RoPE, which leaves every dot product unchanged and smears the outlier across all 128 channels so one scale fits: QuaRot and SpinQuant. Or build a codebook whose entries commute with the rotation, so decoding and rotating can be swapped: CommVQ.</p>
+<div class="map-lab" data-fighter="unrope"><p class="lab-fail">Interactive lab (unrope) needs JavaScript.</p></div>
+
+<p>Those three fixes also show the room&rsquo;s one allowed luxury. A Hadamard costs zero bytes of side information; a calibrated set of per-layer levels (KVQuant) or a trained codebook (Coupled Quantization, CommVQ) is an shared-prior stage, fine when the serving system owns both ends, and it is what gets the budget from 4 bits down to 1 or 2. That is the KV cache at 1–2 bits task: the same room with a tighter van. Coupled Quantization quantizes groups of eight pre-RoPE channels together with Fisher-weighted centroids, cashing in the mutual information between channels that a scalar grid pays for twice (see <a href="../vector-quantization/">vector quantization</a>
+); at one bit per channel LLaMA-2-13B lands at perplexity 6.55 where one-bit scalar quantization gives 4,709. CommVQ at 2 bits scores 47.98 on LongBench against 48.05 in fp16 and serves LLaMA-3.1-8B at 128k on one RTX 4090. Still no entropy-coding stage; codebooks of a few megabytes, looked up inside the attention kernel.</p>
+<p>The systems win of all this is batch, exactly as the first aha said. KIVI reports 2.6× less peak memory, up to 4× the batch size and 2.35–3.47× the throughput. Nothing got faster per byte; there were fewer bytes.</p>
+<h2 id="room-2-the-parking-lot-the-kv-cache-offload-to-host-memory-task">Room 2: the parking lot (the KV cache offload to host memory task)</h2>
+<p>Sparse attention arrived in 2025 and, as Teo&rsquo;s team discovers, saved the wrong resource. DeepSeek&rsquo;s Sparse Attention runs a small indexer, 64 heads of 128 dimensions in FP8, over every cached token and lets the real attention read only the top 2,048: at 128k the per-step read of the big latents drops sixty-fold. Memory drops by nothing, because the indexer needs the whole context in HBM to choose from, and the chosen 2,048 change every step. Selection without offload saves compute, not memory.</p>
+<p>But it makes a new room possible. If only 2,048 of 131,072 entries per layer are touched per step, the other 129,024 can sit in host DRAM and be fetched on demand over PCIe. The stat sheet changes: latency 1 (the fetch must land inside one layer&rsquo;s attention critical path, about 60 μs per layer on an H200 for GLM-5.2, or be prefetched a few layers ahead), bandwidth 5, and the scarce channel is no longer HBM but a 64 GB/s PCIe link shared by every request on the GPU. Random access is still 5, now at the granularity of a single token&rsquo;s layer-local record: 656 bytes in FlashMLA&rsquo;s FP8 layout, 2,048 of them at arbitrary host addresses per layer, chosen microseconds before the read.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">entry</span><span class="p">,</span> <span class="n">topk</span><span class="p">,</span> <span class="n">layers</span> <span class="o">=</span> <span class="mi">656</span><span class="p">,</span> <span class="mi">2048</span><span class="p">,</span> <span class="mi">61</span>                 <span class="c1"># FlashMLA FP8 latent entry; DSA top-k; DeepSeek-V3.2 layers</span>
+</span></span><span class="line"><span class="cl"><span class="n">gather</span> <span class="o">=</span> <span class="n">entry</span> <span class="o">*</span> <span class="n">topk</span> <span class="o">*</span> <span class="n">layers</span>                       <span class="c1"># bytes per generated token per request if every pick misses</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;all-miss gather per token: </span><span class="si">%.1f</span><span class="s2"> MB&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">gather</span> <span class="o">/</span> <span class="mf">1e6</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">bw</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&#34;GPU gather kernel over pinned memory&#34;</span><span class="p">,</span> <span class="mf">37e9</span><span class="p">),</span> <span class="p">(</span><span class="s2">&#34;cudaMemcpyAsync per entry&#34;</span><span class="p">,</span> <span class="mf">0.79e9</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;  </span><span class="si">%-38s</span><span class="s2"> </span><span class="si">%7.2f</span><span class="s2"> ms&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&#34;:&#34;</span><span class="p">,</span> <span class="n">gather</span> <span class="o">/</span> <span class="n">bw</span> <span class="o">*</span> <span class="mf">1e3</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">glm</span> <span class="o">=</span> <span class="mf">200e6</span>                                          <span class="c1"># GLM-5.1: ~200 MB per token all-miss (HiSparse)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">buf</span><span class="p">,</span> <span class="n">miss</span> <span class="ow">in</span> <span class="p">((</span><span class="mi">2048</span><span class="p">,</span> <span class="mf">0.30</span><span class="p">),</span> <span class="p">(</span><span class="mi">4096</span><span class="p">,</span> <span class="mf">0.134</span><span class="p">),</span> <span class="p">(</span><span class="mi">8192</span><span class="p">,</span> <span class="mf">0.067</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;  LRU buffer </span><span class="si">%5d</span><span class="s2"> entries: </span><span class="si">%4.1f%%</span><span class="s2"> misses -&gt; </span><span class="si">%5.1f</span><span class="s2"> MB/token = </span><span class="si">%4.2f</span><span class="s2"> GB/s per request at 30 ms/token&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">miss</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="n">glm</span> <span class="o">*</span> <span class="n">miss</span> <span class="o">/</span> <span class="mf">1e6</span><span class="p">,</span> <span class="n">glm</span> <span class="o">*</span> <span class="n">miss</span> <span class="o">/</span> <span class="mf">0.03</span> <span class="o">/</span> <span class="mf">1e9</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>all-miss gather per token: 82.0 MB
+  GPU gather kernel over pinned memory:     2.21 ms
+  cudaMemcpyAsync per entry:              103.74 ms
+  LRU buffer  2048 entries: 30.0% misses -&gt;  60.0 MB/token = 2.00 GB/s per request at 30 ms/token
+  LRU buffer  4096 entries: 13.4% misses -&gt;  26.8 MB/token = 0.89 GB/s per request at 30 ms/token
+  LRU buffer  8192 entries:  6.7% misses -&gt;  13.4 MB/token = 0.45 GB/s per request at 30 ms/token
+</code></pre><p>Two things in that output decide whether the room exists at all. The first is the difference between 2 ms and 104 ms for the same bytes: ESS measured 37 GB/s when a GPU kernel does address-based loads from pinned host memory and 0.79 GB/s when a copy engine is asked to move 656-byte entries one <code>cudaMemcpyAsync</code> at a time. Scattered small transfers are a different animal from bulk copies, and a design that cannot gather in one kernel per layer is not slow, it is impossible. The second is the miss rate. Consecutive steps select mostly the same tokens, so the GPU-side buffer is a cache and LRU is the right policy: HiSparse measured 30% misses keeping only the current top-k, 13.4% with a 4,096-entry buffer, 6.7% at 8,192, against Bélády&rsquo;s clairvoyant 8.2% at 4,096. With the buffer the real draw is about a gigabyte per second per request, and HiSparse gets 2.1–4.7× throughput at 32k–200k contexts with roughly 0.4 GB of GPU memory per 128k request instead of 13 GB.</p>
+<p>Notice which stages are occupied. The quantization stage is light (FP8, or a block format on the host copy); there is still no entropy-coding stage, because a gather of 2,048 entries by index is random access in its purest form. The work is done by the perceptual-model stage, the top-k selection that ranks tokens with a proxy, and by the shared-prior stage in its strangest costume: the tiered cache, a lossless copy one hop away. ShadowKV keeps rank-160 factors of the pre-RoPE keys on the GPU and the values on the CPU, recomputing keys instead of fetching them; SpeCache keeps a 1-bit copy on the GPU and decodes a speculative extra token each step purely to guess next step&rsquo;s top-64. The <a href="../side-information/">side information</a>
+ article calls this out-of-band in space, and the <a href="../attention-as-audience/">attention as the audience</a>
+ article explains why a 1-bit stand-in is enough to decide.</p>
+<div class="map-lab" data-fighter="tiered"><p class="lab-fail">Interactive lab (tiered) needs JavaScript.</p></div>
+
+<h2 id="room-3-cold-storage-the-kv-cache-cold-storage-task">Room 3: cold storage (the KV cache cold storage task)</h2>
+<p>A chat agent pauses. The user will come back in twenty minutes, or never. Teo can recompute the 32k-token prefix when they return, which costs a prefill, or park its cache somewhere cheaper than HBM and reload it. The stat sheet turns inside out. Latency 3: a few hundred milliseconds to pack and unpack is fine. Encoder budget 2: the whole cache is on the table, so look-ahead across tokens, per-layer statistics and a transform fitted to this model are all allowed. Decoder budget 2, because it runs once per prefix, not once per step. And random access drops to 1: nobody attends over the stored form; it is unpacked back into bf16 pages before use.</p>
+<p>That last change is the second aha of the article, and it is the switch the stat sheets were pointing at:</p>
+<blockquote><p><strong>The entropy-coding stage is empty inside HBM in every method, and it fills the moment the cache is stored or shipped.</strong> Random access is the switch. Where attention reads the stored form by index, fixed-length codes only; where the cache is decoded once in bulk, variable-length codes are back, and so is every stage they bring with them.</p>
+</blockquote><p>KVTC, NVIDIA&rsquo;s &ldquo;transform coding for KV&rdquo;, is what the full classical pipeline looks like on this payload, and it is literally JPEG&rsquo;s recipe with a machine as the viewer. Undo RoPE. Fit one PCA basis per model for keys and one for values, concatenating all layers and heads (32,768 dimensions for Llama 3.1 8B) over 160k–200k calibration tokens, 86 seconds of randomized SVD; the basis is the trained basis, 2.4% of Llama 3.3 70B&rsquo;s parameters, and the ablation that spans the basis over 1, 2, 4, 8, 16 or 32 layers takes GSM8K at 8× from 27.5 to 56.9, which is the cross-layer redundancy of <a href="../rotations-and-rank/">rotations and rank</a>
+ made measurable. Then allocate bits across the PCA coordinates by dynamic programming to minimise squared error for a global budget: reverse water-filling from <a href="../rate-and-distortion/">rate and distortion</a>
+, with groups of coordinates sharing a 16-bit scale and many trailing coordinates getting zero bits. Keep four sink tokens and the newest 128 raw. Quantize uniformly. Then, because this room allows it, DEFLATE on the GPU via nvCOMP: 1.23× on top of the quantizer, from the many near-zero low-bit symbols the allocator leaves behind, and their ablation finds Zstandard does slightly better still. Net: 18–22× on Llama 3.1 8B with GSM8K at 56.9 against 56.8 uncompressed; on a 12B model, time to first token is 380 ms by decompression against 3,098 ms by recompute.</p>
+<div class="map-lab" data-fighter="waterline"><p class="lab-fail">Interactive lab (waterline) needs JavaScript.</p></div>
+
+<p>The production shortcut in the same room skips the transform stage and the entropy-coding stage and keeps only the quantization stage: TensorRT-LLM encodes a KV page to NVFP4, four-bit floats with an FP8 scale per 16 values, 4.5 bits per element, as the page migrates from the GPU to host memory or disk, and decodes it back to the runtime dtype when it returns; attention never consumes the cold form. No transform, no entropy coder, about 3.5× against fp16, and tellingly the docs keep the RoPE part of the key at hot precision for the newest models, which is the KVQuant lesson surfacing as a config flag.</p>
+<h2 id="room-4-the-network">Room 4: the network</h2>
+<p>Now the cache has to cross a network. A 10k-token document&rsquo;s cache, 1.2 GB in fp16 for a 7B model, sits on a storage server, and a query arrives at a GPU 3 Gbit/s away. Sending the text and recomputing is the baseline; the codec exists to beat it. The stat sheet is the cold-storage sheet with the van made smaller: every byte on the wire is latency, so bandwidth is 5 and encoder budget is 3, because encoding happens once per context, offline, and decoding once per request, pipelined with the download. Random access 2, at the granularity of 1.5k-token chunks that can be sent at different quality levels or, if the link is too slow for even the lowest, sent as text to be recomputed.</p>
+<p>CacheGen is the one KV codec with a real bitstream, and its pipeline is a video codec&rsquo;s. Tokens are grouped in tens; the first is an anchor coded on its own at 8 bits, the other nine are coded as deltas from the anchor, never from each other, so that every token in a group decodes on its own GPU thread and quantization error cannot accumulate down a chain. That is a group of pictures with one I-frame and nine P-frames all referencing it, the anchor variant of <a href="../linear-prediction/">linear prediction</a>
+ and the GOP dial of <a href="../motion-compensation/">motion compensation</a>
+, chosen for parallel decode rather than for ratio; they measured 2.4–2.9× lower variance in the deltas than in the raw values. The quantizer&rsquo;s bin size is 0.5, 1 and 1.5 for the early, middle and late third of the layers, because rounding noise in shallow layers hurts accuracy far more than the same noise deep in the network: a crude rate allocation by loss sensitivity. Then an arithmetic coder, with one probability table per (layer, channel) profiled offline per model, which is the standard tables shipped once and the arithmetic coding of <a href="../arithmetic-and-ans/">arithmetic and ANS</a>
+ doing the cashing-in; grouped tables cut the bitstream by up to 53% against one global table. Result on Mistral-7B with 9.4k tokens: 622 MB at 8 bits becomes 176 MB, roughly 2.3 bits per element by my arithmetic; across models, 3.5–4.3× smaller than uniform quantization at matched quality and 3.2–3.7× lower time to first token.</p>
+<h2 id="room-5-token-eviction">Room 5: token eviction</h2>
+<p>The cheapest codec is the one that keeps nothing. Roughly 20% of tokens collect 80% of the attention mass, so drop the rest: a quantizer with two levels, all bits or zero, chosen per token. The stat sheet looks like the KV cache resident in HBM task&rsquo;s again (latency 0, random access 5, no side information), with the distortion measured in benchmark accuracy: SnapKV at a 2,048-token budget scores 34.6% on AIME-24 where the dense model scores 57.1%.</p>
+<p>The <a href="../attention-as-audience/">attention as the audience</a>
+ article is about this room, so only the two pitfalls need naming here. The importance scores an eviction policy wants are never written down, because FlashAttention does not materialise the attention matrix, so the policy must rebuild them from an observation window (SnapKV), from key geometry (TriAttention) or give up on scores entirely (StreamingLLM&rsquo;s sinks plus window). And paged memory frees a 16-token block only when every token in it is gone; evict 14,400 of 16,000 tokens and the 1,600 survivors can still occupy 1,000 blocks, so memory comes back only after compaction, which costs copies. TriAttention, which does both, matches dense AIME-25 accuracy at 10.7× less KV memory. The token eviction is a legitimate algorithm; it just needs a list and a broom.</p>
+<h2 id="room-6-the-architects-office-the-kv-compression-by-architecture-task">Room 6: the architects&rsquo; office (the KV compression by architecture task)</h2>
+<p>Teo&rsquo;s last meeting is with the people who trained the model, and it rearranges his sense of the previous five rooms. Go back to the bytes-per-token figure. The model they serve has 64 query heads but only 8 key-value heads, because the architects chose grouped-query attention before pretraining; with 64 KV heads the cache would be 2.5 MiB per token and the 128k context 320 GiB. That is an 8× that no codec in the five rooms came close to, and it cost nothing at inference: fewer things to store, rather than smaller things.</p>
+<p>DeepSeek-V2&rsquo;s Multi-head Latent Attention goes further. Instead of keys and values for every head, each token caches one 512-element latent plus a 64-element positional key, 576 numbers per layer, and the up-projections that would turn the latent back into 128 heads of keys and values are absorbed into the query and output matrices, so the latent is attended to directly and never expanded. Against 128-head MHA that is 32,768 elements per layer reduced to 576, 57×, &ldquo;equal to GQA with 2.25 groups&rdquo;; DeepSeek-V3&rsquo;s 61 layers cost 68.6 KiB per token, a fifth of the 70B model&rsquo;s, with ten times the parameters. The one piece of structure that refused to compress is RoPE, which cannot pass through a low-rank map and so gets its own small key, the same obstacle the pre-RoPE storage algorithm meets in Room 1 from the other side. And DeepSeek-V4 compresses the token axis itself: 30 layers cache a learned weighted sum of eight tokens at stride four, 31 layers one entry per 128 tokens, with a 128-token sliding window kept raw; 9.62 GiB per million-token sequence against 83.9 GiB for a V3.2-style stack, 8.7×.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">mha</span><span class="p">,</span> <span class="n">gqa8</span><span class="p">,</span> <span class="n">mla</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">128</span> <span class="o">*</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">8</span> <span class="o">*</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">512</span> <span class="o">+</span> <span class="mi">64</span>     <span class="c1"># elements per token per layer</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;MHA 128 heads: </span><span class="si">%5d</span><span class="s2">   GQA 8 heads: </span><span class="si">%5d</span><span class="s2"> (</span><span class="si">%.0f</span><span class="s2">x)   MLA latent: </span><span class="si">%3d</span><span class="s2"> (</span><span class="si">%.1f</span><span class="s2">x vs MHA, </span><span class="si">%.1f</span><span class="s2">x vs GQA-8)&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">mha</span><span class="p">,</span> <span class="n">gqa8</span><span class="p">,</span> <span class="n">mha</span> <span class="o">/</span> <span class="n">gqa8</span><span class="p">,</span> <span class="n">mla</span><span class="p">,</span> <span class="n">mha</span> <span class="o">/</span> <span class="n">mla</span><span class="p">,</span> <span class="n">gqa8</span> <span class="o">/</span> <span class="n">mla</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;GQA &#39;groups&#39; equivalent to MLA: </span><span class="si">%.2f</span><span class="s2"> heads&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">mla</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="mi">128</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;DeepSeek-V4 vs V3.2 per 1M tokens: </span><span class="si">%.1f</span><span class="s2"> GiB vs </span><span class="si">%.1f</span><span class="s2"> GiB = </span><span class="si">%.1f</span><span class="s2">x&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="mf">9.62</span><span class="p">,</span> <span class="mf">83.9</span><span class="p">,</span> <span class="mf">83.9</span> <span class="o">/</span> <span class="mf">9.62</span><span class="p">))</span>
+</span></span></code></pre></div><pre tabindex="0"><code>MHA 128 heads: 32768   GQA 8 heads:  2048 (16x)   MLA latent: 576 (56.9x vs MHA, 3.6x vs GQA-8)
+GQA &#39;groups&#39; equivalent to MLA: 2.25 heads
+DeepSeek-V4 vs V3.2 per 1M tokens: 9.6 GiB vs 83.9 GiB = 8.7x
+</code></pre><p>In stage terms MLA is a <a href="../learned-transforms/">learned transform</a>
+, a linear bottleneck trained with the model rather than fitted afterwards by SVD, with the &ldquo;decoder&rdquo; folded into the weights; CSA and HCA are the same move along the token axis. The stat sheet is all zeros except random access, because nothing runs at inference and nothing can be changed afterwards. Third aha:</p>
+<blockquote><p><strong>The biggest shrinks happened at model-design time</strong> (GQA 8×, MLA several times more, V4 nearly 9× again), by people who never thought of themselves as writing a codec. The five codec rooms work on what the architects left.</p>
+</blockquote><h2 id="the-walk-in-one-table-of-prose">The walk, in one table of prose</h2>
+<p>Put the six rooms side by side and the stages sort themselves. In HBM, the transform stage (undo RoPE, a Hadamard, a PCA) and the quantization stage (block integers, NVFP4, coupled or commuting codebooks) do everything, the perceptual-model stage exempts the sinks and the recent window, the shared-prior stage is allowed only if the serving system owns both ends, and the entropy-coding stage is forbidden. In the parking lot the quantization stage goes light, the perceptual-model stage becomes a ranking proxy that is read in full every step and must never be compressed, and the shared-prior stage is a lossless copy in host RAM. In cold storage and in the van the entropy-coding stage sits down, the transform stage gets a fitted basis, the quantization stage gets a water-filled bit allocation, the prediction stage gets an anchor predictor, and the shared-prior stage ships bases and probability tables with the model. In the furnace the quantization stage has two levels and the perceptual-model stage is the only stage that matters. In the architects&rsquo; office there is only the transform stage, and it was trained.</p>
+<p>Two constraints never change across the rooms, and they are not about compression at all: FlashAttention never writes attention scores to HBM, so any importance model must predict from the data before the kernel runs; and paged allocators hand out memory in blocks of 16 or 256 tokens, so a quantizer&rsquo;s block should tile the page and headers belong to pages, not tokens. A codec that violates either is not a worse codec; it does not run.</p>
+<h2 id="connections">Connections</h2>
+<p>Video has walked this corridor before. A GOP is an anchor group; scalable video coding is a base layer good enough to decide plus an enhancement layer fetched where needed, which is the tiered cache; low-latency call configurations that ban B-frames and refresh intra blocks gradually are the KV cache resident in HBM task&rsquo;s &ldquo;encode each token the instant it arrives&rdquo; rule. CacheGen&rsquo;s authors say so themselves, naming I-frames and P-frames in the paper.</p>
+<p>Database buffer pools and CPU caches are the parking lot without the softmax. The hot-buffer size against miss rate, LRU against Bélády, prefetching a few layers ahead: every one of these is a 1970s operating-systems result with a transformer attached.</p>
+<p>And JPEG is KVTC&rsquo;s direct ancestor: a decorrelating transform, a quantization matrix that spends bits where the variance is, an entropy coder last. Thirty-four years apart, the same three stages in the same order, because the stat sheet of &ldquo;store it, decode it once, every byte is money&rdquo; has not changed. What changed is the viewer. For JPEG it was a retina with a contrast-sensitivity curve; for the KV cache it is a softmax with an attention curve, and the one stage that had to be reinvented from scratch was the perceptual-model stage.</p>
+<p><strong>In the game:</strong> this article is the whole of level 5, KV cache: <a href="/compressionfight/#heist=kvcache">the KV cache resident in HBM task</a>
+ and <a href="/compressionfight/#heist=onebit">the KV cache at 1–2 bits task</a>
+ (pre-RoPE storage, coupled quantization, NVFP4, sink &amp; window exemption), <a href="/compressionfight/#heist=overflow">the KV cache offload to host memory task</a>
+ (top-k selection, tiered cache, low-rank SVD), <a href="/compressionfight/#heist=coldkv">the KV cache cold storage task</a>
+ (trained basis, water-filling allocation, LZ77 and Huffman coding), <a href="/compressionfight/#heist=kvcourier">the KV cache over a network task</a>
+ (anchor delta coding, arithmetic coding, standard tables), <a href="/compressionfight/#heist=purge">the KV token eviction task</a>
+ (token eviction) and <a href="/compressionfight/#heist=bornsmall">the KV compression by architecture task</a>
+ (multi-head latent attention); the tutor&rsquo;s line that ends the level is the third aha: you work on what the architects left you.</p>
+</div>
+
+  
+  
+  <aside class="box game-box"><h2>In the game</h2>
+    <ul class="fighters"><li><a href="/compressionfight/#fighter=unrope" title="unrope"><img src="/compressionfight/img/fighters/unrope.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>unrope</span></a></li><li><a href="/compressionfight/#fighter=coupled" title="coupled"><img src="/compressionfight/img/fighters/coupled.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>coupled</span></a></li><li><a href="/compressionfight/#fighter=spotlight" title="spotlight"><img src="/compressionfight/img/fighters/spotlight.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>spotlight</span></a></li><li><a href="/compressionfight/#fighter=tiered" title="tiered"><img src="/compressionfight/img/fighters/tiered.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>tiered</span></a></li><li><a href="/compressionfight/#fighter=waterline" title="waterline"><img src="/compressionfight/img/fighters/waterline.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>waterline</span></a></li><li><a href="/compressionfight/#fighter=anchor_delta" title="anchor_delta"><img src="/compressionfight/img/fighters/anchor_delta.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>anchor_delta</span></a></li><li><a href="/compressionfight/#fighter=fp4" title="fp4"><img src="/compressionfight/img/fighters/fp4.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>fp4</span></a></li><li><a href="/compressionfight/#fighter=evict" title="evict"><img src="/compressionfight/img/fighters/evict.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>evict</span></a></li><li><a href="/compressionfight/#fighter=mla" title="mla"><img src="/compressionfight/img/fighters/mla.png" alt="" width="64" height="64" loading="lazy" onerror="this.style.visibility='hidden'"><span>mla</span></a></li></ul>
+  </aside>
+  
+  <aside class="box"><h2>Related</h2><ul class="rel"><li><a href="/compressionfight/map/zoo/anatomy-of-a-job/">The anatomy of a compression task: the five axes</a></li><li><a href="/compressionfight/map/zoo/attention-as-audience/">Attention as the audience: the softmax is the reader</a></li><li><a href="/compressionfight/map/zoo/block-float-formats/">Block-scaled formats: int4 and NVFP4</a></li><li><a href="/compressionfight/map/zoo/rotations-and-rank/">Rotations and rank: learned axes</a></li><li><a href="/compressionfight/map/zoo/side-information/">Side information: what the decoder knew before the first byte</a></li></ul></aside>
+  
+  
+  <nav class="pn" aria-label="Previous and next article">
+    <a class="prev" href="/compressionfight/map/zoo/side-information/"><small>&larr; Previous</small>Side information: what the decoder knew before the first byte</a>
+    <a class="next" href="/compressionfight/map/zoo/codec-dissections/"><small>Next &rarr;</small>Codecs as pipelines: twelve worked dissections</a>
+  </nav>
+  
+</article>
+<aside class="toc" aria-label="On this page"><div class="toc-h">On this page</div><nav id="TableOfContents">
+  <ul>
+    <li><a href="#one-tensor-40-gib">One tensor, 40 GiB</a></li>
+    <li><a href="#bandwidth-is-the-stat">Bandwidth is the stat</a></li>
+    <li><a href="#six-rooms-six-stat-sheets">Six rooms, six stat sheets</a></li>
+    <li><a href="#room-1-the-gpu-the-kv-cache-resident-in-hbm-task">Room 1: the GPU (the KV cache resident in HBM task)</a></li>
+    <li><a href="#room-2-the-parking-lot-the-kv-cache-offload-to-host-memory-task">Room 2: the parking lot (the KV cache offload to host memory task)</a></li>
+    <li><a href="#room-3-cold-storage-the-kv-cache-cold-storage-task">Room 3: cold storage (the KV cache cold storage task)</a></li>
+    <li><a href="#room-4-the-network">Room 4: the network</a></li>
+    <li><a href="#room-5-token-eviction">Room 5: token eviction</a></li>
+    <li><a href="#room-6-the-architects-office-the-kv-compression-by-architecture-task">Room 6: the architects&rsquo; office (the KV compression by architecture task)</a></li>
+    <li><a href="#the-walk-in-one-table-of-prose">The walk, in one table of prose</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+</nav></aside>
+</div>
+
+  </main>
+</div>
+<footer class="foot">Choose Your Codec · <a href="/compressionfight/">Play the game</a> · compression, taught by playing</footer>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+(function () {
+  var GAME = "/compressionfight/";
+  var btn = document.querySelector('.menu-btn');
+  if (btn) btn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('menu-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+  
+  function math() {
+    if (!window.renderMathInElement) return false;
+    renderMathInElement(document.getElementById('main'), {
+      delimiters: [{left: '$$', right: '$$', display: true}, {left: '\\[', right: '\\]', display: true},
+                   {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'], throwOnError: false });
+    return true;
+  }
+  window.addEventListener('load', function () { math(); });
+  
+  document.querySelectorAll('.highlight').forEach(function (h) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var t = h.querySelector('code'); if (!t || !navigator.clipboard) return;
+      navigator.clipboard.writeText(t.innerText).then(function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); });
+    });
+    h.appendChild(b);
+  });
+  
+  var labs = document.querySelectorAll('.map-lab');
+  if (!labs.length) return;
+  function load(src) { return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { bad(new Error(src)); }; document.head.appendChild(s); }); }
+  load(GAME + 'js/data.js').then(function () { return load(GAME + 'js/demos.js'); }).then(function () {
+    labs.forEach(function (el) {
+      var id = el.getAttribute('data-fighter');
+      try {
+        var f = window.CYC && CYC.byId && CYC.byId[id];
+        var t = document.createElement('div'); t.className = 'lab-title';
+        t.textContent = 'Interactive lab' + (f ? ' · ' + f.name : '');
+        el.textContent = ''; el.appendChild(t);
+        var box = document.createElement('div'); box.className = 'lab-body'; el.appendChild(box);
+        if (!CYC.Demos.has || !CYC.Demos.has(id)) throw new Error('no lab for ' + id);
+        CYC.Demos.render(box, id);
+      } catch (e) {
+        el.innerHTML = '<p class="lab-fail">The interactive lab for "' + id + '" could not start. You can try it in <a href="' + GAME + '#fighter=' + id + '">the game</a>.</p>';
+        console.warn('lab failed', id, e);
+      }
+    });
+  }).catch(function (e) {
+    labs.forEach(function (el) { el.innerHTML = '<p class="lab-fail">The interactive labs could not be loaded. Try them in <a href="' + GAME + '">the game</a>.</p>'; });
+    console.warn('labs unavailable', e);
+  });
+})();
+</script>
+
+</body>
+</html>

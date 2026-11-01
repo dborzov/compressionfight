@@ -6,10 +6,12 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 from matplotlib.colors import LinearSegmentedColormap
 
-BG, FG, DIM = "#0b0714", "#ece6f7", "#8a81a3"
-ORANGE, PURPLE, CYAN, GREEN, YELLOW = "#ff6a3d", "#d05cff", "#38d6ff", "#4dff7c", "#ffe23d"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
+ORANGE, PURPLE, CYAN, GREEN, YELLOW = "#b05a4c", "#6b4a7a", "#246b66", "#6f8f4e", "#b8892e"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
                      "axes.edgecolor": DIM, "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
                      "text.color": FG, "font.size": 15, "axes.titlesize": 16.5})
@@ -23,7 +25,7 @@ n = np.arange(8); C = np.cos((2 * n[None, :] + 1) * n[:, None] * np.pi / 16) * 0
 coef = C @ (block - 128) @ C.T
 q = np.round(coef / Q).astype(int)
 
-heat = LinearSegmentedColormap.from_list("heat", ["#1a1030", ORANGE, YELLOW])
+heat = LinearSegmentedColormap.from_list("heat", ["#f3eadb", "#9cc4b8", "#246b66"])
 fig, axes = plt.subplots(1, 3, figsize=(16, 6.4), dpi=100, gridspec_kw={"wspace": 0.08})
 plt.rcParams["axes.titlesize"] = 14.5
 def grid(ax, M, title, cmap, vals, fmt, zero_dim=False):
@@ -32,14 +34,14 @@ def grid(ax, M, title, cmap, vals, fmt, zero_dim=False):
         for c in range(8):
             v = vals[r, c]; z = zero_dim and v == 0
             ax.text(c, r, fmt(v), ha="center", va="center", fontsize=11.5 if not z else 10,
-                    color=(DIM if z else ("#120a1e" if (cmap is heat and M[r, c] > 0.55 * M.max()) else FG)))
+                    color=(DIM if z else ("#f3eadb" if (cmap is heat and M[r, c] > 0.55 * M.max()) else FG)))
     ax.set_xticks([]); ax.set_yticks([])
     for s in ax.spines.values(): s.set_edgecolor(DIM)
 grid(axes[0], Q, "quantization table Δ(u, v) at quality 50:\ncoarse where the eye is blind (bottom right)", heat, Q, lambda v: f"{v}")
-grid(axes[1], np.log10(np.abs(coef) + 1), "DCT coefficients of the toy block:\nenergy piles up top left", "magma", coef, lambda v: f"{v:.0f}")
+grid(axes[1], np.log10(np.abs(coef) + 1), "DCT coefficients of the toy block:\nenergy piles up top left", heat, coef, lambda v: f"{v:.0f}")
 zero_map = (q == 0).astype(float)
 grid(axes[2], 1 - zero_map, f"q = round(coef / Δ): {np.sum(q == 0)} of 64 are zero,\nwhat the run-length coder eats",
-     LinearSegmentedColormap.from_list("z", ["#1a1030", "#4a3a6b"]), q, lambda v: f"{v}", zero_dim=True)
+     LinearSegmentedColormap.from_list("z", ["#ebdfc8", "#ebdfc8"]), q, lambda v: f"{v}", zero_dim=True)
 fig.text(0.5, 0.035, "Horizontal frequency grows to the right, vertical frequency downward; the top-left cell is the DC term.",
          ha="center", color=DIM, fontsize=12.5)
 out = os.path.join(os.path.dirname(__file__), "..", "..", "img", "scalar-quantization", "jpeg_table.png")

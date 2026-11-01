@@ -3,11 +3,13 @@ Output: img/vector-quantization/pq-split.png"""
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-BG, INK, INK2, MUTED, GRID = "#0b0714", "#f0efec", "#c3c2b7", "#898781", "#2c2c2a"
-C = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181"]
-DIM = "#1b1526"
+BG, INK, INK2, MUTED, GRID = "#f3eadb", "#2a211b", "#5a4a3d", "#5a4a3d", "#b89f78"
+C = ["#246b66", "#b8892e", "#b05a4c", "#6b4a7a", "#6f8f4e"]
+DIM = "#e0d2b6"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
     "text.color": INK, "font.size": 13})
 

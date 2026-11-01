@@ -6,12 +6,14 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 
-BG, FG, MUTED = "#0b0714", "#e8e2f0", "#8b83a0"
-PURPLE, GREEN, YELLOW, RED, BLUE = "#b38cff", "#5ee8a0", "#ffd166", "#ff6b8a", "#6ec3ff"
+BG, FG, MUTED = "#f3eadb", "#2a211b", "#5a4a3d"
+PURPLE, GREEN, YELLOW, RED, BLUE = "#6b4a7a", "#6f8f4e", "#b8892e", "#b05a4c", "#246b66"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG, "text.color": FG,
                      "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG, "axes.edgecolor": MUTED,
-                     "grid.color": "#2a2140", "font.size": 16, "font.family": "DejaVu Sans"})
+                     "grid.color": "#b89f78", "font.size": 16, "font.family": "DejaVu Sans"})
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "img", "prefix-codes", "clrs_tree.png")
 
 counts = {"A": 45, "B": 13, "C": 12, "D": 16, "E": 9, "F": 5}
@@ -78,7 +80,7 @@ def draw(n):
         ax.plot([x, cx], [y, cy], color=MUTED, lw=2, zorder=1)
         ax.text((x + cx) / 2 + (-0.18 if bit == "0" else 0.18), (y + cy) / 2 + 0.08, bit, color=GREEN, fontsize=15, ha="center", zorder=5)
         draw(child)
-    ax.add_patch(plt.Circle((x, y), 0.36, color="#2a2140", ec=MUTED, lw=2, zorder=3))
+    ax.add_patch(plt.Circle((x, y), 0.36, color="#e0d2b6", ec=MUTED, lw=2, zorder=3))
     ax.text(x, y, str(n["w"]), ha="center", va="center", fontsize=15, color=FG, zorder=4)
 
 

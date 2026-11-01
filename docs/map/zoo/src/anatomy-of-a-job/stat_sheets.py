@@ -6,9 +6,11 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 
-BG, FG, DIM = "#0b0714", "#ece6f7", "#8a81a3"
-ORANGE, PURPLE, CYAN, GREEN, YELLOW = "#ff6a3d", "#d05cff", "#38d6ff", "#4dff7c", "#ffe23d"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
+ORANGE, PURPLE, CYAN, GREEN, YELLOW = "#b05a4c", "#6b4a7a", "#246b66", "#6f8f4e", "#b8892e"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
                      "axes.edgecolor": DIM, "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG,
                      "text.color": FG, "font.size": 14, "axes.titlesize": 17})
@@ -27,7 +29,7 @@ for ax, (hid, title, color) in zip(axs, jobs):
     ax.plot(a, v, color=color, lw=2.5); ax.fill(a, v, color=color, alpha=0.25)
     ax.set_xticks(ang); ax.set_xticklabels([lab for _, lab in axes_keys], fontsize=12)
     ax.set_yticks([1, 2, 3, 4, 5]); ax.set_yticklabels(["", "", "3", "", "5"], color=DIM, fontsize=10)
-    ax.set_ylim(0, 5); ax.grid(color="#2a2140")
+    ax.set_ylim(0, 5); ax.grid(color="#b89f78")
     ax.spines["polar"].set_color(DIM)
     lossless = "lossless" if r["lossless"] else "lossy"; prior = "side info OK" if r["priorOK"] else "self-describing"
     ax.set_title(f"{title}\n{lossless} · {prior}", color=color, pad=22, fontsize=14)

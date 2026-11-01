@@ -3,11 +3,13 @@ Output: img/block-float-formats/q4-layout.png"""
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 from matplotlib.patches import FancyBboxPatch
 
-BG, INK, INK2, MUTED, GRID = "#0b0714", "#f0efec", "#c3c2b7", "#898781", "#2c2c2a"
-C = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181"]
-DIM = "#1b1526"
+BG, INK, INK2, MUTED, GRID = "#f3eadb", "#2a211b", "#5a4a3d", "#5a4a3d", "#b89f78"
+C = ["#246b66", "#b8892e", "#b05a4c", "#6b4a7a", "#6f8f4e"]
+DIM = "#e0d2b6"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
     "text.color": INK, "font.size": 13})
 
@@ -26,7 +28,7 @@ def row(y, title, subtitle, scale_bytes, data_bytes, scale_label, data_label, un
     total = scale_bytes + data_bytes
     bw = total_w / total
     for b in range(scale_bytes):
-        cell(x0 + b * bw, y, bw * 0.96, 0.78, scale_label if b == 0 else "", C[3], C[3], fs=11, tc="#0b0b0b", weight="bold")
+        cell(x0 + b * bw, y, bw * 0.96, 0.78, scale_label if b == 0 else "", C[3], C[3], fs=11, tc="#f3eadb", weight="bold")
     for b in range(data_bytes):
         cell(x0 + (scale_bytes + b) * bw, y, bw * 0.96, 0.78, data_label(b), DIM, col, fs=9)
     ax.text(x0 + total_w + 0.15, y + 0.39, unit, color=col, fontsize=12, va="center")
@@ -46,9 +48,9 @@ ax.text(2.4, 2.35, "E4M3 scale per 16, two E2M1 floats per byte, plus one fp32 s
 ax.text(0.2, 1.55, "Q4_K", color=INK, fontsize=14, fontweight="bold", va="center")
 ax.text(0.2, 1.2, "super-block of 256", color=INK2, fontsize=11, va="center")
 x = 2.4; bw = 11.2 / 144
-cell(x, 1.15, bw * 2 * 0.96, 0.78, "d", C[3], C[3], fs=10, tc="#0b0b0b", weight="bold"); x += bw * 2
-cell(x, 1.15, bw * 2 * 0.96, 0.78, "m", C[3], C[3], fs=10, tc="#0b0b0b", weight="bold"); x += bw * 2
-cell(x, 1.15, bw * 12 * 0.96, 0.78, "8×(6b,6b)", C[3], C[3], fs=9, tc="#0b0b0b"); x += bw * 12
+cell(x, 1.15, bw * 2 * 0.96, 0.78, "d", C[3], C[3], fs=10, tc="#f3eadb", weight="bold"); x += bw * 2
+cell(x, 1.15, bw * 2 * 0.96, 0.78, "m", C[3], C[3], fs=10, tc="#f3eadb", weight="bold"); x += bw * 2
+cell(x, 1.15, bw * 12 * 0.96, 0.78, "8×(6b,6b)", C[3], C[3], fs=9, tc="#f3eadb"); x += bw * 12
 for sub in range(8):
     cell(x, 1.15, bw * 16 * 0.96, 0.78, f"sb{sub}: 16 B", DIM, C[4], fs=10); x += bw * 16
 ax.text(2.4 + 11.2 + 0.15, 1.54, "144 bytes / 256 = 4.5 bpw", color=C[4], fontsize=12, va="center")

@@ -6,12 +6,14 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 
-BG, FG, MUTED = "#0b0714", "#e8e2f0", "#8b83a0"
-PURPLE, GREEN, YELLOW, RED, BLUE = "#b38cff", "#5ee8a0", "#ffd166", "#ff6b8a", "#6ec3ff"
+BG, FG, MUTED = "#f3eadb", "#2a211b", "#5a4a3d"
+PURPLE, GREEN, YELLOW, RED, BLUE = "#6b4a7a", "#6f8f4e", "#b8892e", "#b05a4c", "#246b66"
 plt.rcParams.update({"figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG, "text.color": FG,
                      "axes.labelcolor": FG, "xtick.color": FG, "ytick.color": FG, "axes.edgecolor": MUTED,
-                     "grid.color": "#2a2140", "font.size": 16, "font.family": "DejaVu Sans"})
+                     "grid.color": "#b89f78", "font.size": 16, "font.family": "DejaVu Sans"})
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "img", "modeling-and-coding", "three_stations.png")
 
 

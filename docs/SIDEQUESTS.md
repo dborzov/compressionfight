@@ -1,4 +1,4 @@
-# Side quests — mechanics spec (`js/quests.js`)
+# Exercises — mechanics spec (`js/quests.js`)
 
 Content (names, tutor text, debriefs) lives in `js/quests_data.js` as `CYC.SIDEQUESTS`; do not duplicate text,
 read it from there. Implement:
@@ -9,9 +9,9 @@ CYC.Quests.has(questId)
 CYC.Quests.calc.*                                              // pure functions, node-testable
 ```
 
-Each quest screen (the UI agent provides the frame and the Fixer's dialogue; you render the playfield inside
+Each quest screen (the UI agent provides the frame and the tutor's dialogue; you render the playfield inside
 `container`): a playfield (canvas and/or DOM), the controls named below, a live readout, and a LOCK IN / finish
-action that calls `onComplete`. Pixel-arcade styling comes from the page stylesheet via CSS variables
+action that calls `onComplete`. Art Nouveau styling (docs/DESIGN.md tokens) comes from the page stylesheet via CSS variables
 (`--role-color`, `--fg`, `--panel`, `--accent`); scope your own CSS under `.cyc-quest`. All randomness seeded
 (mulberry32) so a quest replays identically unless a "NEW ROUND" control reseeds.
 
@@ -31,8 +31,8 @@ Same synthetic image, 64×64 (upsample the generator). Variant toggle: LUMA (qua
 Sample messages (6), test message (1), foreign message (1): the same shape as the engine's json payload
 (`{"id":4821,"type":"click","ok":true,"ts":1717,"user":"u_204","region":"eu-west"}` etc., types among click/view/purchase, regions among eu-west/us-east/ap-south; the foreign one is a different schema, e.g. `<event id="..." kind="..."/>` XML). Tokenize samples into clickable fragments: JSON keys with quotes and colon (`"type":`), string values with quotes, numbers, punctuation runs. Click toggles membership; budget 96 bytes (concatenate selected fragments, dedupe). COMPRESS: LZ77 (window 4096, min match 3) on the test message with the dictionary preloaded in the window vs empty window; cost model: literal 9 bits, match 20 bits (state this in the readout). Highlight matches (dict matches in gold). Then show the greedy trainer's pick: score every substring of length 3..24 occurring in ≥ 2 samples by (occurrences−1) × length, pick greedily under the budget skipping substrings already covered. Also run on the foreign message with both dictionaries. Score: 100 × (your savings / trainer's savings) capped at 100.
 
-## safehouses — VQ codebook placement
-60 points in 3 anisotropic Gaussian clusters (seeded), coordinates −1..1, drawn as a "city map" (grid lines). K=4; click to place up to 4 safehouses, drag to move. Assignments by nearest; draw Voronoi cells (per-pixel nearest on a coarse canvas) tinted by safehouse. Readout: distortion Σ‖x−c‖², bits per point = 2, codebook bytes = 4×2×4. RUN K-MEANS: animate Lloyd iterations (≤ 20, stop when assignments stable) from the player's placement. Then BEST OF 10: 10 seeded random restarts, keep the lowest distortion; show both numbers. Score: 100 × (best / yours-after-kmeans) capped at 100; show also your pre-k-means score.
+## `safehouses` — VQ codebook placement
+60 points in 3 anisotropic Gaussian clusters (seeded), coordinates −1..1, drawn as a 2D map (grid lines). K=4; click to place up to 4 centroids, drag to move. Assignments by nearest; draw Voronoi cells (per-pixel nearest on a coarse canvas) tinted by safehouse. Readout: distortion Σ‖x−c‖², bits per point = 2, codebook bytes = 4×2×4. RUN K-MEANS: animate Lloyd iterations (≤ 20, stop when assignments stable) from the player's placement. Then BEST OF 10: 10 seeded random restarts, keep the lowest distortion; show both numbers. Score: 100 × (best / yours-after-kmeans) capped at 100; show also your pre-k-means score.
 
 ## blockpack — Pack the block
 256 weights: Gaussian σ=0.02, 3 outliers at ±0.3..0.5 (seeded). Controls: bits b ∈ {2,3,4,5,6,8}; block n ∈ {8,16,32,64,128,256}; "min/zero-point" toggle (adds 16 bits per block, quantizes x−min with range max−min, otherwise symmetric absmax with 2^(b−1)−1 levels); "Hadamard rotation" toggle (apply a normalized Sylvester Hadamard of size 256 before quantizing and its transpose after; note it is orthogonal so error is preserved). Readout: bpw = (16 + (min?16:0) + n·b)/n, max abs error, RMS error, and "strip" visualization: original vs reconstructed values as two heat strips plus an error strip. Budget indicator: ≤ 4.5 bpw green, else red. LOCK IN: name the nearest real format (b=4,n=32,no min → "Q4_0: 4.5 bpw"; b=4,n=32,min → "Q4_1: 5.0 bpw"; b=8,n=32 → "Q8_0: 8.5 bpw"; b=4,n=64,min → "≈ Q4_K sub-block (real one uses 6-bit scales)"; anything with rotation → "+ QuaRot/SpinQuant-style rotation") and a 7B model's size at that bpw (7e9 × bpw / 8 bytes). Score: if bpw ≤ 4.5, 100 × (RMS error of plain Q4_0 / your RMS error) capped at 100; else 0 with the over-budget message.
@@ -41,12 +41,12 @@ Sample messages (6), test message (1), foreign message (1): the same shape as th
 4096 symbols drawn from a skewed 256-symbol distribution (geometric-ish, so Huffman gives ~5 bits). Compute real Huffman code lengths. Controls: checkpoint spacing ∈ {1, 16, 64, 256, 1024, none}; FETCH button draws a random index and animates two lanes: fixed-length (1 step) and Huffman (steps = index − last checkpoint ≤ index). Readout after each fetch and cumulative: bytes total (fixed = 4096; Huffman = ceil(Σ lengths/8) + 2 × number of checkpoints), decode steps total. Table of all spacings precomputed on LOCK IN. Score: 100 if the chosen spacing has Huffman bytes < fixed bytes and mean steps ≤ 64; 60 if smaller but slower; 30 otherwise.
 
 ## Tests (`test/quests_test.js`, node, `global.window = global`, require data.js, quests_data.js, quests.js)
-Huffman on the hufftree counts → mean 2.24; waterfill: the greedy allocation's MSE ≤ the uniform allocation's MSE on the generated image; safehouses: best-of-10 k-means distortion ≤ a single run from a bad init; blockpack: bpw(4, 32, no min) = 4.5 and bpw(8, 32) = 8.5, and rotation reduces RMS error on the outlier data for b=4,n=256; raceaccess: Huffman total bits < 4096×8 and ≥ 4096×H; phrasebook: trainer dictionary saves ≥ 30% on the test message relative to no dictionary, and the foreign message saves < 10%.
+Huffman on the hufftree counts → mean 2.24; waterfill: the greedy allocation's MSE ≤ the uniform allocation's MSE on the generated image; `safehouses`: best-of-10 k-means distortion ≤ a single run from a bad init; blockpack: bpw(4, 32, no min) = 4.5 and bpw(8, 32) = 8.5, and rotation reduces RMS error on the outlier data for b=4,n=256; raceaccess: Huffman total bits < 4096×8 and ≥ 4096×H; phrasebook: trainer dictionary saves ≥ 30% on the test message relative to no dictionary, and the foreign message saves < 10%.
 
 
 ---
 
-# Level 5 side quests (KV cache)
+# Level 5 exercises (KV cache)
 
 Content is in `js/quests_data.js` (ids `siamese`, `anchorchain`, `rankkeys`, `pagepurge`). Same contract and style
 as above. Button labels must match the `howto` text: RUN, ENTROPY, WEIGHTED, SCALAR/JOINT, NONE/CHAIN/ANCHOR, SWITCH TO V,

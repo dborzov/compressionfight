@@ -1,7 +1,7 @@
 // Choose Your Codec — engine. Toy but REAL pipeline math on small deterministic payloads.
 // Contract: docs/ARCHITECTURE.md ("Engine contract"). Exports CYC.Engine.run(payloadKind, squad) and
 // CYC.Engine.payloadLabel(kind). Plain ES2020, no dependencies. Everything here is honest bit counting:
-// where a fighter is a stand-in for the real algorithm the caption says so.
+// where an algorithm is a stand-in for the real algorithm the caption says so.
 (function () {
   'use strict';
   window.CYC = window.CYC || {};
@@ -290,7 +290,7 @@
   }
   function clonePlanes(planes) { return planes.map((p) => Object.assign({}, p, { data: Float64Array.from(p.data), tokenIds: p.tokenIds ? Int32Array.from(p.tokenIds) : undefined })); }
 
-  // The "trained dictionary" the Inside Man preloads: similar data that is NOT part of the payload.
+  // The "trained dictionary" the shared-prior stage preloads: similar data that is NOT part of the payload.
   const dictCache = {};
   function dictionaryBytes(kind) {
     if (dictCache[kind]) return dictCache[kind];
@@ -629,7 +629,7 @@
   }
 
   // ============================================================ pipeline state, viz helpers, symbolization
-  const NONE = () => CYC.byId && CYC.byId.none ? CYC.byId.none : { id: 'none', name: 'EMPTY CHAIR', real: 'Nobody (identity / raw fixed-length)' };
+  const NONE = () => CYC.byId && CYC.byId.none ? CYC.byId.none : { id: 'none', name: 'None (pass-through)', real: 'Nobody (identity / raw fixed-length)' };
   function makeState(payload) {
     const tokenPlane = payload.planes.find((p) => p.tokenIds); const nTok = tokenPlane ? tokenPlane.h : 0;
     const energyTok = new Float64Array(nTok); if (tokenPlane) for (let t = 0; t < nTok; t++) for (let j = 0; j < tokenPlane.w; j++) energyTok[t] += Math.pow(tokenPlane.data[t * tokenPlane.w + j], 2);
@@ -808,14 +808,14 @@
         { sideInfoBytes: dict.length }, vizText(bytesToSpans(dict, 'dict')));
     } else if (f.id === 'codebook') {
       state.flags.codebook = true;
-      state.pending.codebookStage = emit(state, 'prior', f, 'The VQ / PQ / RVQ codebook is shipped to the decoder out of band. (No vector quantizer in this squad: 0 B to hold.)', { sideInfoBytes: 0 });
+      state.pending.codebookStage = emit(state, 'prior', f, 'The VQ / PQ / RVQ codebook is shipped to the decoder out of band. (No vector quantizer in this pipeline: 0 B to hold.)', { sideInfoBytes: 0 });
     } else if (f.id === 'decoder_net') {
       state.flags.decoderNet = true; state.sideInfoBytes += 20e6;
-      emit(state, 'prior', f, 'A trained synthesis network (~20 MB of weights, stated constant) sits at the decoder. It is the prior: the bitstream only has to say which plausible output. Matched pair with NEURON if present; otherwise 20 MB with nothing to decode.', { sideInfoBytes: 20e6 });
+      emit(state, 'prior', f, 'A trained synthesis network (~20 MB of weights, stated constant) sits at the decoder. It is the prior: the bitstream only has to say which plausible output. Matched pair with Learned encoder if present; otherwise 20 MB with nothing to decode.', { sideInfoBytes: 20e6 });
       state.pending.decoderStage = state.stages[state.stages.length - 1];
     } else if (f.id === 'basis') {
       state.flags.basis = true;
-      state.pending.basisStage = emit(state, 'prior', f, 'The decoder holds the transform basis (a fitted PCA matrix, a learned rotation) as side information, so it never travels in the stream. (No fitted transform in this squad yet: AXIS would use a 0-byte Hadamard without it.)', { sideInfoBytes: 0 });
+      state.pending.basisStage = emit(state, 'prior', f, 'The decoder holds the transform basis (a fitted PCA matrix, a learned rotation) as side information, so it never travels in the stream. (No fitted transform in this pipeline yet: PCA / Hadamard rotation would use a 0-byte Hadamard without it.)', { sideInfoBytes: 0 });
     } else if (f.id === 'tiered') {
       state.flags.tiered = true; const bytes = state.rawBits / 8; state.sideInfoBytes += bytes;
       emit(state, 'prior', f, `A lossless fp16 copy of the whole cache (${fmtBytes(bytes)} here; 40 GB for a 128k Llama-3-70B context) waits in host DRAM, one PCIe hop away. It is side information measured in HBM: whatever the GPU-resident form loses can be fetched back exactly, where a selector asks for it. Nothing is ever forgotten.`, { sideInfoBytes: bytes });
@@ -839,7 +839,7 @@
       state.planes = out; const after = energyShares(out.filter((p) => p.frame === frames[0]));
       const sd = (p) => Math.sqrt(stats(p.data).energy / p.data.length - Math.pow(stats(p.data).mean, 2));
       const vY = sd(out[0]), vCo = sd(out[1]), vCg = sd(out[2]);
-      return emit(state, 'transform', f, `RGB → YCoCg-R (reversible integer): R/G/B carried ${before.map((x) => pct(x)).join(' / ')} of the energy; now Y holds ${pct(after[0])} and the two chroma planes ${pct(after[1])} + ${pct(after[2])}. Spread (σ): Y ${fmt(vY, 1)}, Co ${fmt(vCo, 1)}, Cg ${fmt(vCg, 1)}. Chroma is now a small, dull signal: the ILLUSIONIST can halve it, the BUTCHER can be rough with it.`,
+      return emit(state, 'transform', f, `RGB → YCoCg-R (reversible integer): R/G/B carried ${before.map((x) => pct(x)).join(' / ')} of the energy; now Y holds ${pct(after[0])} and the two chroma planes ${pct(after[1])} + ${pct(after[2])}. Spread (σ): Y ${fmt(vY, 1)}, Co ${fmt(vCo, 1)}, Cg ${fmt(vCg, 1)}. Chroma is now a small, dull signal: the Chroma subsampling can halve it, the quantization stage can be rough with it.`,
         { symbols: countSamples(state) }, vizGrid(out.filter((p) => p.frame === frames[0])));
     }
     if (state.domain === 'audio' && P.length >= 2 && P[0].vkind === 'sample') {
@@ -874,7 +874,7 @@
     if (!n2d && !n1d) return passThrough(state, 'transform', f, 'the data does not come in blocks this transform can take.');
     const after = compaction(allData(state.planes), 0.1); const small = allData(state.planes).filter((v) => Math.abs(v) < 1).length / countSamples(state);
     let caption;
-    if (f.id === 'dct') caption = n2d ? `8×8 DCT-II on ${n2d} plane(s), ${blocks} blocks: the DC + 3 lowest coefficients (4 of 64) hold ${pct(coefLow / coefAll, 1)} of the energy; the largest 10% of coefficients hold ${pct(after)} (raw samples: ${pct(before)}). ${pct(small)} of coefficients are already smaller than 1.` : `8-sample DCT-II along the signal (${blocks} blocks): the 2 lowest of 8 coefficients hold ${pct(coefLow / coefAll, 1)} of the energy; top-10% compaction ${pct(before)} → ${pct(after)}. Blocks this short are not how audio is done (see LAPWING).`;
+    if (f.id === 'dct') caption = n2d ? `8×8 DCT-II on ${n2d} plane(s), ${blocks} blocks: the DC + 3 lowest coefficients (4 of 64) hold ${pct(coefLow / coefAll, 1)} of the energy; the largest 10% of coefficients hold ${pct(after)} (raw samples: ${pct(before)}). ${pct(small)} of coefficients are already smaller than 1.` : `8-sample DCT-II along the signal (${blocks} blocks): the 2 lowest of 8 coefficients hold ${pct(coefLow / coefAll, 1)} of the energy; top-10% compaction ${pct(before)} → ${pct(after)}. Blocks this short are not how audio is done (see MDCT).`;
     else if (f.id === 'mdct') caption = `DCT-IV on ${blocks} frames of 32 samples (stand-in for the MDCT: no 50% overlap, so block edges would click). The largest 10% of coefficients hold ${pct(after)} of the energy, up from ${pct(before)} in the time domain; ${pct(small)} of coefficients are below 1.`;
     else caption = `One Haar level (orthonormal${n2d ? ', 2-D' : ''}): the low-pass quadrant, 1/${n2d ? 4 : 2} of the coefficients, holds ${pct(coefLow / coefAll, 1)} of the energy. Top-10% compaction ${pct(before)} → ${pct(after)}. Stand-in for the 5/3 and 9/7 wavelets of JPEG 2000 with several levels.`;
     if (shifted) caption += ` (8-bit planes level-shifted by −128 first, as JPEG does.)`;
@@ -897,13 +897,13 @@
         { symbols: countSamples(state) }, vizScatter(out, n, d));
     }
     const tp = tokenPlaneOf(state);
-    if (tp && state.flags.basis) { // BLUEPRINT holds a fitted basis: real PCA across channels (KVTC style), coordinates sorted by variance
+    if (tp && state.flags.basis) { // Trained basis holds a fitted basis: real PCA across channels (KVTC style), coordinates sorted by variance
       const n = tp.h, d = tp.w; const { basis, eig, mean } = pcaPowerIteration(tp.data, n, d, d, 80);
       const out = new Float64Array(n * d); for (let i = 0; i < n; i++) for (let k = 0; k < d; k++) { let s = 0; for (let j = 0; j < d; j++) s += (tp.data[i * d + j] - mean[j]) * basis[k][j]; out[i * d + k] = s; }
       tp.data = out; tp.vkind = 'coef'; delete tp.M; const bytes = (d * d + d) * 2; state.sideInfoBytes += bytes;
       if (state.pending.basisStage) { state.pending.basisStage.caption = `The decoder holds the ${d}×${d} orthonormal PCA basis plus the ${d}-dim mean (${bytes} B, fitted once; KVTC fits one on 160k calibration tokens and ships it with the model). Without it the coefficients are numbers in an unknown frame.`; state.pending.basisStage.metrics.sideInfoBytes = bytes; }
       const top = eig.slice(0, 4).reduce((a, b) => a + b, 0) / (eig.reduce((a, b) => a + b, 0) || 1);
-      return emit(state, 'transform', f, `Real PCA across the ${d} channels (power iteration), mean removed: eigenvalues ${eig.slice(0, 4).map((e) => fmt(e, 1)).join(', ')} … ${eig.slice(-2).map((e) => fmt(e, 2)).join(', ')}; the top 4 coordinates hold ${pct(top, 1)} of the variance, so a bit allocator has something to allocate. The basis (${bytes} B) is BLUEPRINT's side information; a Hadamard would cost 0 bytes but spreads variance evenly instead of sorting it.`,
+      return emit(state, 'transform', f, `Real PCA across the ${d} channels (power iteration), mean removed: eigenvalues ${eig.slice(0, 4).map((e) => fmt(e, 1)).join(', ')} … ${eig.slice(-2).map((e) => fmt(e, 2)).join(', ')}; the top 4 coordinates hold ${pct(top, 1)} of the variance, so a bit allocator has something to allocate. The basis (${bytes} B) is Trained basis's side information; a Hadamard would cost 0 bytes but spreads variance evenly instead of sorting it.`,
         { symbols: countSamples(state) }, vizHeatmapOf([tp]));
     }
     const total = countSamples(state); const N = total % 32 === 0 ? 32 : total % 8 === 0 ? 8 : 0;
@@ -978,9 +978,9 @@
     for (let i = 0; i < n; i++) { for (let j = 0; j < d; j++) totE += Math.pow(X[i * d + j] - mean[j], 2); for (let k = 0; k < keep; k++) { let s = 0; for (let j = 0; j < d; j++) s += (X[i * d + j] - mean[j]) * basis[k][j]; lat[i * keep + k] = s; keptE += s * s; } }
     const dropped = Math.max(0, totE - keptE); state.seSum += dropped; state.lossless = false;
     state.planes = [{ name: 'latent', w: keep, h: n, data: lat, vkind: 'coef' }]; state.flags.neuralEnc = true;
-    const netBytes = state.flags.decoderNet ? 0 : 20e6; state.sideInfoBytes += netBytes; if (!state.flags.decoderNet) warn(state, 'NEURON produced latents that only a matched decoder network can read; without BRAINJAR in the Inside Man chair the ~20 MB decoder still has to exist somewhere.');
-    if (state.pending.decoderStage) state.pending.decoderStage.caption = 'A trained synthesis network (~20 MB of weights, stated constant) sits at the decoder, matched to NEURON\'s encoder: the pair was trained together, so the latents mean something only to this decoder.';
-    return emit(state, 'transform', f, `${what} → ${keep} latents each (${n * d} numbers in, ${n * keep} out, ${fmt(d / keep, 0)}:1 fewer). The ${d - keep} dropped components held ${pct(dropped / (totE || 1), 1)} of the variance: the first lossy step, before any quantizer. Stand-in: linear PCA on patches; the real thing is a nonlinear conv/transformer analysis net trained with its decoder (~20 MB of weights${state.flags.decoderNet ? ', counted at BRAINJAR' : ' counted here as side information'}).`,
+    const netBytes = state.flags.decoderNet ? 0 : 20e6; state.sideInfoBytes += netBytes; if (!state.flags.decoderNet) warn(state, 'Learned encoder produced latents that only a matched decoder network can read; without Learned decoder in the shared-prior stage the ~20 MB decoder still has to exist somewhere.');
+    if (state.pending.decoderStage) state.pending.decoderStage.caption = 'A trained synthesis network (~20 MB of weights, stated constant) sits at the decoder, matched to the learned encoder: the pair was trained together, so the latents mean something only to this decoder.';
+    return emit(state, 'transform', f, `${what} → ${keep} latents each (${n * d} numbers in, ${n * keep} out, ${fmt(d / keep, 0)}:1 fewer). The ${d - keep} dropped components held ${pct(dropped / (totE || 1), 1)} of the variance: the first lossy step, before any quantizer. Stand-in: linear PCA on patches; the real thing is a nonlinear conv/transformer analysis net trained with its decoder (~20 MB of weights${state.flags.decoderNet ? ', counted at Learned decoder' : ' counted here as side information'}).`,
       { symbols: n * keep, sideInfoBytes: netBytes }, vizHeatmapOf(state.planes));
   }
   function stageTransform(state, f) {
@@ -1000,7 +1000,7 @@
     if (f.id === 'chroma') {
       if (state.rep !== 'planes') return passThrough(state, 'perceptual', f, 'no planes left to subsample.');
       const chroma = state.planes.filter((p) => p.isChroma && p.w % 2 === 0 && p.h % 2 === 0 && p.h > 1);
-      if (!chroma.length) { warn(state, 'ILLUSIONIST found no chroma planes to subsample: RGB has no separate colour channels. Put PRISM in the Lens chair first.'); return passThrough(state, 'perceptual', f, 'there are no chroma planes (needs PRISM before it).'); }
+      if (!chroma.length) { warn(state, 'Chroma subsampling found no chroma planes to subsample: RGB has no separate colour channels. Put YCbCr / mid-side in the transform stage first.'); return passThrough(state, 'perceptual', f, 'there are no chroma planes (needs YCbCr / mid-side before it).'); }
       let before = 0, after = 0, se = 0;
       for (const p of chroma) {
         const w2 = p.w / 2, h2 = p.h / 2, out = new Float64Array(w2 * h2);
@@ -1034,10 +1034,10 @@
       return emit(state, 'perceptual', f, `Query = mean of the newest 2 keys; softmax over ${n} tokens of q·k/√${d}, logits standardized to std 1.5 (stand-in for the trained query scale): the top ${topK} tokens (25%: ${order.slice(0, topK).join(', ')}) hold ${pct(mass)} of the attention mass, token ${order[0]} alone ${pct(w[order[0]])}${order[0] === 0 ? ' (the attention sink)' : ''}; the bottom half of the tokens share ${pct(order.slice(Math.floor(n / 2)).reduce((a, t) => a + w[t], 0), 1)}. From here on distortion is weighted by these scores: error on a token the softmax ignores costs nothing. No bits change. The proxy is the address book, read in full every step: ${n} × ${d} × 16 bits = ${fmtBytes(n * d * 2)} here (DSA's indexer: 64 heads × 128 dims in FP8 per token).`,
         { symbols: n }, vizWaveform([w], ['attention weight per token']));
     }
-    if (f.id === 'gan') return emit(state, 'perceptual', f, `0 bits changed, 0 samples touched: an adversarial / feature loss changes what the decoder is trained to produce (plausible detail instead of the blurry mean), not what is transmitted. The ${countSamples(state)} samples pass through. It only means something next to a learned decoder${state.flags.decoderNet || state.flags.neuralEnc ? ' (present in this squad)' : '; with sample-exact fighters it is a spectator'}.`, { symbols: countSamples(state) });
+    if (f.id === 'gan') return emit(state, 'perceptual', f, `0 bits changed, 0 samples touched: an adversarial / feature loss changes what the decoder is trained to produce (plausible detail instead of the blurry mean), not what is transmitted. The ${countSamples(state)} samples pass through. It only means something next to a learned decoder${state.flags.decoderNet || state.flags.neuralEnc ? ' (present in this pipeline)' : '; with sample-exact algorithms it is a spectator'}.`, { symbols: countSamples(state) });
     return passThrough(state, 'perceptual', f, 'unknown perceptual model.');
   }
-  function applyProtection(state) { // BOUNCER: protected tokens leave the stream as raw fp16 before any quantizer sees them
+  function applyProtection(state) { // Sink & window exemption: protected tokens leave the stream as raw fp16 before any quantizer sees them
     const set = state.protectedTokens; if (!set || !set.size || state.rep !== 'planes') return;
     for (const p of state.planes) {
       if (!p.tokenIds || p.h !== p.tokenIds.length) continue;
@@ -1065,7 +1065,7 @@
     if (zeroed) state.lossless = false; state.seSum += removed;
     st.caption = `Masking threshold stand-in: in each frame/block, coefficients below 2% of that block's peak are declared inaudible and zeroed before quantization. ${zeroed} of ${total} values (${pct(zeroed / (total || 1))}) went to zero, removing ${pct(removed / (energy || 1), 2)} of the energy (${fmt(10 * Math.log10(energy / Math.max(removed, 1e-9)), 0)} dB below the signal). A real model computes per-band thresholds from loud components with a spreading function and needs lookahead.`;
     st.metrics = { symbols: total }; st.viz = vizHeatmapOf(state.planes);
-    if (!state.planes.some((p) => p.vkind === 'coef')) warn(state, 'HYPNOTIST is zeroing raw samples: a masking model only makes sense on frequency-domain coefficients (put LAPWING or COSINE in the Lens chair).');
+    if (!state.planes.some((p) => p.vkind === 'coef')) warn(state, 'Psychoacoustic model is zeroing raw samples: a masking model only makes sense on frequency-domain coefficients (put MDCT or DCT in the transform stage).');
   }
 
   // ============================================================ PREDICT stage
@@ -1091,7 +1091,7 @@
       state.flags.contextModel = f.id;
       if (f.id === 'neural_prior') state.sideInfoBytes += 20e6;
       const s = symbolize(state); const H0 = entropyOf(s.symbols).H, H2 = conditionalEntropyOrder2(s.symbols);
-      return emit(state, 'predict', f, `Order-0 entropy of the stream is ${fmt(H0, 2)} bits/symbol; given the two previous symbols it is ${fmt(H2, 2)} (empirical, with the model's own learning cost not yet paid). ${f.name} hands P(next | context) to the Packer: this only pays off with an arithmetic-style coder (FENCER / STACKER). Stand-in: an order-2 adaptive PPM model${f.id === 'neural_prior' ? '; the real thing is a network whose ~20 MB of weights the decoder must hold' : '; PAQ mixes dozens of contexts with a tiny neural net'}.`,
+      return emit(state, 'predict', f, `Order-0 entropy of the stream is ${fmt(H0, 2)} bits/symbol; given the two previous symbols it is ${fmt(H2, 2)} (empirical, with the model's own learning cost not yet paid). ${f.name} hands P(next | context) to the entropy-coding stage: this only pays off with an arithmetic-style coder (Arithmetic coding / ANS). Stand-in: an order-2 adaptive PPM model${f.id === 'neural_prior' ? '; the real thing is a network whose ~20 MB of weights the decoder must hold' : '; PAQ mixes dozens of contexts with a tiny neural net'}.`,
         { symbols: s.symbols.length, entropyBitsPerSymbol: H0, sideInfoBytes: f.id === 'neural_prior' ? 20e6 : 0 }, vizHistogram(s.symbols, s.M, s.offset));
     }
     if (state.rep !== 'planes') return passThrough(state, 'predict', f, 'the data is already a token stream.');
@@ -1100,7 +1100,7 @@
       let lits = 0, matches = 0, covered = 0, dictM = 0; for (const t of tokens) { if (t.type === 'lit') lits++; else { matches++; covered += t.len; if (t.dict) dictM++; } }
       state.rep = 'tokens'; state.tokens = tokens; state.lzMeta = { bytes: ser.bytes.length, width: ser.width, dictLen: dict ? dict.length : 0 };
       const sym = lzSymbols(tokens); const e = entropyOf(sym.symbols);
-      return emit(state, 'predict', f, `${state.lzDeferred ? 'Runs after the quantizer, on its indices (DEFLATE after quantization, as KVTC and PNG order it). ' : ''}${ser.bytes.length} bytes in${ser.width > 1 ? ` (${ser.width} bytes per sample)` : ''} → ${lits} literals + ${matches} matches (average length ${fmt(matches ? covered / matches : 0, 1)}) covering ${pct(covered / ser.bytes.length)} of the input${dict ? `; ${dictM} match${dictM === 1 ? ' points' : 'es point'} into the ${dict.length}-byte preloaded dictionary (${pct(tokens.filter((t) => t.dict).reduce((a, t) => a + t.len, 0) / ser.bytes.length)} of the input)` : ''}. Window 4096, min match 3, greedy. Tokens become ${sym.symbols.length} symbols for the Packer plus ${sym.extraBits} raw distance bits.`,
+      return emit(state, 'predict', f, `${state.lzDeferred ? 'Runs after the quantizer, on its indices (DEFLATE after quantization, as KVTC and PNG order it). ' : ''}${ser.bytes.length} bytes in${ser.width > 1 ? ` (${ser.width} bytes per sample)` : ''} → ${lits} literals + ${matches} matches (average length ${fmt(matches ? covered / matches : 0, 1)}) covering ${pct(covered / ser.bytes.length)} of the input${dict ? `; ${dictM} match${dictM === 1 ? ' points' : 'es point'} into the ${dict.length}-byte preloaded dictionary (${pct(tokens.filter((t) => t.dict).reduce((a, t) => a + t.len, 0) / ser.bytes.length)} of the input)` : ''}. Window 4096, min match 3, greedy. Tokens become ${sym.symbols.length} symbols for the entropy-coding stage plus ${sym.extraBits} raw distance bits.`,
         { symbols: sym.symbols.length, alphabet: e.alphabet, entropyBitsPerSymbol: e.H }, lzSpans(tokens, dict));
     }
     if (f.id === 'lzw') {
@@ -1214,7 +1214,7 @@
     if (state.domain === 'image' || state.domain === 'video') { const mse = se / state.nOrig; const v = mse > 0 ? 10 * Math.log10(255 * 255 / mse) : Infinity; return { metric: 'PSNR', value: v, label: Number.isFinite(v) ? `${fmt(v, 1)} dB PSNR` : 'PSNR ∞ (no error)' }; }
     if (state.domain === 'audio') { const v = se > 0 ? 10 * Math.log10(state.sigEnergy / se) : Infinity; return { metric: 'SNR', value: v, label: Number.isFinite(v) ? `${fmt(v, 1)} dB SNR` : 'SNR ∞ (no error)' }; }
     const v = Math.sqrt(se / (state.sigEnergy || 1));
-    if (state.tokenWeights && state.nTokens) { // SPOTLIGHT is in the squad: the softmax is the judge
+    if (state.tokenWeights && state.nTokens) { // Top-k selection is in the pipeline: the softmax is the judge
       let num = 0, den = 0; for (let t = 0; t < state.nTokens; t++) { num += state.tokenWeights[t] * state.seTok[t]; den += state.tokenWeights[t] * state.energyTok[t]; }
       const wv = Math.sqrt(num / (den || 1)); return { metric: 'rel-err', value: wv, label: `${pct(wv, 2)} attention-weighted relative error (plain: ${pct(v, 2)})` };
     }
@@ -1270,7 +1270,7 @@
       const after = streamEntropy(state);
       const cap = f.id === 'qmatrix'
         ? (usedMatrix ? `JPEG luma quantization table (quality 50) on ${usedMatrix} plane(s) of 8×8 DCT blocks: Δ=16 for DC up to Δ=121 for the highest frequencies, coarse where the eye is blind. ${pct(zeros / n)} of coefficients are now exactly 0, ${after.alphabet} distinct values remain (was ${distinct0}), entropy ${fmt(before.H, 2)} → ${fmt(after.H, 2)} bits/coefficient. The table (64 B) ${state.flags.tables ? 'is a standard one the decoder holds' : 'travels in the header'}.`
-          : `No 8×8 DCT blocks to weight, so the matrix degenerates to a uniform Δ=${fmtDelta(delta)}: ${after.alphabet} levels remain (was ${distinct0}), ${pct(zeros / n)} zeros, entropy ${fmt(before.H, 2)} → ${fmt(after.H, 2)} bits/sample. SCULPTOR needs COSINE in front of it.`)
+          : `No 8×8 DCT blocks to weight, so the matrix degenerates to a uniform Δ=${fmtDelta(delta)}: ${after.alphabet} levels remain (was ${distinct0}), ${pct(zeros / n)} zeros, entropy ${fmt(before.H, 2)} → ${fmt(after.H, 2)} bits/sample. Quantization matrix needs DCT in front of it.`)
         : `q = round(x/Δ) with Δ=${fmtDelta(delta)}: ${after.alphabet} distinct levels remain (was ${distinct0}), ${pct(zeros / n)} of values are 0, entropy ${fmt(before.H, 2)} → ${fmt(after.H, 2)} bits/sample. Error RMS ${fmt(Math.sqrt(se / n), 3)} (theory Δ/√12 = ${fmt(delta / Math.sqrt(12), 3)}).`;
       return finishQuant(state, f, 0, cap);
     }
@@ -1312,8 +1312,8 @@
         cap = `Product quantization: ${d} dims split into ${nSub} sub-vectors of ${ds}, each with its own K=${K} k-means codebook: ${nSub} × 4 bits = ${nSub * 4} bits per vector (${fmt(nSub * 4 / d, 1)} bits/sample), fixed length, ${Math.pow(K, nSub).toLocaleString('en-US')} effective centroids from ${K * nSub} real ones. Distances can be looked up per sub-vector without decoding. Codebooks ${codebookBytes} B`;
         viz = vizScatter(sub0, n, ds, km0.centroids, km0.assign, K);
       }
-      if (state.flags.codebook) { state.sideInfoBytes += codebookBytes; state.flags.codebookBytes += codebookBytes; cap += ' held by the decoder (KEYMASTER).'; if (state.pending.codebookStage) { state.pending.codebookStage.caption = `The decoder already holds the ${state.flags.codebookBytes} B of trained centroids that ${f.name}'s indices point into (K×d×2 bytes per codebook). Without it the indices are meaningless integers; with it they are the whole message.`; state.pending.codebookStage.metrics.sideInfoBytes = state.flags.codebookBytes; } }
-      else { state.headerBits += codebookBytes * 8; cap += ' travel in the header (no KEYMASTER in the squad).'; }
+      if (state.flags.codebook) { state.sideInfoBytes += codebookBytes; state.flags.codebookBytes += codebookBytes; cap += ' held by the decoder (VQ codebook).'; if (state.pending.codebookStage) { state.pending.codebookStage.caption = `The decoder already holds the ${state.flags.codebookBytes} B of trained centroids that ${f.name}'s indices point into (K×d×2 bytes per codebook). Without it the indices are meaningless integers; with it they are the whole message.`; state.pending.codebookStage.metrics.sideInfoBytes = state.flags.codebookBytes; } }
+      else { state.headerBits += codebookBytes * 8; cap += ' travel in the header (no VQ codebook in the pipeline).'; }
       if (g.padded) cap += ` (Last group padded with ${g.padded} zeros.)`;
       for (let i = 0; i < n; i++) { let e = 0; for (let j = 0; j < d; j++) e += Math.pow(X[i * d + j] - recon[i * d + j], 2); addErr(state, g.plane, i * d, e); } // per vector, so per token where rows are tokens
       state.planes = planes;
@@ -1393,8 +1393,8 @@
         cap = `No channel groups in this payload, so one shared ${K}-entry codebook over groups of ${d} consecutive values: ${fmt(4 / d, 2)} bit/value, error RMS ${Math.sqrt(km.se / (g.n * d)).toPrecision(3)}. Codebook ${codebookBytes} B`;
         viz = vizScatter(g.X, g.n, d, km.centroids, km.assign, K);
       }
-      if (state.flags.codebook) { state.sideInfoBytes += codebookBytes; state.flags.codebookBytes += codebookBytes; cap += ' held by the decoder (KEYMASTER).'; if (state.pending.codebookStage) { state.pending.codebookStage.caption = `The decoder already holds the ${state.flags.codebookBytes} B of trained centroids that ${f.name}'s codes point into (K×d×2 bytes per codebook; about 1% of the weights for a real model). Without it the codes are meaningless integers.`; state.pending.codebookStage.metrics.sideInfoBytes = state.flags.codebookBytes; } }
-      else { state.headerBits += codebookBytes * 8; cap += ' travel in the header (no KEYMASTER in the squad).'; }
+      if (state.flags.codebook) { state.sideInfoBytes += codebookBytes; state.flags.codebookBytes += codebookBytes; cap += ' held by the decoder (VQ codebook).'; if (state.pending.codebookStage) { state.pending.codebookStage.caption = `The decoder already holds the ${state.flags.codebookBytes} B of trained centroids that ${f.name}'s codes point into (K×d×2 bytes per codebook; about 1% of the weights for a real model). Without it the codes are meaningless integers.`; state.pending.codebookStage.metrics.sideInfoBytes = state.flags.codebookBytes; } }
+      else { state.headerBits += codebookBytes * 8; cap += ' travel in the header (no VQ codebook in the pipeline).'; }
       state.planes = planes;
       return finishQuant(state, f, 0, cap, viz);
     }
@@ -1407,7 +1407,7 @@
         else views.push({ p, rows: p.h, cols: p.w, at: (i, j) => i * p.w + j });
       }
       if (!views.length) {
-        warn(state, 'WATERLINE on raw channels: water on flat ground. Every coordinate has about the same variance, so there is nothing to allocate; degraded to a uniform Δ. Put AXIS, PROJECTOR or COSINE in front of it.');
+        warn(state, 'Water-filling allocation on raw channels: water on flat ground. Every coordinate has about the same variance, so there is nothing to allocate; degraded to a uniform Δ. Put PCA / Hadamard rotation, Low-rank SVD or DCT in front of it.');
         const delta = pickDelta(state); let se = 0, n = 0; for (const p of state.planes) { for (let i = 0; i < p.data.length; i++) { const q = Math.round(p.data[i] / delta); const e2 = Math.pow(p.data[i] - q * delta, 2); se += e2; addErr(state, p, i, e2); p.data[i] = q; n++; } p.vkind = 'index'; delete p.M; } state.headerBits += 32;
         const after = streamEntropy(state);
         return finishQuant(state, f, 0, `Water on flat ground: no transform coefficients to allocate across, so this collapses to a uniform quantizer with Δ=${fmtDelta(delta)} (${after.alphabet} levels, ${fmt(after.H, 2)} bits/sample of entropy, error RMS ${Math.sqrt(se / (n || 1)).toPrecision(3)}). Reverse water-filling needs coordinates with different variances.`);
@@ -1445,7 +1445,7 @@
       const PAGE = 16, nPages = Math.ceil(state.nTokens / PAGE); let freed = 0, occupied = 0;
       for (let pg = 0; pg < nPages; pg++) { let alive = 0; for (let t = pg * PAGE; t < Math.min(state.nTokens, (pg + 1) * PAGE); t++) if (!evicted.has(t)) alive++; if (alive === 0) freed++; else occupied++; }
       const survivors = state.nTokens - evicted.size;
-      return finishQuant(state, f, 0, `Kept ${keepN} of ${n} tokens by ${useSpot ? "SPOTLIGHT's attention score" : 'L2 norm (no SPOTLIGHT: the norm is a blind proxy)'}; evicted tokens ${[...evicted].sort((a, b) => a - b).join(', ')}, which reconstruct as zero. The survivors carry ${pct(massKept / (massAll || 1))} of the ${useSpot ? 'attention mass' : 'energy'}. Memory: with ${PAGE}-token pages, ${freed} of ${nPages} pages are completely empty and freed; survivors are scattered over ${occupied} page${occupied === 1 ? '' : 's'}, so VRAM is ${freed ? 'only partly' : 'not'} returned until compaction copies the ${survivors} survivors into ${Math.ceil(survivors / PAGE)}. Forgotten forever: there is no lossless copy to call${state.flags.tiered ? ' (UNDERSTUDY has one, but eviction never asks)' : ''}.`,
+      return finishQuant(state, f, 0, `Kept ${keepN} of ${n} tokens by ${useSpot ? "Top-k selection's attention score" : 'L2 norm (no Top-k selection: the norm is a blind proxy)'}; evicted tokens ${[...evicted].sort((a, b) => a - b).join(', ')}, which reconstruct as zero. The survivors carry ${pct(massKept / (massAll || 1))} of the ${useSpot ? 'attention mass' : 'energy'}. Memory: with ${PAGE}-token pages, ${freed} of ${nPages} pages are completely empty and freed; survivors are scattered over ${occupied} page${occupied === 1 ? '' : 's'}, so VRAM is ${freed ? 'only partly' : 'not'} returned until compaction copies the ${survivors} survivors into ${Math.ceil(survivors / PAGE)}. Forgotten forever: there is no lossless copy to call${state.flags.tiered ? ' (Tiered cache has one, but eviction never asks)' : ''}.`,
         vizWaveform([score], [useSpot ? 'attention score per token' : 'L2 norm per token']));
     }
     return passThrough(state, 'quantize', f, 'unknown quantizer.');
@@ -1458,9 +1458,9 @@
     let bits, caption;
     if (f.id === 'huffman') {
       const hb = huffmanBits(sym.symbols); const tableBits = state.flags.tables ? 0 : e.alphabet * 4; bits = hb.bits + tableBits;
-      caption = `Real Huffman tree from the histogram of ${fmtInt(n)} ${what} (alphabet ${e.alphabet}): average code ${fmt(hb.bits / (n || 1), 2)} bits/symbol against an entropy of ${fmt(H, 2)}; the most common symbol (p=${fmt(hb.maxP, 2)}) gets ${hb.maxLen} bit(s). Tree header ≈ ${e.alphabet}×4 = ${tableBits} bits${state.flags.tables ? ' waived: standard tables (RULEBOOK)' : ''}. Total ${fmtInt(bits)} bits.`;
+      caption = `Real Huffman tree from the histogram of ${fmtInt(n)} ${what} (alphabet ${e.alphabet}): average code ${fmt(hb.bits / (n || 1), 2)} bits/symbol against an entropy of ${fmt(H, 2)}; the most common symbol (p=${fmt(hb.maxP, 2)}) gets ${hb.maxLen} bit(s). Tree header ≈ ${e.alphabet}×4 = ${tableBits} bits${state.flags.tables ? ' waived: standard tables (Standard tables)' : ''}. Total ${fmtInt(bits)} bits.`;
       if (n && hb.bits > 1.3 * bound) warn(state, `Huffman on a symbol with p=${fmt(hb.maxP, 2)}: paying ${hb.maxLen} bit${hb.maxLen > 1 ? 's' : ''} for ${fmt(-log2(hb.maxP), 2)} bits of information. Integer code lengths cost ${pct(hb.bits / Math.max(bound, 1e-9) - 1)} over the bound here; run-length coding first or an arithmetic coder fixes it.`);
-      if (ctx) { caption += ` ${ctxName}'s context probabilities are ignored: a static prefix code cannot use a model that changes every symbol.`; warn(state, `${ctxName} computed P(next | context) but WOODCUTTER cannot spend fractional or adaptive bits: put FENCER or STACKER in the Packer chair.`); }
+      if (ctx) { caption += ` ${ctxName}'s context probabilities are ignored: a static prefix code cannot use a model that changes every symbol.`; warn(state, `${ctxName} computed P(next | context) but Huffman coding cannot spend fractional or adaptive bits: put Arithmetic coding or ANS in the entropy-coding stage.`); }
     } else if (f.id === 'arith' || f.id === 'ans') {
       const flush = 32;
       if (ctx) { bits = ppmOrder2Bits(sym.symbols, sym.M) + flush; caption = `Driven by ${ctxName}'s order-2 adaptive context model (stand-in for the real thing): Σ −log₂ p over ${fmtInt(n)} ${what} = ${fmtInt(bits - flush)} bits, ${fmt((bits - flush) / (n || 1), 2)} bits/symbol, ${bits - flush < bound ? `${pct(1 - (bits - flush) / (bound || 1))} below` : `${pct((bits - flush) / (bound || 1) - 1)} above`} the order-0 bound of ${fmt(H, 2)}: context sees structure a histogram cannot. Plus ${flush} bits to flush.`; }
@@ -1475,8 +1475,8 @@
     } else { // none: fixed length
       const b = ceilLog2(sym.M); bits = b * n;
       if (state.rep === 'lzw') { bits = state.lzw.varBits; caption = `No entropy coder: LZW codes are written at their natural 9–12-bit growing width, ${fmtInt(bits)} bits for ${fmtInt(n)} codes (entropy ${fmt(H, 2)} bits/code).`; }
-      else if (state.fixedBitsExact != null && state.rep === 'planes') { bits = state.fixedBitsExact; caption = `Empty chair = fixed-length codes, but WATERLINE already set a width per coordinate: ${fmtInt(n)} ${what} at ${fmt(bits / (n || 1), 2)} bits each on average = ${fmtInt(bits)} bits (entropy ${fmt(H, 2)} bits/symbol). Each coordinate is still a flat field a kernel can index.`; }
-      else caption = `Empty chair = fixed-length codes: every one of ${fmtInt(n)} ${what} costs ⌈log₂ ${fmtInt(sym.M)}⌉ = ${b} bits, ${fmtInt(bits)} bits total. Shannon says ${fmt(H, 2)} bits/symbol would do${H < 0.9 * b ? `: ${pct(1 - H / b)} is left on the table, in exchange for random access and a decoder that is a single array index` : ': the symbols are near-uniform, so there was almost nothing to gain'}.`;
+      else if (state.fixedBitsExact != null && state.rep === 'planes') { bits = state.fixedBitsExact; caption = `Pass-through = fixed-length codes, but Water-filling allocation already set a width per coordinate: ${fmtInt(n)} ${what} at ${fmt(bits / (n || 1), 2)} bits each on average = ${fmtInt(bits)} bits (entropy ${fmt(H, 2)} bits/symbol). Each coordinate is still a flat field a kernel can index.`; }
+      else caption = `Pass-through = fixed-length codes: every one of ${fmtInt(n)} ${what} costs ⌈log₂ ${fmtInt(sym.M)}⌉ = ${b} bits, ${fmtInt(bits)} bits total. Shannon says ${fmt(H, 2)} bits/symbol would do${H < 0.9 * b ? `: ${pct(1 - H / b)} is left on the table, in exchange for random access and a decoder that is a single array index` : ': the symbols are near-uniform, so there was almost nothing to gain'}.`;
     }
     return { bits, bound, H, n, alphabet: e.alphabet, caption };
   }
@@ -1492,7 +1492,7 @@
       let cap = `${blockLen ? 'Zigzag scan each 8×8 block (low to high frequency), then ' : ''}JPEG-style run/size pairs: "${r.zeros ? 'r zeros then a value of s bits' : 'no zeros to count'}" as one symbol (${r.pairs} pairs, ${r.zrl} ZRL, ${r.eob} end-of-block) plus the ${fmtInt(r.extraBits)} raw amplitude bits. ${pct(zf)} of the ${fmtInt(sym0.symbols.length)} input symbols were zeros${zf > 0.5 ? ` (p=${fmt(zf, 2)} > 0.5: exactly the case Huffman handles badly on its own)` : ''}; ${fmtInt(sym0.symbols.length)} symbols with ${fmt(e0.H, 2)} bits/symbol became ${fmtInt(r.symbols.length)} pair symbols with ${fmt(e1.H, 2)} bits/symbol.`;
       if (!coders.length) { const b = ceilLog2(RLE_M); coderBits = b * r.symbols.length; bound = e1.H * r.symbols.length; cap += ` Alone, the pairs are written at a flat ${b} bits each: ${fmtInt(coderBits)} bits. RLE is a pre-pass; it wants a Huffman behind it.`; }
       last = emit(state, 'entropy', f, cap, { symbols: r.symbols.length, alphabet: e1.alphabet, entropyBitsPerSymbol: e1.H }, vizHistogram(r.symbols, RLE_M, 0));
-      if (zf < 0.15 && sym0.symbols.length) warn(state, `REPEATER found only ${pct(zf)} zeros: run-length coding expands a stream that does not run.`);
+      if (zf < 0.15 && sym0.symbols.length) warn(state, `Run-length coding found only ${pct(zf)} zeros: run-length coding expands a stream that does not run.`);
     }
     if (coders.length === 1 || (coders.length === 2 && !(state.rep === 'tokens' && !hasRle))) {
       const f = CYC.byId[coders[0]]; const r = codeStream(state, f, sym, hasRle ? 'run/size pairs' : what0); coderBits = r.bits; bound = r.bound;
@@ -1522,32 +1522,32 @@
   function run(payloadKind, squad) {
     const payload = getPayload(payloadKind); const state = makeState(payload); squad = squad || {};
     const chair = (role) => (Array.isArray(squad[role]) ? squad[role] : []).filter((id) => id && id !== 'none').map((id) => CYC.byId[id]).filter(Boolean);
-    const dispatch = (role, f, fn) => { if (f.role !== role) return passThrough(state, role, f, `${f.name} is a ${CYC.ROLES[f.role] ? CYC.ROLES[f.role].title.toLowerCase() : f.role} fighter and does nothing in ${CYC.ROLES[role] ? CYC.ROLES[role].codename + "'s" : 'the ' + role} chair.`); return fn(state, f); };
+    const dispatch = (role, f, fn) => { if (f.role !== role) return passThrough(state, role, f, `${f.name} is a ${CYC.ROLES[f.role] ? CYC.ROLES[f.role].title.toLowerCase() : f.role} algorithm and does nothing in the ${CYC.ROLES[role] ? CYC.ROLES[role].title.toLowerCase() : role} stage.`); return fn(state, f); };
     for (const f of chair('prior')) dispatch('prior', f, stagePrior);
     const tr = chair('transform');
-    const early = (f) => f.family === 'channel' || f.id === 'unrope'; // REWIND is a fixed, position-known rotation: it runs with PRISM, before anything looks at the data
+    const early = (f) => f.family === 'channel' || f.id === 'unrope'; // Pre-RoPE storage is a fixed, position-known rotation: it runs with YCbCr / mid-side, before anything looks at the data
     for (const f of tr.filter(early)) dispatch('transform', f, stageTransform);
     for (const f of chair('perceptual')) dispatch('perceptual', f, stagePerceptual);
     const quant = chair('quantize'); const lossyChain = quant.some((f) => f.role === 'quantize') || tr.some((f) => !early(f) && f.role === 'transform');
-    if (quant.some((f) => f.role === 'quantize')) applyProtection(state); // BOUNCER's tokens leave the stream before anyone predicts, transforms or quantizes them
+    if (quant.some((f) => f.role === 'quantize')) applyProtection(state); // Sink & window exemption's tokens leave the stream before anyone predicts, transforms or quantizes them
     // A dictionary matcher next to a quantizer or a transform codes the quantized indices (DEFLATE after quantization: KVTC, PNG-style ordering),
-    // so LZ77/LZW are deferred until just before the Packer in that case. On their own (DEFLATE, zstd) they run in the predict slot.
+    // so LZ77/LZW are deferred until just before the entropy-coding stage in that case. On their own (DEFLATE, zstd) they run in the predict slot.
     const isLZ = (f) => f.id === 'lz77' || f.id === 'lzw'; const deferred = [];
     for (const f of chair('predict')) { if (isLZ(f) && lossyChain) deferred.push(f); else dispatch('predict', f, stagePredict); }
     for (const f of tr.filter((f) => !early(f))) dispatch('transform', f, stageTransform);
     applyMasking(state);
     quant.forEach((f, i) => dispatch('quantize', f, (s, g) => stageQuantize(s, g, quant.slice(i + 1).some((h) => h.role === 'quantize' && h.id !== 'evict'))));
     for (const f of deferred) { state.lzDeferred = true; dispatch('predict', f, stagePredict); }
-    if (state.flags.tiered && !state.tokenWeights) warn(state, 'UNDERSTUDY keeps a lossless copy in host DRAM, but nothing on the GPU decides which entries to fetch: without SPOTLIGHT the only option is to fetch everything, and PCIe cannot carry that.');
-    if (state.protectedTokens && !quant.some((f) => f.role === 'quantize')) warn(state, 'BOUNCER exempted tokens from a quantizer that is not in the squad.');
+    if (state.flags.tiered && !state.tokenWeights) warn(state, 'Tiered cache keeps a lossless copy in host DRAM, but nothing on the GPU decides which entries to fetch: without Top-k selection the only option is to fetch everything, and PCIe cannot carry that.');
+    if (state.protectedTokens && !quant.some((f) => f.role === 'quantize')) warn(state, 'Sink & window exemption exempted tokens from a quantizer that is not in the pipeline.');
     const ent = chair('entropy'); const entIds = [];
     for (const f of ent) {
       if (f.role === 'entropy') entIds.push(f.id);
-      else if (isLZ(f)) { state.lzDeferred = true; const st = stagePredict(state, f); st.role = 'entropy'; } // DEFLATE as the Packer's pre-pass (KVTC: transform → quantize → LZ77 + Huffman)
+      else if (isLZ(f)) { state.lzDeferred = true; const st = stagePredict(state, f); st.role = 'entropy'; } // DEFLATE as the entropy-coding stage's pre-pass (KVTC: transform → quantize → LZ77 + Huffman)
       else dispatch('entropy', f, () => null);
     }
     const { finalBits, boundBits } = stageEntropy(state, entIds);
-    if (state.flags.decoderNet && !state.flags.neuralEnc) warn(state, 'BRAINJAR holds a 20 MB decoder network but no learned encoder produced latents for it: dead weight.');
+    if (state.flags.decoderNet && !state.flags.neuralEnc) warn(state, 'Learned decoder holds a 20 MB decoder network but no learned encoder produced latents for it: dead weight.');
     return {
       payloadKind: payload.kind, rawBits: state.rawBits, finalBits: Math.round(finalBits), entropyBoundBits: Math.round(boundBits),
       sideInfoBytes: Math.round(state.sideInfoBytes), lossless: state.lossless, distortion: currentDistortion(state), stages: state.stages, warnings: state.warnings,

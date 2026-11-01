@@ -6,13 +6,15 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import sys as _sys, os as _os; _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+from _style import apply as _apply; _apply()
 
-BG, FG, DIM = "#0b0714", "#ece6f5", "#8a7fa3"
-ACC1, ACC2, ACC3, ACC4 = "#ffb454", "#5ad1ff", "#ff6b9d", "#9df27a"
+BG, FG, DIM = "#f3eadb", "#2a211b", "#5a4a3d"
+ACC1, ACC2, ACC3, ACC4 = "#b8892e", "#246b66", "#b05a4c", "#6f8f4e"
 plt.rcParams.update({
     "figure.facecolor": BG, "axes.facecolor": BG, "savefig.facecolor": BG,
     "text.color": FG, "axes.labelcolor": FG, "xtick.color": DIM, "ytick.color": DIM,
-    "axes.edgecolor": DIM, "grid.color": "#2a2240", "font.size": 13,
+    "axes.edgecolor": DIM, "grid.color": "#b89f78", "font.size": 13,
     "axes.titlesize": 15, "axes.titleweight": "bold",
 })
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -115,7 +117,7 @@ ax = axes[1]
 ax.set_aspect("equal"); ax.set_xlim(-9.5, 9.5); ax.set_ylim(-9.5, 9.5)
 circ = plt.Circle((0, 0), np.hypot(*k), fill=False, color=DIM, ls=":")
 ax.add_patch(circ)
-ax.scatter(rot[:, 0], rot[:, 1], c=m, cmap="cool", s=50, zorder=3)
+ax.scatter(rot[:, 0], rot[:, 1], c=m, cmap="YlGnBu", s=50, zorder=3)
 ax.scatter([8.0], [0.3], s=220, marker="*", color=ACC1, zorder=4, label="pre-RoPE key")
 ax.axvline(0, color=DIM, lw=0.6); ax.axhline(0, color=DIM, lw=0.6)
 ax.set_xlabel("channel 2i"); ax.set_ylabel("channel 2i+1")
