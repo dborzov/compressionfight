@@ -1102,3 +1102,38 @@ CYC.DUELS = [
   { a: 'none', b: 'lz77', payload: 'activations', squadBase: { transform: ['unrope', 'pca'], quantize: ['waterline'], prior: ['basis'] }, role: 'predict',
     lesson: 'The Packer in cold storage: KVTC measured 1.23× from DEFLATE on top of transform coding. Inside HBM that 23% is not worth a variable-length code; on disk it is free money.' },
 ];
+
+// ---------------- THE MAP (intro articles) ----------------
+// Article slugs live under <site>/map/zoo/<slug>/. Built from docs/map/ (see docs/map/map.md).
+CYC.MAP = {
+  base: 'map/',
+  index: 'map/',
+  primer: 'map/primer/',
+  fighters: {
+    huffman: 'prefix-codes', rice: 'prefix-codes', rle: 'prefix-codes',
+    arith: 'arithmetic-and-ans', ans: 'arithmetic-and-ans',
+    lz77: 'lz-family', lzw: 'lz-family',
+    delta: 'linear-prediction', lpc: 'linear-prediction', spatial: 'linear-prediction', anchor_delta: 'linear-prediction',
+    cm: 'context-models', neural_prior: 'context-models',
+    motion: 'motion-compensation',
+    dct: 'block-transforms', mdct: 'block-transforms', dwt: 'block-transforms',
+    pca: 'rotations-and-rank', svd_lowrank: 'rotations-and-rank', unrope: 'rotations-and-rank', basis: 'rotations-and-rank',
+    prism: 'channel-and-layout',
+    bwt: 'sorting-transforms',
+    neural_enc: 'learned-transforms', decoder_net: 'learned-transforms', mla: 'learned-transforms',
+    uniform: 'scalar-quantization', companding: 'scalar-quantization', qmatrix: 'scalar-quantization', waterline: 'scalar-quantization', escape: 'scalar-quantization',
+    vq: 'vector-quantization', rvq: 'vector-quantization', pq: 'vector-quantization', coupled: 'vector-quantization',
+    blockint: 'block-float-formats', fp4: 'block-float-formats', evict: 'block-float-formats',
+    psychoacoustic: 'perceptual-models', chroma: 'perceptual-models', gan: 'perceptual-models',
+    sinkguard: 'attention-as-audience', spotlight: 'attention-as-audience', tiered: 'attention-as-audience',
+    tables: 'side-information', dictionary: 'side-information', codebook: 'side-information',
+  },
+  roles: {
+    transform: 'block-transforms', predict: 'linear-prediction', quantize: 'rate-and-distortion',
+    entropy: 'prefix-codes', perceptual: 'perceptual-models', prior: 'side-information',
+  },
+  foundations: ['modeling-and-coding', 'anatomy-of-a-job', 'rate-and-distortion'],
+  heists: { onebit: 'kv-cache-vaults', overflow: 'kv-cache-vaults', coldkv: 'kv-cache-vaults', kvcourier: 'kv-cache-vaults',
+            purge: 'kv-cache-vaults', bornsmall: 'kv-cache-vaults', kvcache: 'kv-cache-vaults' },
+  defaultHeistArticle: 'codec-dissections',
+};
