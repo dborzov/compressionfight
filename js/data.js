@@ -7,7 +7,7 @@
 window.CYC = window.CYC || {};
 
 CYC.LEVELS = [
-  { id: 1, name: 'Lossless basics', tagline: 'Lossless coding: prediction exposes structure, entropy coding cashes it in.',
+  { id: 1, name: 'Lossless basics', tagline: 'Three kinds of data, the same two stages. The bytes decide: repeated strings want a matcher, neighbouring pixels want a filter, a smooth waveform wants a linear predictor; the shape of what is left decides the entropy coder.',
     roles: ['predict', 'entropy'] },
   { id: 2, name: 'Lossy coding', tagline: 'Lossy coding: a transform concentrates energy, a quantizer trades bits for error, and a perceptual model decides where the error may go.',
     roles: ['transform', 'predict', 'quantize', 'entropy', 'perceptual'] },
@@ -608,13 +608,13 @@ CYC.EMPTY = {
 // payload: the sample data the live pipeline runs on.
 CYC.HEISTS = [
   {
-    id: 'archive', level: 1, name: 'General-purpose file archive', codec: 'DEFLATE (zip / gzip)',
+    id: 'archive', level: 1, name: 'Text, logs and source code', codec: 'DEFLATE (zip / gzip)',
     domain: 'text', payload: 'json',
-    brief: 'Compress arbitrary files for storage and transfer. The decoder is any machine, anywhere, for decades, and the output must match the input bit for bit.',
+    brief: 'Compress text-like files (JSON logs, source code, HTML, CSV) for storage and transfer. The decoder is any machine, anywhere, for decades, and the output must match the input bit for bit. zip calls itself general-purpose; its model only pays off where byte strings repeat, and repeating is what text does.',
     req: { lossless: true, latency: 4, encBudget: 3, decBudget: 2, ra: 1, bandwidth: 3, decMem: 2, priorOK: false },
     reqNotes: [
       'Lossless: the archive must reproduce every byte exactly.',
-      'General purpose: no assumptions about content, so no data-specific dictionary and no transform tuned to one signal.',
+      'Content-agnostic, not content-independent: no data-specific dictionary and no transform tuned to one signal. The one assumption is that byte strings recur, which is what text, markup and serialized records do, and what sampled signals do not.',
       'Mildly asymmetric: compress once, decompress often. The encoder may search harder (gzip -9) but decode must be fast everywhere.',
       'Self-describing: the Huffman trees travel in the block header. Nothing to install on the receiving side.',
     ],
@@ -623,26 +623,28 @@ CYC.HEISTS = [
     reveal: 'DEFLATE = LZ77 (32 KB window) + Huffman (two trees per block: literals/lengths and distances). Phil Katz, 1993. zstd is the same structure with a bigger window, FSE instead of Huffman for the match stream, and optional dictionaries; it decodes about 3× faster and compresses 10-15% smaller. The same two stages, filled with stronger algorithms.',
   },
   {
-    id: 'pixelart', level: 1, name: 'Lossless images', codec: 'PNG',
-    domain: 'image', payload: 'image',
-    brief: 'Screenshots, logos, pixel art and diagrams: sharp edges, flat colours, text. Every pixel must decode exactly, and the decoder is every web browser.',
+    id: 'pixelart', level: 1, name: 'Screenshots, logos and pixel art', codec: 'PNG',
+    domain: 'image', payload: 'screenshot',
+    brief: 'Flat fills, sharp edges, rows of text, and the same icon drawn four times. Every pixel must decode exactly, and the decoder is every web browser.',
     req: { lossless: true, latency: 4, encBudget: 3, decBudget: 2, ra: 2, bandwidth: 3, decMem: 2, priorOK: false },
     reqNotes: [
       'Lossless: a blurred screenshot of code is useless, so no quantizer and no perceptual model.',
-      'Flat regions and repeated tiles: a neighbour predictor turns gradients into zeros, and LZ77 catches the repeated tiles.',
+      'Two kinds of structure in one picture: flat fills (a pixel equals its neighbours exactly) and repeated tiles (the same bytes far apart). A neighbour predictor turns the fills into zeros; LZ77 catches the tiles and the runs of zeros.',
       'Colour must be exact, so no chroma subsampling; a reversible colour transform is allowed.',
     ],
     ideal: { predict: ['spatial', 'lz77'], entropy: ['huffman'] },
     accept: { predict: ['delta'], entropy: ['ans', 'arith'], transform: ['prism'] },
+    pair: { role: 'predict', ids: ['spatial', 'lz77'], text: 'A screenshot has two kinds of structure and PNG uses two predictors in this stage: the spatial filter turns flat fills and gradients into exact zeros, LZ77 catches the repeated icon and the runs of zeros. Either one alone leaves the other structure on the table; the size meter shows the gap.' },
     reveal: 'PNG = a per-row spatial filter (None/Sub/Up/Average/Paeth) + DEFLATE (LZ77 + Huffman). Designed in 1996 specifically to avoid the LZW patent. WebP lossless adds richer spatial predictors, a colour cache and local palettes; still no quantizer anywhere.',
   },
   {
-    id: 'studio', level: 1, name: 'Lossless audio', codec: 'FLAC',
+    id: 'studio', level: 1, name: 'Music, bit-exact', codec: 'FLAC',
     domain: 'audio', payload: 'audio',
-    brief: 'Archive a music library bit-exact. The decoder is a 2005 portable player with a small integer CPU, and the listener must be able to seek to any second instantly.',
+    brief: 'Archive a music library bit-exact. The samples are points on a smooth curve that never repeats itself exactly. The decoder is a 2005 portable player with a small integer CPU, and the listener must be able to seek to any second instantly.',
     req: { lossless: true, latency: 3, encBudget: 3, decBudget: 1, ra: 4, bandwidth: 2, decMem: 1, priorOK: false },
     reqNotes: [
       'Lossless: the decoded PCM must match the original\'s MD5.',
+      'Nothing to match, everything to predict: 16-bit values almost never repeat, so a string matcher finds nothing, but each sample is close to the extrapolation of the two before it.',
       'Decoder must be trivial: integer math only, fixed-point, on a battery. The encoder may try 8 predictor orders and keep the best.',
       'Seekable: independent blocks (~4096 samples) with a seek table.',
       'Stereo channels are correlated: mid/side decorrelation costs nothing and removes the shared energy.',
@@ -1103,6 +1105,123 @@ CYC.DUELS = [
   { a: 'none', b: 'lz77', payload: 'activations', squadBase: { transform: ['unrope', 'pca'], quantize: ['waterline'], prior: ['basis'] }, role: 'predict',
     lesson: 'Entropy coding in cold storage: KVTC measured 1.23× from DEFLATE on top of transform coding. Inside HBM that 23% is not worth a variable-length code; on disk it costs nothing.' },
 ];
+
+// ---------------- THE DATA (what each sample is made of) ----------------
+// One entry per payload kind (CYC.Engine.PAYLOAD_KINDS). The data sheet (js/datasheet.js) measures every number
+// live from the sample itself; the prose here says what the structure is, which stage it feeds, and what fails on it.
+// `predictor` / `coder` name the algorithms the structure calls for (level-1 kinds); `article` is the Map slug.
+CYC.DATAKINDS = {
+  json: {
+    name: 'Text: structured records (JSON log lines)',
+    shape: 'a one-dimensional string of 8-bit bytes',
+    literal: 'bytes',
+    structure: 'Every record repeats the same field names ("event", "user_id", "session_id"…), the same enum values (page_view, desktop, chrome) and the same URL prefixes. Only about a fifth of the 256 byte values appear at all, and none dominates. What a byte does not have is numeric meaning: { (123) is not "close to" " (34), and the byte after 7 cannot be extrapolated.',
+    rightFit: 'The structure is exact repetition at a distance, so the predictor is a matcher: LZ77 says "the next n bytes are a copy of the n bytes d bytes back" and emits the (distance, length) pair; the longest such copy in this sample is measured above. The token stream has a few hundred symbol types with no dominant one, so Huffman lands within a few percent of its entropy. That is DEFLATE.',
+    wrongFits: [
+      'Delta or LPC (subtract the previous byte): the residual alphabet gets wider, not narrower, because byte codes are labels, not quantities. Measured below: the entropy of x[n] − x[n−1] is above the entropy of the bytes themselves.',
+      'Golomb-Rice: wants a spike around zero. Byte values are spread over dozens of symbols, and Rice pays a unary prefix on every one.',
+      'A quantizer: not allowed. One bit wrong in a JSON file is a different file.',
+    ],
+    realWorld: 'gzip, zip, zstd, brotli, HTTP compression, and the second half of PNG. "General purpose" means byte-oriented and content-agnostic, not equally good on everything: DEFLATE looks for exact repeated byte strings, so it gets 3–4× on text and markup and far less on sampled signals, which do not repeat exactly (the matrix on this level measures that on our own samples). PNG and FLAC exist because of that gap.',
+    predictor: 'lz77', coder: 'huffman', article: 'lz-family',
+  },
+  prose: {
+    name: 'Text: English prose',
+    shape: 'a one-dimensional string of 8-bit bytes',
+    literal: 'bytes',
+    structure: 'Words and phrases recur ("the fox", "the dog", "the farmer"); space and e are the commonest bytes; and each letter is strongly predicted by the two or three before it. English counted one letter at a time is about 4.1 bits per letter; with a good context model about 1 bit.',
+    rightFit: 'A matcher (LZ77) for whole repeated phrases, or a context model (order-2 and up) that hands letter-by-letter probabilities to an arithmetic coder. The second is slower and stronger.',
+    wrongFits: [
+      'Delta or LPC: letters are labels, not quantities; subtracting the previous byte widens the alphabet.',
+      'A quantizer: not allowed on text.',
+    ],
+    realWorld: 'On the 100 MB enwik8 text benchmark: gzip ≈ 36 MB, bzip2 ≈ 29 MB, xz ≈ 26 MB, cmix ≈ 15 MB. Same data, better models.',
+    predictor: 'lz77', coder: 'arith', article: 'context-models',
+  },
+  screenshot: {
+    name: 'Image: a screenshot (flat fills, sharp edges, repeated icons)',
+    shape: 'a 2-D grid of pixels, three 8-bit channels (R, G, B), stored row after row',
+    literal: 'rows',
+    structure: 'Large areas are one exact colour, so a pixel is usually identical to its left neighbour and to the pixel above. Edges are sharp: when neighbours differ they differ by a lot, with nothing in between. The same icon is drawn several times, byte for byte. There is no sensor noise.',
+    rightFit: 'Two kinds of structure, two predictors in one stage. A spatial filter (PNG picks Sub, Up, Average or Paeth per row) predicts each pixel from its left and upper neighbours and leaves a residual that is exactly zero over a flat fill. LZ77 then catches what the filter cannot: whole rows of zeros and the repeated icon. Huffman codes the rest. That is PNG: filter + DEFLATE, and no quantizer, because a screenshot of text with ±2 errors is a blurry screenshot.',
+    wrongFits: [
+      'DEFLATE alone, no filter: it does catch the flat fills and the repeated icon, but a gradient never repeats exactly and the unfiltered bytes of an edge mix three channels into one stream. Measured below: a useful ratio, short of the filtered one.',
+      'LPC + Rice (FLAC\'s pair): over a flat fill the residual is a run of exact zeros with rare big jumps at edges. That is not a geometric spike, and Rice pays at least one bit for every zero where run-length coding or LZ77 pays a fraction.',
+      'DCT + quantizer (JPEG\'s pair): ringing around every sharp edge and smeared text. No pixel may change here.',
+    ],
+    realWorld: 'PNG, GIF (LZW over a palette), WebP lossless, QOI. Lossless image codecs win on exactly this kind of picture. On a photograph the same PNG gets about 1.5–2×, which is why photographs went lossy.',
+    predictor: 'spatial', coder: 'huffman', article: 'linear-prediction', row: 10,
+  },
+  image: {
+    name: 'Image: a photograph (smooth shading plus sensor noise)',
+    shape: 'a 2-D grid of pixels, three 8-bit channels (R, G, B), stored row after row',
+    literal: 'rows',
+    structure: 'Brightness changes slowly across the frame, so each pixel is within a few counts of its neighbours. But every pixel also carries about ±3 counts of sensor noise, so no two rows are ever byte-identical and exact repeats do not exist. The three channels carry nearly the same picture (brightness) with small colour differences.',
+    rightFit: 'Predict from neighbours and code the small residual (lossless, modest gain), or go lossy: a transform concentrates the smooth shading into a few coefficients and a quantizer throws the noise away, which is where the real gains are (level 2).',
+    wrongFits: [
+      'LZ77 on raw pixels: a 3-byte match needs three consecutive byte-exact values, and noise makes that rare. Measured below: close to 1.0×.',
+    ],
+    realWorld: 'Lossless photo codecs (PNG, WebP lossless, JPEG-LS, JPEG XL lossless) get about 1.5–2.5× on photographs. Lossy JPEG at a quality nobody can tell apart from the original gets 8–12×.',
+    predictor: 'spatial', coder: 'huffman', article: 'linear-prediction', row: 12,
+  },
+  audio: {
+    name: 'Audio: 16-bit PCM samples, stereo',
+    shape: 'two one-dimensional streams of signed 16-bit integers (CD audio: 44,100 per second per channel)',
+    literal: 'samples',
+    structure: 'A sample is a point on a smooth curve: here the sum of three decaying tones plus a little noise. Consecutive samples are close in value and the curve bends slowly, so extrapolating the last two samples lands within a few hundred of the next one, out of a 65,536-value range. No value repeats on purpose: thousands of distinct values are in use. Left and right are nearly the same signal.',
+    rightFit: 'Linear prediction: x̂[n] = 2x[n−1] − x[n−2] (or a filter of order 8–32 fitted per block), send the residual. The residual is a two-sided geometric spike around zero, and the Golomb-Rice code is the optimal prefix code for that shape: one parameter k per block, no tree, no table, integer arithmetic only. Mid/side first removes what the two channels share. That is FLAC.',
+    wrongFits: [
+      'LZ77: two bytes per sample and noise in the low bits means byte strings almost never repeat. Measured below: about 1.0×.',
+      'Huffman straight on the samples: thousands of distinct values, each seen once or twice; the code table costs more than the code saves.',
+      'Huffman on the residual does work (within a few percent of Rice) but needs a table per block; FLAC chose Rice for the portable player\'s integer CPU.',
+    ],
+    realWorld: 'FLAC, ALAC, WavPack, Monkey\'s Audio, MPEG-4 ALS: about 50–60% of CD size on music, close to 100% on noise. Lossy MP3, AAC and Opus reach 10× by discarding what the ear masks (level 2).',
+    predictor: 'lpc', coder: 'rice', article: 'linear-prediction',
+  },
+  video: {
+    name: 'Video: two consecutive frames',
+    shape: 'two 2-D RGB frames, the second a shifted copy of the first with one small change',
+    literal: 'rows',
+    structure: 'Inside a frame the structure is a photograph\'s. Between frames it is motion: almost every block of frame 2 exists somewhere in frame 1, a few pixels away.',
+    rightFit: 'Motion compensation predicts each block from a displaced block of the previous frame; a photograph\'s pipeline then codes the residual.',
+    wrongFits: ['Coding each frame on its own ignores the part of the picture that did not change, which is nearly all of it.'],
+    realWorld: 'H.264, HEVC, AV1: 50–200× on typical footage, almost all of it from inter-frame prediction.',
+    predictor: 'motion', coder: 'arith', article: 'motion-compensation',
+  },
+  vectors: {
+    name: 'Embeddings: float32 vectors',
+    shape: '256 vectors of 8 float32 numbers',
+    literal: 'floats',
+    structure: 'The bit patterns of floats are nearly incompressible losslessly: the low mantissa bits are noise. The structure is geometric instead: the points cluster, and the eight dimensions are strongly correlated.',
+    rightFit: 'Rotate (PCA), then quantize sub-vectors against trained codebooks (product quantization), with fixed-length codes so any vector can be read by address.',
+    wrongFits: ['Any byte-oriented lossless coder: LZ77 and Huffman see random-looking mantissas and get about 1.0×.'],
+    realWorld: 'Faiss IVF-PQ and friends: 32–64× at the price of approximate distances.',
+    predictor: null, coder: null, article: 'vector-quantization',
+  },
+  weights: {
+    name: 'LLM weights: fp16',
+    shape: '1,024 fp16 numbers from one weight matrix',
+    literal: 'floats',
+    structure: 'Bell-shaped around zero with a standard deviation near 0.02, plus about 1% outliers 15× larger. No sequential structure: reordering the weights changes nothing.',
+    rightFit: 'Block-scaled integers: one fp16 scale per 32 weights and a 4-bit integer per weight, decoded by one multiply inside the matrix-multiply kernel.',
+    wrongFits: [
+      'Prediction from the previous weight: neighbours are independent, so the residual is as wide as the data.',
+      'A variable-length entropy code: a GPU kernel cannot decode it in parallel by address.',
+    ],
+    realWorld: 'GGUF Q4_K_M, GPTQ, AWQ: about 4.5 bits per weight, 3.5× smaller than fp16.',
+    predictor: null, coder: null, article: 'block-float-formats',
+  },
+  activations: {
+    name: 'KV cache: fp16 keys',
+    shape: '32 tokens × 32 channels of fp16 keys',
+    literal: 'floats',
+    structure: 'A few channels are outliers at many times the magnitude of the others, in fixed positions; one token (the attention sink) is larger still; and every key has been rotated by its position (RoPE), which smears each outlier across two channels.',
+    rightFit: 'Undo the rotation, quantize keys per channel and values per token with block scales, keep the sink token at full precision.',
+    wrongFits: ['One scale for the whole tensor: the outlier channel sets the step and every other channel rounds to zero.'],
+    realWorld: 'KIVI, KVQuant, QuaRot: 4-bit and 2-bit KV caches.',
+    predictor: null, coder: null, article: 'block-float-formats',
+  },
+};
 
 // ---------------- THE MAP (intro articles) ----------------
 // Article slugs live under <site>/map/zoo/<slug>/. Built from docs/map/ (see docs/map/map.md).

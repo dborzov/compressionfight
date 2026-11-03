@@ -148,6 +148,16 @@ window.CYC = window.CYC || {};
       weight += w;
     }
 
+    // A task whose structure needs two algorithms in one stage (PNG: filter + LZ77): one of them alone is half a design.
+    if (heist.pair && roles.includes(heist.pair.role)) {
+      const have = fightersIn(squad, heist.pair.role).map(f => f.id).filter(id => heist.pair.ids.includes(id));
+      if (have.length === 1) {
+        const missing = heist.pair.ids.find(id => !have.includes(id));
+        verdicts.push({ role: heist.pair.role, fighterId: null, ok: 'meh', text: `${heist.pair.text} Missing here: ${algoName(missing, missing)}.` });
+        points -= 12 * weight; // half a design: an A at best, not an S
+      }
+    }
+
     // Pipeline-level interactions: synergies and conflicts between stages.
     const combos = activeCombos(squad, heist);
     const anti = activeAnticombos(squad, heist, roles);

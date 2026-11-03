@@ -7,7 +7,9 @@ Live at https://www.borzov.ca/compressionfight/ (the Map: https://www.borzov.ca/
 speech, LLM weights on a laptop, a KV cache resident in HBM…), read its requirements, and assemble a codec
 pipeline stage by stage from a catalogue of 47 algorithms. A live pipeline runs real toy math on sample data
 and shows honest bit counts (raw → entropy bound → final), the side information the decoder must hold, and
-the distortion. Running the pipeline grades each stage against the task's requirements and names the real
+the distortion. Every task starts with a data sheet that prints the sample as the bytes it is and measures its structure
+(entropy, exact repeats, neighbour residuals); level 1 runs each codec on each dataset, to show that every codec is a bet
+on one structure. Running the pipeline grades each stage against the task's requirements and names the real
 codec. Five levels (lossless basics, lossy coding, shared priors, ML-era formats, KV cache), a tutor, lessons,
 checkpoint quizzes, twelve hands-on exercises, and an Explore mode (real codecs as pipelines, an algorithm
 catalogue with an interactive lab for every entry, a requirements matrix, head-to-head comparisons, trade-off maps).
@@ -45,9 +47,10 @@ bandwidth pressure, decoder memory, whether side information may be shipped) mee
 - `js/quests_data.js`, `js/quests.js` the twelve exercises
 - `js/engine.js` the toy pipeline (LZ77, Huffman, arithmetic/ANS estimates, Golomb-Rice, DCT, k-means, block int4, RoPE, SVD…)
 - `js/rules.js` scoring
+- `js/datasheet.js` the data sheet (sample printed as bytes, measured structure) and the codec × dataset matrix
 - `js/demos.js` an interactive lab per algorithm
 - `js/viz.js`, `js/ui.js`, `css/style.css`, `index.html` the front end
 - `img/` portraits and posters, generated locally (FLUX.2 Klein) in an Art Nouveau style
 - `docs/map/` the Map sources (`map.md`, `primer.md`, `zoo/<slug>.md`, figure scripts, images); `site/` the Hugo project; `map/` the built output
 - `docs/` contracts the modules were built against (`ARCHITECTURE.md`, `DEMOS.md`, `SIDEQUESTS.md`), the content policy, the design system, and the KV-cache research notes
-- `test/` node tests: `node test/engine_test.js`, `node test/demos_test.js`, `node test/quests_test.js`
+- `test/` node tests: `node test/engine_test.js`, `node test/demos_test.js`, `node test/quests_test.js`, `node test/datasheet_test.js`

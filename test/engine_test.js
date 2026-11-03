@@ -14,7 +14,7 @@ const bytesEq = (a, b) => a.length === b.length && a.every((v, i) => v === b[i])
 
 // ---------- primitives: byte-exact round trips
 {
-  for (const kind of ['json', 'prose', 'image', 'audio', 'weights']) {
+  for (const kind of ['json', 'prose', 'image', 'screenshot', 'audio', 'weights']) {
     const p = I.getPayload(kind); const ser = I.serializePlanes(p.planes); const bytes = ser.bytes;
     for (const dict of [null, I.dictionaryBytes(kind)]) {
       const tokens = I.lz77(bytes, dict, 4096, 3, 258);
@@ -41,6 +41,23 @@ const bytesEq = (a, b) => a.length === b.length && a.every((v, i) => v === b[i])
 
 // ---------- every codec squad on its heist payload
 const rows = [];
+// screenshot payload + public accessor
+{
+  const ratio = (kind, pl) => { const r = E.run(kind, pl); return r.rawBits / r.finalBits; };
+  const PNG = { predict: ['spatial', 'lz77'], entropy: ['huffman'] }, FLAC = { transform: ['prism'], predict: ['lpc'], entropy: ['rice'] }, DEFLATE = { predict: ['lz77'], entropy: ['huffman'] };
+  const pl = E.payload('screenshot');
+  check(E.PAYLOAD_KINDS.includes('screenshot'), 'PAYLOAD_KINDS includes screenshot');
+  check(pl.bytes.length === 3072 && pl.bytesWidth === 1 && pl.domain === 'image' && pl.planes.length === 3 && pl.text === null, 'payload(screenshot): 3072 one-byte samples, 3 planes');
+  pl.planes[0].data[0] = -1; check(E.payload('screenshot').planes[0].data[0] !== -1, 'payload() returns copies (cache not corrupted)');
+  check(typeof E.payload('json').text === 'string' && E.payload('json').label === E.payloadLabel('json'), 'payload(json): text and label');
+  check(ratio('screenshot', PNG) > ratio('screenshot', FLAC), 'PNG beats FLAC on screenshot');
+  check(ratio('screenshot', PNG) > ratio('screenshot', DEFLATE), 'PNG beats DEFLATE on screenshot');
+  check(ratio('screenshot', PNG) > ratio('screenshot', { predict: ['lpc'], entropy: ['huffman'] }), 'PNG beats LPC+Huffman on screenshot');
+  check(ratio('screenshot', DEFLATE) >= 2, 'DEFLATE alone gets >= 2x on screenshot');
+  check(ratio('audio', FLAC) > ratio('audio', PNG), 'FLAC beats PNG on audio');
+  check(ratio('json', DEFLATE) > ratio('json', FLAC), 'DEFLATE beats FLAC on json');
+}
+
 const kinds = E.PAYLOAD_KINDS;
 for (const codec of CYC.CODECS) {
   const heist = CYC.HEISTS.find((h) => h.id === codec.heist);

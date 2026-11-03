@@ -14,7 +14,7 @@ CYC.UI = (function () {
   const ROLE_ORDER = Object.keys(CYC.ROLES);
   const MAX_LEVEL = CYC.LEVELS[CYC.LEVELS.length - 1].id;
   const RANKS = ['D', 'C', 'B', 'A', 'S'];
-  const PAYLOADS = ['json', 'prose', 'image', 'audio', 'video', 'vectors', 'weights', 'activations'];
+  const PAYLOADS = ['json', 'prose', 'screenshot', 'image', 'audio', 'video', 'vectors', 'weights', 'activations'];
   const STAT_ROWS = [
     ['enc', 'Encoder cost'], ['dec', 'Decoder cost'], ['ratio', 'Compression'],
     ['latency', 'Delay'], ['mem', 'Memory'], ['ra', 'Random access'],
@@ -94,6 +94,7 @@ CYC.UI = (function () {
   const vizReady = () => !!(CYC.Viz && typeof CYC.Viz.draw === 'function');
   const demosHas = (id) => { try { return !!(CYC.Demos && typeof CYC.Demos.render === 'function' && typeof CYC.Demos.has === 'function' && CYC.Demos.has(id)); } catch (e) { return false; } };
   const questsReady = () => !!(CYC.Quests && typeof CYC.Quests.render === 'function');
+  const sheetReady = () => !!(CYC.DataSheet && typeof CYC.DataSheet.render === 'function');
   const fighter = (id) => CYC.byId[id] || null;
   const roleColor = (role) => (CYC.ROLES[role] && CYC.ROLES[role].color) || 'var(--line)';
   const roleTitle = (role) => (CYC.ROLES[role] && CYC.ROLES[role].title) || role;
@@ -407,6 +408,7 @@ CYC.UI = (function () {
         solved ? rankBadge(solved) : null),
       el('div', { class: 'heist-codec', text: `The real codec: ${h.codec}` }),
       el('p', { class: 'heist-brief', text: h.brief }),
+      dataMini(h.payload),
       reqBars(h.req, true),
       el('details', { class: 'briefing' },
         el('summary', { text: 'Briefing' }),
@@ -414,8 +416,40 @@ CYC.UI = (function () {
         mapLink(heistArticle(h), 'Read the background →', true)),
       el('div', { class: 'heist-foot' },
         el('button', { type: 'button', class: 'btn btn-run', text: opts.buttonText || 'Take the task', onclick: () => opts.onopen(h) }),
-        el('span', { class: 'dim', text: `Sample: ${payloadLabel(h.payload)}` })),
+        sheetReady() ? null : el('span', { class: 'dim', text: `Sample: ${payloadLabel(h.payload)}` })),
     );
+  }
+  function dataMini(kind) {
+    if (!sheetReady()) return null;
+    const box = el('div', { class: 'heist-data' });
+    safe(() => CYC.DataSheet.renderMini(box, kind));
+    return box;
+  }
+  function dataSheet(kind, opts) {
+    if (!sheetReady()) return el('div', { class: 'dim', text: `Sample data: ${payloadLabel(kind)}` });
+    const box = el('div', { class: 'data-mount' });
+    safe(() => CYC.DataSheet.render(box, kind, opts || {}));
+    return box;
+  }
+  // Every codec of a level on every dataset of the level: only meaningful where all the tasks are lossless (ratio is the whole story).
+  function crossMatrixFor(lv) {
+    if (!sheetReady()) return null;
+    const hs = heistsOf(lv); if (!hs.length || !hs.every((h) => h.req && h.req.lossless)) return null;
+    const codecs = (CYC.CODECS || []).filter((c) => hs.some((h) => h.id === c.heist)).filter((c, i, a) => a.findIndex((x) => x.heist === c.heist) === i);
+    if (codecs.length < 2) return null;
+    const box = el('section', { class: 'cross-panel ornate', id: `cross-${lv.id}` },
+      el('div', { class: 'cross-head' },
+        el('span', { class: 'eyebrow eyebrow-lg', text: `Why ${codecs.length} codecs` }),
+        el('h3', { class: 'h-display', text: 'Each codec\'s pipeline on each dataset' }),
+        el('p', { class: 'tagline', text: 'The requirement sheets of these tasks are nearly identical. The data is not. Click a cell to open that pipeline on that data in the builder.' })));
+    safe(() => CYC.DataSheet.renderCross(box, { codecs: codecs.map((c) => c.id), onPick: (kind, codecId) => openCross(lv, kind, codecId) }));
+    return box;
+  }
+  function openCross(lv, kind, codecId) {
+    const h = heistsOf(lv).find((x) => x.payload === kind) || CYC.HEISTS.find((x) => x.payload === kind);
+    const c = (CYC.CODECS || []).find((x) => x.id === codecId);
+    if (!h || !c) return;
+    openHeist(h, { ctx: 'heist', squad: c.squad });
   }
   function setHeistTab(tab) { state.heistTab = tab; renderHeists(); }
   function renderHeists() {
@@ -437,6 +471,7 @@ CYC.UI = (function () {
     else {
       const grid = el('div', { class: 'heist-grid' }, heistsOf(lv).map((h) => heistCard(h, { onopen: (hh) => openHeist(hh, { ctx: 'heist' }) })));
       body.append(grid);
+      const cross = crossMatrixFor(lv); if (cross) body.append(cross);
       const quiz = state.progress.quiz[lv.id];
       if (CYC.QUIZZES && CYC.QUIZZES[lv.id] && levelSolved(lv)) {
         body.append(el('div', { class: 'checkpoint-strip ornate' },
@@ -466,6 +501,8 @@ CYC.UI = (function () {
       el('div', { class: 'lesson-list' }, lessons.map((L, i) => el('article', { class: 'lesson', id: `lesson-${L.id}` },
         el('div', { class: 'lesson-head' }, el('span', { class: 'lesson-num', text: String(i + 1).padStart(2, '0') }), el('h3', { class: 'h-display', text: L.title })),
         el('div', { class: 'lesson-body', html: mdLinks(L.body) }),
+        L.datasheets && sheetReady() ? el('div', { class: 'lesson-sheets' }, L.datasheets.map((k) => dataSheet(k, { compact: true }))) : null,
+        L.crossmatrix && sheetReady() ? safe(() => { const box = el('div', { class: 'cross-panel' }); CYC.DataSheet.renderCross(box, Object.assign({}, L.crossmatrix, { onPick: (kind, codecId) => openCross(state.level, kind, codecId) })); return box; }, null) : null,
         L.takeaway ? el('div', { class: 'takeaway' }, el('span', { class: 'eyebrow', text: 'Takeaway' }), el('span', { text: L.takeaway })) : null,
         L.demo ? (demoBox(L.demo, `Interactive lab: ${(fighter(L.demo) || {}).name || L.demo}`) || el('p', { class: 'dim', text: `Lab for ${(fighter(L.demo) || {}).name || L.demo}: loading (js/demos.js).` })) : null,
         L.demo ? mapLink(fighterArticle(L.demo), `Read the introduction to ${(fighter(L.demo) || {}).name || L.demo} →`) : null,
@@ -499,7 +536,7 @@ CYC.UI = (function () {
           el('span', { class: 'job-title', text: h.name }),
           el('span', { class: 'badge badge-level', text: `Level ${h.level}` }),
           el('span', { class: 'badge badge-level', text: `The real codec: ${h.codec}` })),
-        el('div', { class: 'dim', text: `Sample data: ${payloadLabel(h.payload)}` }),
+        sheetReady() ? null : el('div', { class: 'dim', text: `Sample data: ${payloadLabel(h.payload)}` }),
         el('p', { class: 'heist-brief', text: h.brief }),
         el('details', { class: 'briefing' }, el('summary', { text: 'Briefing' }), el('ul', {}, (h.reqNotes || []).map((n) => el('li', { text: n }))),
           mapLink(heistArticle(h), 'Read the background \u2192')),
@@ -507,6 +544,8 @@ CYC.UI = (function () {
       ),
       el('div', {}, el('div', { class: 'eyebrow eyebrow-lg', style: { marginBottom: '8px' }, text: 'Requirements' }), reqBars(h.req, false)),
     );
+    const dataBox = clearEl($('squad-data'));
+    if (sheetReady()) dataBox.append(dataSheet(h.payload, { eyebrow: 'The data this pipeline runs on' })); else dataBox.hidden = true;
     renderChairs();
     renderCombos();
   }

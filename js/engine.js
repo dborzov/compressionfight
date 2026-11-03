@@ -173,6 +173,39 @@
       { name: 'B', w: W, h: H, data: B, vkind: 'sample', frame: 0 },
     ];
   }
+  // A UI screenshot / pixel art: no noise at all. Flat fills, a title bar, one 6x6 icon stamped four times, text rows,
+  // a 1-px frame and a shallow gradient button. This is the kind of picture PNG (Up/Sub filter + LZ77 + Huffman) was made for.
+  function synthScreenshot(seed, W, H) {
+    const rnd = mulberry32(seed);
+    const R = new Float64Array(W * H), G = new Float64Array(W * H), B = new Float64Array(W * H);
+    const put = (x, y, c) => { if (x < 0 || y < 0 || x >= W || y >= H) return; const i = y * W + x; R[i] = c[0]; G[i] = c[1]; B[i] = c[2]; };
+    const rect = (x0, y0, w, h, c) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) put(x, y, c); };
+    rect(0, 0, W, H, [200, 210, 225]); // flat background, exactly constant
+    rect(0, 0, W, 5, [40, 60, 110]); rect(0, 5, W, 1, [20, 30, 60]); // title bar + 1-px darker line under it
+    // 1-px frame around a panel (x 1..30, y 8..30)
+    for (let x = 1; x <= 30; x++) { put(x, 8, [70, 80, 100]); put(x, 30, [70, 80, 100]); }
+    for (let y = 8; y <= 30; y++) { put(1, y, [70, 80, 100]); put(30, y, [70, 80, 100]); }
+    // 6x6 icon with an internal pattern, stamped byte-identical at 4 positions
+    const pal = [[200, 210, 225], [220, 60, 50], [250, 200, 40], [30, 30, 40], [60, 160, 90]];
+    const icon = ['333333', '312213', '321123', '321123', '312213', '333333'].map((r) => r.split('').map(Number));
+    icon[2][2] = 4; icon[3][3] = 4;
+    for (const [ix, iy] of [[3, 10], [10, 10], [17, 10], [24, 10]])
+      for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) put(ix + x, iy + y, pal[icon[y][x]]);
+    // two rows of text: 3-px-wide glyph blobs, 1-px gaps, on the flat background (the seed only picks the glyph shapes)
+    const ink = [10, 10, 10];
+    for (const ty of [18, 22]) for (let g = 0; g < 6; g++) {
+      const gx = 3 + g * 4;
+      const bits = 1 + Math.floor(rnd() * 510); // 9-bit 3x3 pattern, never empty
+      for (let k = 0; k < 9; k++) if ((bits >> k) & 1 || k === 4 + (g % 2)) put(gx + (k % 3), ty + Math.floor(k / 3), ink);
+    }
+    // a shallow vertical gradient band (a button): 4 rows, each +3 brighter than the previous
+    for (let r = 0; r < 4; r++) for (let x = 3; x < 29; x++) { const d = 3 * r + (x - 3); put(x, 26 + r, [60 + d, 120 + d, 190 + d]); }
+    return [
+      { name: 'R', w: W, h: H, data: R, vkind: 'sample', frame: 0 },
+      { name: 'G', w: W, h: H, data: G, vkind: 'sample', frame: 0 },
+      { name: 'B', w: W, h: H, data: B, vkind: 'sample', frame: 0 },
+    ];
+  }
   function shiftedFrame(planes, seed, dx, dy) {
     const rnd = mulberry32(seed);
     return planes.map((p) => {
@@ -258,6 +291,7 @@
     json:        { domain: 'text', bitDepth: 8, seed: 1001, label: (p) => `${fmt(p.n / 1024, 1)} KB of JSON events (${p.extra.records} records, same schema)` },
     prose:       { domain: 'text', bitDepth: 8, seed: 1002, label: (p) => `${fmt(p.n / 1024, 1)} KB of English prose` },
     image:       { domain: 'image', bitDepth: 8, seed: 1003, label: () => '32×32 RGB image, 8 bits/channel (3,072 samples)' },
+    screenshot:  { domain: 'image', bitDepth: 8, seed: 1009, label: () => '32×32 RGB screenshot, 8 bits/channel, no noise: flat fills, a repeated 6×6 icon, text rows (3,072 samples)' },
     video:       { domain: 'video', bitDepth: 8, seed: 1004, label: () => 'two 32×32 RGB frames, the second shifted by (2,1) px' },
     audio:       { domain: 'audio', bitDepth: 16, seed: 1005, label: () => '1,024 stereo samples of 16-bit audio (3 decaying tones + noise)' },
     vectors:     { domain: 'vectors', bitDepth: 32, seed: 1006, label: () => '256 embedding vectors × 8 dims, float32, strongly correlated' },
@@ -274,6 +308,7 @@
       case 'json': { const txt = jsonRecords(seed, 5); planes = textPlanes(txt); extra = { records: 5, text: txt }; break; }
       case 'prose': planes = textPlanes(PROSE); extra = { text: PROSE }; break;
       case 'image': planes = synthImage(seed, 32, 32); break;
+      case 'screenshot': planes = synthScreenshot(seed, 32, 32); break;
       case 'video': { const f0 = synthImage(seed, 32, 32); planes = f0.concat(shiftedFrame(f0, seed + 7, 2, 1)); break; }
       case 'audio': planes = synthAudio(seed); break;
       case 'vectors': planes = synthVectors(seed); break;
@@ -1556,8 +1591,18 @@
   }
   function payloadLabel(kind) { const p = getPayload(kind); return p.def.label(p); }
 
+  function payload(kind) {
+    const p = getPayload(kind); const ser = serializePlanes(p.planes);
+    return {
+      kind: p.kind, domain: p.domain, bitDepth: p.bitDepth, label: p.def.label(p), n: p.n, rawBits: p.rawBits,
+      planes: p.planes.map((q) => ({ name: q.name, w: q.w, h: q.h, data: Float64Array.from(q.data) })),
+      text: p.extra && typeof p.extra.text === 'string' ? p.extra.text : null,
+      bytes: Uint8Array.from(ser.bytes), bytesWidth: ser.width,
+    };
+  }
+
   CYC.Engine = {
-    run, payloadLabel, PAYLOAD_KINDS: Object.keys(PAYLOAD_DEFS), ORDER,
+    run, payloadLabel, payload, PAYLOAD_KINDS: Object.keys(PAYLOAD_DEFS), ORDER,
     _internals: { getPayload, generatePayload, dictionaryBytes, serializePlanes, lz77, lz77Decode, lzSymbols, lzw, lzwDecode, bwt, bwtInverse, mtfEncode, mtfDecode, huffmanLengths, huffmanBits, adaptiveOrder0Bits, ppmOrder2Bits, riceBits, rleZeroRuns, kmeans, pcaPowerIteration, dct2d8, haar2d, hadamardBlocks, entropyOf, toHalfBits, halfBitsToFloat },
   };
 })();

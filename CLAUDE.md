@@ -7,11 +7,11 @@ pipeline run real toy math on sample data, then gets graded. `README.md` explain
 ## Layout: static site, no build step
 
 Plain HTML + CSS + ES2020 JavaScript. No frameworks, no bundler, no npm dependencies, no transpilation.
-Every module attaches to `window.CYC` (`CYC.Engine`, `CYC.Rules`, `CYC.Viz`, `CYC.UI`, `CYC.Demos`, `CYC.Quests`,
+Every module attaches to `window.CYC` (`CYC.Engine`, `CYC.Rules`, `CYC.DataSheet`, `CYC.Viz`, `CYC.UI`, `CYC.Demos`, `CYC.Quests`,
 plus the data tables). Scripts load in this order from `index.html`:
 
 ```
-data.js, curriculum.js, quests_data.js, engine.js, rules.js, demos.js, quests.js, viz.js, ui.js
+data.js, curriculum.js, quests_data.js, engine.js, rules.js, datasheet.js, demos.js, quests.js, viz.js, ui.js
 ```
 
 Module contracts live in `docs/` and are the source of truth when code and docs disagree:
@@ -20,6 +20,8 @@ Module contracts live in `docs/` and are the source of truth when code and docs 
   descriptor shapes, `CYC.Rules.score`, UI modes and screens, portrait fallback.
 - `docs/DEMOS.md` — `CYC.Demos.render(container, fighterId)`: the 34 per-fighter worked-example labs, with the
   exact inputs and expected outputs each one must show.
+- `docs/ARCHITECTURE.md` also carries the `CYC.DataSheet` contract (`js/datasheet.js`: the task's sample data printed as bytes,
+  measured live, plus the codec × dataset matrix; `CYC.DataSheet.calc.*` is pure and node-testable).
 - `docs/SIDEQUESTS.md` — `CYC.Quests.render(container, questId, {onComplete})`: the eight mini games and their
   scoring formulas.
 
@@ -27,7 +29,7 @@ Module contracts live in `docs/` and are the source of truth when code and docs 
 
 | Content (information theory, must stay factually honest) | Code |
 |---|---|
-| `js/data.js` roles, families, fighters (stats, moves, weaknesses, `used in`, `persona`), heists, real codecs, metaphors, combos, duels | `js/engine.js` toy pipeline |
+| `js/data.js` roles, families, fighters (stats, moves, weaknesses, `used in`, `persona`), heists, real codecs, metaphors, combos, duels, `CYC.DATAKINDS` (per-payload-kind data-sheet prose) | `js/engine.js` toy pipeline, `js/datasheet.js` data sheet |
 | `js/curriculum.js` the Fixer's tutor lines, lessons, quizzes, trade-off presets | `js/rules.js` scoring |
 | `js/quests_data.js` side-quest text (howto / watch / debrief) | `js/demos.js`, `js/quests.js`, `js/viz.js`, `js/ui.js` |
 | `things_to_explain/` research notes feeding the content (leave in place) | `css/style.css`, `index.html` |
@@ -56,9 +58,10 @@ Tests are plain node scripts (no test runner; they set `global.window = global` 
 node test/engine_test.js
 node test/demos_test.js
 node test/quests_test.js
+node test/datasheet_test.js
 ```
 
-Run all three before committing changes to `js/`. Some may not exist yet while their module is in progress.
+Run all four before committing changes to `js/`. Some may not exist yet while their module is in progress.
 
 ## Images
 

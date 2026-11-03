@@ -9,6 +9,7 @@ css/style.css         all styling (90s arcade fighting-game aesthetic)
 js/data.js            ROSTER: roles, families, algorithms, tasks, codecs  (done, read it first)
 js/engine.js          CYC.Engine — toy but REAL pipeline math on sample payloads
 js/rules.js           CYC.Rules  — scoring: requirements of the job vs properties of the pipeline
+js/datasheet.js       CYC.DataSheet — the sample data printed as the bytes it is, measured, and the codec × dataset matrix
 js/viz.js             CYC.Viz    — canvas renderers for the generic viz descriptors
 js/ui.js              CYC.UI     — screens, modes, levels, catalog, pipeline panel, results
 img/fighters/<id>.png 256×256 portraits, one per algorithm id in data.js (+ none.png)
@@ -23,12 +24,13 @@ js/curriculum.js      CYC.TUTOR (the tutor's lines by trigger), CYC.LESSONS[leve
 js/quests_data.js     CYC.SIDEQUESTS — exercise content (howto / watch / debrief)
 js/quests.js          CYC.Quests.render(container, questId, {onComplete}) — exercise mechanics (see docs/SIDEQUESTS.md)
 js/demos.js           CYC.Demos.render(container, fighterId) — per-algorithm labs (see docs/DEMOS.md)
+js/datasheet.js       CYC.DataSheet — data sheet, mini preview, codec × dataset matrix (see DataSheet contract below)
 ```
 data.js also carries game mechanics: `CYC.METAPHORS` (task-metaphor labels for each requirement stat),
 `CYC.COMBOS` / `CYC.ANTICOMBOS` (synergies and conflicts; `CYC.Rules.activeCombos(squad, heist)` and
 `activeAnticombos(squad, heist, roles)` evaluate them), `CYC.DUELS` (head-to-head presets).
 
-Script load order in index.html: data.js, curriculum.js, quests_data.js, engine.js, rules.js, demos.js, quests.js, viz.js, ui.js.
+Script load order in index.html: data.js, curriculum.js, quests_data.js, engine.js, rules.js, datasheet.js, demos.js, quests.js, viz.js, ui.js.
 
 ## Vocabulary
 
@@ -46,7 +48,7 @@ Script load order in index.html: data.js, curriculum.js, quests_data.js, engine.
 CYC.Engine.run(payloadKind, pipeline) -> Result
 ```
 
-`payloadKind` is one of `json, prose, image, audio, video, vectors, weights, activations` (the `payload` field of a task).
+`payloadKind` is one of `json, prose, image, screenshot, audio, video, vectors, weights, activations` (the `payload` field of a task).
 The engine generates the sample payload deterministically (seeded), so repeated runs are identical.
 
 Execution order (encoder direction), skipping empty stages:
@@ -93,6 +95,18 @@ Viz descriptors (engine emits, viz.js draws; keep arrays small, ≤ 4096 values)
 
 Also export for the UI: `CYC.Engine.payloadLabel(kind)` → human label (e.g. "8 KB of JSON events").
 
+`screenshot` is a 32×32 RGB payload, noise-free by construction: flat fills, a repeated 6×6 icon, rows of text, a
+gradient button (the PNG task's data; `image` stays the noisy photograph).
+
+`CYC.Engine.payload(kind)` → a copy of the sample the engine runs on (mutating it does not corrupt the cache), so the
+UI can print the data without re-deriving it:
+
+```js
+{ kind, domain: 'text'|'image'|'audio'|'video'|'floats', bitDepth, label, n /* values */, rawBits,
+  planes: [{ name, w, h, data /* typed array */ }], text: string|null /* text payloads only */,
+  bytes: Uint8Array /* the serialized samples the byte-oriented stages see */, bytesWidth: number /* bytes per sample */ }
+```
+
 Engine must be real where it is cheap to be real: real LZ77 (hash-chain or brute force, window ≤ 4 KB), real
 Huffman code lengths (tree build), real order-0/order-1 adaptive entropy estimate for arithmetic/ANS, real
 Golomb-Rice bit counts with best k, real 8×8 DCT-II, real k-means (few iterations) for VQ/PQ, real block-wise
@@ -100,6 +114,27 @@ int4 with per-32 fp16 scale, real delta/LPC (order-2 fixed predictor is enough),
 are allowed and must be labelled in the caption: MDCT → DCT-IV on 32-sample frames; wavelet → one Haar level;
 learned encoder → PCA on patches (stand-in); context mixing / neural prior → order-2 adaptive model;
 motion compensation → block search between two synthesized frames; adversarial loss → no size effect, caption only.
+
+## DataSheet contract (`js/datasheet.js`)
+
+```js
+CYC.DataSheet.render(container, kind, opts)   // full sheet: sample printed as what it is, picture, measured facts, what fits / fails
+CYC.DataSheet.renderMini(container, kind)     // two-line preview (literal + one measured fact) for task cards
+CYC.DataSheet.renderCross(container, { codecs: [codecId] | kinds + pipelines: [{id,name,squad,home}], onPick(kind, pipelineId), caption })
+CYC.DataSheet.profile(kind)                   // measured facts for a payload kind (cached): { byteEntropy, lz:{coverage,top,…}, facts:[{n,t,bad?}], … }
+CYC.DataSheet.calc.*                          // pure, DOM-free, tested in node: histogram, entropy, diffs, rowDiffs, shareWithin,
+                                              // distinct, repeats, pyChar, pyBytes, pyList, hexRow, profile, crossMatrix
+```
+
+Printing: text as a Python-style `bytes` literal, images as pixel rows with the PNG "Up"/"Sub" filter residuals, audio as
+int16 samples with the FLAC order-2 residual. Rule: every number shown is computed from the sample by the stated formula
+(Shannon entropy, a greedy LZ77 pass for exact-repeat coverage, neighbour-residual statistics, live `CYC.Engine.run` calls
+for the matrix); nothing is hard-coded. The prose (structure, what fits, what does not, real-world use) comes from
+`CYC.DATAKINDS[kind]` in `js/data.js`, one entry per payload kind. `renderCross` runs every listed codec's squad on every
+listed dataset and marks the best cell per row and each codec's home dataset; with `onPick` the cells are buttons.
+
+Lessons in `js/curriculum.js` may carry `datasheets: [kinds]` (data sheets embedded in the lesson) and
+`crossmatrix: { codecs: [codecIds] }` (a codec × dataset matrix embedded in the lesson).
 
 ## Rules contract (`js/rules.js`)
 
@@ -124,6 +159,9 @@ stat bars, key idea, used-in, weakness; pick up to 2 per stage) → live pipelin
 (`Engine.run`) → RUN THE TASK → results (rank letter, per-stage verdicts, size meter raw→bound→final, side-info meter,
 distortion, then the `reveal` text naming the real codec). Rank B or better unlocks the next task; finishing all
 tasks of a level unlocks the next level. An "unlock everything" button exists.
+The task screen shows a data preview (`DataSheet.renderMini`) on each task card; the level screen shows the codec × dataset
+matrix (`DataSheet.renderCross`) once every task of a level is lossless; the pipeline builder shows the full data sheet
+(`DataSheet.render`) above the stages.
 
 **EXPLORE mode** — tabs: Codecs (every `CYC.CODECS` entry as a pre-filled pipeline; click to load it into the
 same pipeline panel on its task's payload), Roster (every algorithm as a character card, grouped by role → family,

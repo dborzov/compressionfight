@@ -856,3 +856,118 @@ body.fixer-open #app { padding-bottom: 220px; }
 .map-link { display: inline-block; margin: 8px 0 4px; font-family: var(--font-body); font-weight: 600; font-size: 15px; line-height: 1.4; color: var(--teal); text-decoration: none; border-bottom: 1px solid var(--gold); }
 .map-link:hover, .map-link:focus-visible { color: var(--ink); border-color: var(--ink); }
 .map-link-sm { font-size: 14px; margin: 2px 0; }
+
+/* ---- data sheet, task-card data preview, codec × dataset matrix ---- */
+
+/* host panels (same paper as .job-sheet) */
+.data-panel, .cross-panel.ornate {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--line), var(--shadow-paper);
+  background-color: var(--paper-2);
+  padding: 26px 30px; margin-bottom: 16px;
+}
+.data-panel[hidden] { display: none; }
+.data-mount { min-width: 0; max-width: 100%; }
+.lesson-sheets { display: grid; gap: 12px; min-width: 0; }
+.cross-head { display: grid; gap: 4px; margin-bottom: 4px; }
+.cross-head .tagline { margin-bottom: 8px; }
+.cross-panel { min-width: 0; max-width: 100%; }
+.cross-panel:not(.ornate) { margin: 4px 0; }
+
+/* the full sheet */
+.datasheet { --rc: var(--gold); display: grid; gap: 14px; min-width: 0; max-width: 100%; }
+.datasheet-compact { gap: 10px; border: 1px solid var(--line); border-left: 4px solid var(--gold); border-radius: var(--radius); background: var(--paper); padding: 12px 14px; }
+.ds-head { display: grid; gap: 2px; }
+.ds-name { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; margin: 0; color: var(--ink); }
+.ds-shape { font-size: 14.5px; }
+.ds-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px 28px; min-width: 0; }
+@media (min-width: 900px) { .ds-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); } }
+.ds-col-literal, .ds-col-facts { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.ds-sub { margin: 0; }
+
+.ds-literal {
+  margin: 0; padding: 10px 12px; min-width: 0; max-width: 100%;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.5; color: var(--ink);
+  background: var(--paper-3); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: inset 0 1px 3px rgba(42, 33, 27, .10);
+  white-space: pre-wrap; word-break: break-all; overflow-wrap: anywhere;
+  max-height: 18em; overflow-y: auto; overflow-x: hidden;
+}
+.ds-literal code { font: inherit; white-space: inherit; word-break: inherit; overflow-wrap: inherit; }
+.ds-literal mark { color: inherit; font-weight: inherit; line-height: inherit; padding: 0; border-radius: 1px; }
+.ds-rep { background: color-mix(in srgb, var(--sage) 28%, transparent); }
+.ds-src { text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, var(--sage) 75%, transparent); text-underline-offset: 3px; text-decoration-thickness: 1px; background: color-mix(in srgb, var(--sage) 8%, transparent); }
+.ds-zero { background: color-mix(in srgb, var(--plum) 22%, transparent); }
+.ds-comment { color: var(--ink-2); }
+
+.ds-canvas { display: block; width: 100%; height: 150px; max-width: 100%; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+.ds-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: 16px; line-height: 1.4; }
+.ds-facts li { min-width: 0; overflow-wrap: anywhere; }
+.ds-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: .88em; color: var(--teal); white-space: nowrap; }
+.ds-facts li.is-bad .ds-num { color: var(--rose); }
+
+.ds-fit { display: grid; gap: 8px; border-top: 1px solid var(--line-soft); padding-top: 12px; min-width: 0; }
+.ds-fit p { margin: 0; max-width: 72ch; font-size: var(--fs-body); line-height: 1.5; }
+.ds-fit p > b { font-family: var(--font-display); font-weight: 700; font-size: 1.06em; font-variant: small-caps; letter-spacing: .06em; color: var(--ink-2); }
+.ds-picks { display: inline-flex; gap: 5px; flex-wrap: wrap; vertical-align: baseline; }
+.ds-wrong { max-width: 72ch; font-size: var(--fs-body); line-height: 1.5; }
+.ds-wrong summary { cursor: pointer; font-family: var(--font-display); font-weight: 700; font-variant: small-caps; letter-spacing: .06em; color: var(--ink-2); }
+.ds-wrong summary:hover, .ds-wrong summary:focus-visible { color: var(--ink); }
+.ds-wrong ul { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+.ds-fit .map-link { justify-self: start; }
+
+.datasheet-compact .ds-name { font-size: 22px; }
+.datasheet-compact .ds-canvas { height: 120px; }
+.datasheet-compact .ds-facts { font-size: 15px; gap: 5px; }
+.datasheet-compact .ds-fit { padding-top: 8px; gap: 6px; }
+.datasheet-compact .ds-fit p, .datasheet-compact .ds-wrong { font-size: 15.5px; }
+
+/* task-card specimen */
+.heist-data { min-width: 0; }
+.ds-mini { display: grid; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); min-width: 0; }
+.ds-mini-name { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.ds-mini-label { font-size: 13px; line-height: 1.3; }
+.ds-literal-mini {
+  position: relative; font-size: 12px; line-height: 1.45; padding: 6px 8px; max-height: 5.2em; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent);
+          mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+.ds-mini-fact { font-size: 13px; line-height: 1.35; }
+.ds-mini-fact b { font-family: var(--font-mono); font-weight: 700; font-size: .92em; color: var(--teal); }
+
+/* codec × dataset matrix */
+.cross-matrix { display: grid; gap: 10px; min-width: 0; max-width: 100%; }
+.cm-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+.cm-table { border-collapse: collapse; width: 100%; min-width: 560px; }
+.cm-table th, .cm-table td { padding: 10px 12px; vertical-align: middle; border-top: 1px solid var(--line-soft); }
+.cm-table thead th { border-top: 0; border-bottom: 2px solid var(--line); background: var(--paper-2); vertical-align: bottom; }
+.cm-corner { text-align: left; font-weight: 400; }
+.cm-pipe { text-align: center; font-weight: 400; }
+.cm-pipe-name { font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 1.15; color: var(--ink); }
+.cm-pipe-sub { font-size: 12.5px; line-height: 1.3; margin-top: 2px; }
+.cm-kind { text-align: left; font-weight: 400; background: var(--paper-2); }
+.cm-kind-name { font-weight: 600; line-height: 1.25; }
+.cm-kind-sub { font-size: 13px; line-height: 1.3; }
+.cm-cell { text-align: center; position: relative; }
+.cm-btn, .cm-val {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 22px; line-height: 1.2; color: var(--ink);
+  background: transparent; border: 0; padding: 2px 4px; margin: 0;
+}
+.cm-btn { cursor: pointer; border-radius: var(--radius); }
+.cm-btn:hover, .cm-btn:focus-visible { text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: 4px; text-decoration-thickness: 2px; }
+.cm-btn:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.cm-sub { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.3; margin-top: 2px; }
+.cm-tag { font-family: var(--font-display); font-weight: 600; font-size: 12px; font-variant: small-caps; letter-spacing: .08em; color: var(--gold); margin-top: 2px; }
+.cm-cell.is-best .cm-btn, .cm-cell.is-best .cm-val { font-weight: 700; color: var(--teal); }
+.cm-cell.is-home { box-shadow: inset 0 0 0 2px var(--gold); background: color-mix(in srgb, var(--gold) 9%, transparent); }
+.cm-caption { margin: 0; max-width: 80ch; font-size: 14px; line-height: 1.45; }
+
+@media (max-width: 600px) {
+  .data-panel, .cross-panel.ornate { padding: 20px 18px; }
+  .ds-name { font-size: 23px; }
+  .ds-facts { font-size: 15.5px; }
+  .cm-kind { position: sticky; left: 0; z-index: 1; width: 140px; min-width: 140px; max-width: 140px; box-shadow: 1px 0 0 var(--line); }
+  .cm-kind-name { font-size: 15px; }
+  .cm-kind-sub { font-size: 12px; }
+  .cm-table th, .cm-table td { padding: 8px 8px; }
+}
